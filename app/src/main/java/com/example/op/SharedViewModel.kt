@@ -1,16 +1,16 @@
 package com.example.op
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-// Dátová trieda, ktorá definuje, ako vyzerá horná lišta
+// ========= ZMENA TU =========
 data class TopBarState(
-    val title: String = "OP Správca",
-    val navigationIcon: @Composable (() -> Unit)? = null,
-    val actions: @Composable (() -> Unit)? = null
+    val title: String = "Návody",
+    val navigationIcon: (@Composable () -> Unit)? = null,
+    val actions: (@Composable () -> Unit)? = null,
+    val isVisible: Boolean = true // PRIDANÝ PARAMETER
 )
 
 class SharedViewModel : ViewModel() {
@@ -20,15 +20,15 @@ class SharedViewModel : ViewModel() {
     private val _showBottomBar = MutableStateFlow(true)
     val showBottomBar = _showBottomBar.asStateFlow()
 
-    fun setTopBarState(state: TopBarState) {
-        _topBarState.value = state
+    fun setTopBarState(newState: TopBarState) {
+        _topBarState.value = newState
     }
 
     fun resetTopBarState() {
-        _topBarState.value = TopBarState() // Vráti predvolenú lištu
+        _topBarState.value = TopBarState() // Vráti na predvolený stav
     }
 
-    fun setShowBottomBar(visible: Boolean) {
-        _showBottomBar.value = visible
+    fun setShowBottomBar(isVisible: Boolean) {
+        _showBottomBar.value = isVisible
     }
 }

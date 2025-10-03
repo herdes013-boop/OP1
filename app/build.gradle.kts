@@ -60,6 +60,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2") // Novšia verzia
     implementation("androidx.activity:activity-compose:1.8.2")
+    implementation("org.burnoutcrew.composereorderable:reorderable:0.9.6")
 
 
     // Compose BOM na zjednodušenie verzií

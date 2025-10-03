@@ -15,7 +15,6 @@ class TutorialsViewModel : ViewModel() {
 
     // --- Zdroje dát a filtre ---
     private val _tutorialList = MutableStateFlow<List<TutorialItem>>(emptyList())
-    // ... (ostatné premenné ostávajú rovnaké)
     private val _selectedTab = MutableStateFlow("Všetky")
     val selectedTab = _selectedTab.asStateFlow()
     val categories = listOf("Všetky", "Pre začiatočníkov", "Pre pokročilých")
@@ -38,7 +37,6 @@ class TutorialsViewModel : ViewModel() {
     var editingTutorialId by mutableStateOf<String?>(null)
         private set
 
-    // === KROK 1.1: Premenná pre pôvodný stav ===
     private var originalTutorialState: TutorialItem? = null
 
     init {
@@ -47,7 +45,49 @@ class TutorialsViewModel : ViewModel() {
 
     // --- Funkcie pre prácu s formulárom ---
 
-    // ... (všetky funkcie onTitleChange, onCategoryChange, addTextBlock, atď. ostávajú bez zmeny)
+    fun onTitleChange(newTitle: String) {
+        tutorialTitle = newTitle
+    }
+
+    fun onCategoryChange(newCategory: String) {
+        tutorialCategory = newCategory
+    }
+
+    fun addTextBlock() {
+        _contentBlocks.update { it + TutorialContentBlock.TextBlock() }
+    }
+
+    fun addImageBlock() {
+        _contentBlocks.update { it + TutorialContentBlock.ImageBlock() }
+    }
+
+    fun removeBlock(blockId: String) {
+        _contentBlocks.update { it.filterNot { b -> b.id == blockId } }
+    }
+
+    fun onTextBlockChange(blockId: String, newText: String) {
+        _contentBlocks.update { blocks ->
+            blocks.map { if (it.id == blockId && it is TutorialContentBlock.TextBlock) it.copy(text = newText) else it }
+        }
+    }
+
+    fun onImageBlockChange(blockId: String, @DrawableRes newImageRes: Int) {
+        _contentBlocks.update { blocks ->
+            blocks.map { if (it.id == blockId && it is TutorialContentBlock.ImageBlock) it.copy(imageRes = newImageRes) else it }
+        }
+    }
+
+    // === NOVÁ FUNKCIA PRE DRAG-AND-DROP ===
+    /**
+     * Presunie blok zo starej pozície (from) na novú (to).
+     */
+    fun moveBlock(from: Int, to: Int) {
+        _contentBlocks.update { currentBlocks ->
+            currentBlocks.toMutableList().apply {
+                add(to, removeAt(from))
+            }
+        }
+    }
 
     /**
      * Vyčistí formulár a resetuje ID upravovaného návodu.
@@ -57,7 +97,6 @@ class TutorialsViewModel : ViewModel() {
         tutorialCategory = categories[1]
         _contentBlocks.value = emptyList()
         editingTutorialId = null
-        // === KROK 1.2: Vyčistíme aj pôvodný stav ===
         originalTutorialState = null
     }
 
@@ -71,53 +110,32 @@ class TutorialsViewModel : ViewModel() {
             tutorialCategory = tutorial.category
             _contentBlocks.value = tutorial.contentBlocks
             editingTutorialId = tutorial.id
-            // === KROK 1.3: Uložíme si kópiu pôvodného stavu ===
             originalTutorialState = tutorial.copy()
         }
     }
 
-    // === KROK 1.4: Nová funkcia na detekciu zmien ===
     /**
      * Vráti `true`, ak sa aktuálny stav formulára líši od pôvodného.
      */
     fun hasUnsavedChanges(): Boolean {
-        // Ak neupravujeme, nemôžu byť neuložené zmeny
         if (originalTutorialState == null) return false
-
-        // Porovnáme každý atribút
         val titleChanged = tutorialTitle != originalTutorialState?.title
         val categoryChanged = tutorialCategory != originalTutorialState?.category
         val contentChanged = _contentBlocks.value != originalTutorialState?.contentBlocks
-
         return titleChanged || categoryChanged || contentChanged
     }
 
-
     // --- CRUD Operácie ---
-    // ... (saveTutorial, addTutorial, updateTutorial, deleteTutorial ostávajú bez zmeny)
-    // ...
 
-    // --- Všetky ostatné funkcie z vášho ViewModelu sem patria ---
-    fun selectCategory(category: String) { _selectedTab.value = category }
-    fun onTitleChange(newTitle: String) { tutorialTitle = newTitle }
-    fun onCategoryChange(newCategory: String) { tutorialCategory = newCategory }
-    fun addTextBlock() { _contentBlocks.update { it + TutorialContentBlock.TextBlock() } }
-    fun addImageBlock() { _contentBlocks.update { it + TutorialContentBlock.ImageBlock() } }
-    fun removeBlock(blockId: String) { _contentBlocks.update { it.filterNot { b -> b.id == blockId } } }
-    fun onTextBlockChange(blockId: String, newText: String) {
-        _contentBlocks.update { blocks ->
-            blocks.map { if (it.id == blockId && it is TutorialContentBlock.TextBlock) it.copy(text = newText) else it }
-        }
+    fun selectCategory(category: String) {
+        _selectedTab.value = category
     }
-    fun onImageBlockChange(blockId: String, @DrawableRes newImageRes: Int) {
-        _contentBlocks.update { blocks ->
-            blocks.map { if (it.id == blockId && it is TutorialContentBlock.ImageBlock) it.copy(imageRes = newImageRes) else it }
-        }
-    }
+
     private fun addTutorial() {
         val newTutorial = TutorialItem(title = tutorialTitle, category = tutorialCategory, contentBlocks = _contentBlocks.value)
         _tutorialList.update { it + newTutorial }
     }
+
     private fun updateTutorial() {
         val idToUpdate = editingTutorialId ?: return
         _tutorialList.update { list ->
@@ -126,8 +144,14 @@ class TutorialsViewModel : ViewModel() {
             }
         }
     }
-    fun saveTutorial() { if (editingTutorialId == null) addTutorial() else updateTutorial() }
-    fun deleteTutorial(tutorialId: String) { _tutorialList.update { it.filterNot { t -> t.id == tutorialId } } }
+
+    fun saveTutorial() {
+        if (editingTutorialId == null) addTutorial() else updateTutorial()
+    }
+
+    fun deleteTutorial(tutorialId: String) {
+        _tutorialList.update { it.filterNot { t -> t.id == tutorialId } }
+    }
 
     private fun loadInitialTutorials() {
         _tutorialList.value = listOf(

@@ -1,7 +1,6 @@
-// súbor: app/src/main/java/com/example/op/TutorialsScreen.kt
-package com.example.op
+// súbor: app/src/main/java/com/example/op/TutorialsScreen.ktpackage com.example.op
 
-import androidx.compose.foundation.clickable // Uistite sa, že tento import je prítomný
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -16,7 +15,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme // Pridaný import pre lepší prístup k štýlom
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
@@ -28,6 +27,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.op.Routes
+import com.example.op.TutorialItem
+import com.example.op.TutorialsViewModel
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,7 +48,6 @@ fun TutorialsScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
-                    // Pred prechodom na pridávanie vyčistíme formulár
                     viewModel.resetForm()
                     navController.navigate(Routes.ADD_TUTORIAL)
                 }
@@ -66,23 +67,22 @@ fun TutorialsScreen(
                 onCategorySelected = { category -> viewModel.selectCategory(category) }
             )
 
-            // ====================== ZMENENÁ ČASŤ ======================
+            // ====================== KĽÚČOVÁ ZMENA TU ======================
             LazyColumn(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(tutorials, key = { it.id }) { tutorial ->
-                    // Poskytneme funkciu onClick pre každú kartu
                     TutorialCard(
                         tutorial = tutorial,
                         onClick = {
-                            // Navigujeme na obrazovku úpravy s ID konkrétneho návodu
-                            navController.navigate(Routes.editTutorial(tutorial.id))
+                            // NAVIGUJEME NA OBRAZOVKU DETAILU, NIE ÚPRAVY!
+                            navController.navigate(Routes.tutorialDetail(tutorial.id))
                         }
                     )
                 }
             }
-            // ==================== KONIEC ZMENENEJ ČASTI ====================
+            // ==================== KONIEC ZMENY ====================
         }
     }
 }
@@ -108,21 +108,19 @@ fun CategoryTabs(
     }
 }
 
-// ====================== ZMENENÁ FUNKCIA ======================
-@OptIn(ExperimentalMaterial3Api::class) // Pridaná anotácia
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TutorialCard(
     tutorial: TutorialItem,
-    onClick: () -> Unit // Pridaný parameter onClick
+    onClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() } // Aplikovaný clickable modifier
+            .clickable { onClick() }
     ) {
         Column(Modifier.padding(16.dp)) {
             Text(text = tutorial.title, style = MaterialTheme.typography.titleLarge)
         }
     }
 }
-// ==================== KONIEC ZMENENEJ FUNKCIE ====================

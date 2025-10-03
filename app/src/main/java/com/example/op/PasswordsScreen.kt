@@ -27,7 +27,7 @@ import androidx.navigation.NavController
 fun PasswordsScreen(
     navController: NavController,
     viewModel: PasswordsViewModel = viewModel(),
-    modifier: Modifier = Modifier // <-- PRIDANÝ PARAMETER
+    modifier: Modifier = Modifier
 ) {
     val passwords by viewModel.passwordList.collectAsState()
     val ipAddresses by viewModel.ipList.collectAsState()
@@ -41,9 +41,8 @@ fun PasswordsScreen(
         else -> emptyList()
     }
 
-    // Prijatý modifier aplikujeme na hlavný Box kontajner
     Box(
-        modifier = modifier.fillMaxSize() // <-- APLIKOVANÝ MODIFIER
+        modifier = modifier.fillMaxSize()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
 
@@ -68,20 +67,39 @@ fun PasswordsScreen(
                 }
             } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
                     when (selectedTabIndex) {
-                        0 -> items(passwords, key = { it.id }) { item -> PasswordListItem(item) }
-                        1 -> items(ipAddresses, key = { it.id }) { item -> IpListItem(item) }
+                        0 -> items(passwords, key = { it.id }) { item ->
+                            PasswordListItem(
+                                item = item,
+                                // --- ZMENA: Navigácia na detail hesla ---
+                                onClick = { navController.navigate(Routes.passwordDetail(item.id)) }
+                            )
+                        }
+                        1 -> items(ipAddresses, key = { it.id }) { item ->
+                            IpListItem(
+                                item = item,
+                                onClick = { /* TODO: Navigácia na detail IP adresy, ak je to potrebné */ }
+                            )
+                        }
                     }
                 }
             }
         }
 
         FloatingActionButton(
-            onClick = { /* TODO: Navigácia na pridanie nového záznamu */ },
+            // --- ZMENA: Navigácia na pridanie nového záznamu ---
+            onClick = {
+                when (selectedTabIndex) {
+                    0 -> navController.navigate(Routes.ADD_PASSWORD)
+                    1 -> { /* TODO: Navigácia na pridanie IP adresy */ }
+                }
+            },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp)
@@ -91,12 +109,13 @@ fun PasswordsScreen(
     }
 }
 
-// Zvyšok súboru ostáva bez zmeny
 @Composable
-fun PasswordListItem(item: PasswordItem) {
+fun PasswordListItem(item: PasswordItem, onClick: () -> Unit) { // Pridaný onClick parameter
     val clipboardManager = LocalClipboardManager.current
     Card(
-        modifier = Modifier.fillMaxWidth().clickable { /* TODO: Navigácia na detail */ },
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick), // Použitie onClick parametra
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
@@ -138,10 +157,12 @@ fun PasswordListItem(item: PasswordItem) {
 }
 
 @Composable
-fun IpListItem(item: IpItem) {
+fun IpListItem(item: IpItem, onClick: () -> Unit) { // Pridaný onClick parameter
     val clipboardManager = LocalClipboardManager.current
     Card(
-        modifier = Modifier.fillMaxWidth().clickable { /* TODO: Navigácia na detail */ },
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick), // Použitie onClick parametra
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
