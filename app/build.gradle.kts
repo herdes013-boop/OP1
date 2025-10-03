@@ -61,6 +61,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2") // Novšia verzia
     implementation("androidx.activity:activity-compose:1.8.2")
 
+
     // Compose BOM na zjednodušenie verzií
     implementation(platform("androidx.compose:compose-bom:2023.10.00")) // Novšia BOM
     implementation("androidx.compose.ui:ui")

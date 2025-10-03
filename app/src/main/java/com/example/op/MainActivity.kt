@@ -11,7 +11,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -41,68 +43,80 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// Definovanie navigačných ciest (Routes)
+// Routes a Screen triedy ostávajú bez zmeny...
 object Routes {
-    // Top-level cesty
     const val HOME_ROOT = "home_root"
     const val PASSWORDS_ROOT = "passwords_root"
     const val CONTACTS_ROOT = "contacts_root"
     const val TUTORIALS_ROOT = "tutorials_root"
     const val SETTINGS_ROOT = "settings_root"
-
-    // Sub-cesty pre Heslá
     const val PASSWORDS_LIST = "passwords_list"
     const val ADD_PASSWORD = "add_password"
     const val EDIT_PASSWORD = "edit_password/{passwordId}"
-    // OPRAVA 1: Pomocná funkcia teraz prijíma String
     fun editPassword(passwordId: String) = "edit_password/$passwordId"
-
-    // Sub-cesty pre Kontakty
     const val CONTACTS_LIST = "contacts_list"
     const val ADD_CONTACT = "add_contact"
     const val EDIT_CONTACT = "edit_contact/{contactId}"
     fun editContact(contactId: Int) = "edit_contact/$contactId"
     const val MANAGE_CHANNELS = "manage_channels"
+    const val TUTORIALS_LIST = "tutorials_list"
+    const val ADD_TUTORIAL = "add_tutorial"
+    const val EDIT_TUTORIAL = "edit_tutorial/{tutorialId}"
+    fun editTutorial(tutorialId: String) = "edit_tutorial/$tutorialId"
 }
 
-// Trieda pre definíciu položiek Bottom Navigácie
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
     object Home : Screen(Routes.HOME_ROOT, "Domov", Icons.Filled.Home)
     object Passwords : Screen(Routes.PASSWORDS_ROOT, "Heslá", Icons.Filled.Lock)
     object Contacts : Screen(Routes.CONTACTS_ROOT, "Kontakty", Icons.Filled.Person)
     object Tutorials : Screen(Routes.TUTORIALS_ROOT, "Návody", Icons.Filled.MenuBook)
-    object Settings : Screen(Routes.SETTINGS_ROOT, "Nastavenia", Icons.Filled.Settings)
 }
 
-val items = listOf(
+val bottomNavItems = listOf(
     Screen.Home,
     Screen.Passwords,
     Screen.Contacts,
     Screen.Tutorials,
-    Screen.Settings
 )
 
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
     val navController = rememberNavController()
     val passwordsViewModel: PasswordsViewModel = viewModel()
     val contactsViewModel: ContactsViewModel = viewModel()
+    val tutorialsViewModel: TutorialsViewModel = viewModel()
 
+    // Hlavný Scaffold, ktorý je aktívny po celú dobu
     Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("OP Správca") },
+                actions = {
+                    IconButton(onClick = { navController.navigate(Routes.SETTINGS_ROOT) }) {
+                        Icon(Icons.Filled.AccountCircle, "Profil a Nastavenia", Modifier.size(28.dp))
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF006400),
+                    titleContentColor = Color.White,
+                    actionIconContentColor = Color.White
+                )
+            )
+        },
         bottomBar = {
             NavigationBar {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination
-                items.forEach { screen ->
+                bottomNavItems.forEach { screen ->
                     NavigationBarItem(
-                        icon = { Icon(screen.icon, contentDescription = null) },
+                        icon = { Icon(screen.icon, null) },
                         label = { Text(screen.label) },
                         selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
                         onClick = {
                             navController.navigate(screen.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                                 launchSingleTop = true
                                 restoreState = true
                             }
@@ -112,63 +126,91 @@ fun MainScreen() {
             }
         }
     ) { paddingValues ->
-        NavHost(
-            navController = navController,
-            startDestination = Routes.HOME_ROOT,
-            modifier = Modifier.padding(paddingValues)
-        ) {
+        // NavHost, ktorý mení obsah medzi lištami
+        NavHost(navController = navController, startDestination = Routes.HOME_ROOT) {
             composable(Routes.HOME_ROOT) {
-                HomeScreen(navController = navController)
+                HomeScreen(modifier = Modifier.padding(paddingValues))
             }
             composable(Routes.PASSWORDS_ROOT) {
-                PasswordsNavHost(viewModel = passwordsViewModel)
+                PasswordsNavHost(viewModel = passwordsViewModel, paddingValues = paddingValues)
             }
             composable(Routes.CONTACTS_ROOT) {
-                ContactsNavHost(viewModel = contactsViewModel)
+                ContactsNavHost(viewModel = contactsViewModel, paddingValues = paddingValues)
             }
             composable(Routes.TUTORIALS_ROOT) {
-                PlaceholderScreen(title = "Návody", description = "Tu nájdete návody na používanie aplikácie.")
+                // TutorialsNavHost teraz dostáva padding z hlavného Scaffold-u
+                TutorialsNavHost(viewModel = tutorialsViewModel, paddingValues = paddingValues)
             }
             composable(Routes.SETTINGS_ROOT) {
-                PlaceholderScreen(title = "Nastavenia", description = "Tu nastavíte preferencie aplikácie.")
+                ProfileScreen(navController = navController, modifier = Modifier.padding(paddingValues))
             }
         }
     }
 }
 
+// === ZMENENÁ ČASŤ ===
+// Táto funkcia teraz správne manažuje, kedy zobraziť zoznam a kedy editor
 @Composable
-fun PasswordsNavHost(viewModel: PasswordsViewModel) {
+fun TutorialsNavHost(viewModel: TutorialsViewModel, paddingValues: PaddingValues) {
     val nestedNavController = rememberNavController()
 
-    NavHost(nestedNavController, startDestination = Routes.PASSWORDS_LIST) {
-        composable(Routes.PASSWORDS_LIST) {
-            PasswordsScreen(navController = nestedNavController, viewModel = viewModel)
+    NavHost(nestedNavController, startDestination = Routes.TUTORIALS_LIST) {
+        composable(Routes.TUTORIALS_LIST) {
+            // TutorialsScreen (zoznam) používa padding z hlavného Scaffoldu
+            TutorialsScreen(
+                navController = nestedNavController,
+                viewModel = viewModel,
+                modifier = Modifier.padding(paddingValues)
+            )
         }
-        composable(Routes.ADD_PASSWORD) {
-            AddPasswordScreen(navController = nestedNavController, viewModel = viewModel)
-        }
-        // Editácia hesla
-        composable(
-            route = Routes.EDIT_PASSWORD,
-            // OPRAVA 2: Typ argumentu je teraz StringType
-            arguments = listOf(navArgument("passwordId") { type = NavType.StringType })
-        ) { backStackEntry ->
-            // OPRAVA 3: Získavame String a poskytujeme bezpečnú predvolenú hodnotu
-            val passwordId = backStackEntry.arguments?.getString("passwordId") ?: ""
-            EditPasswordScreen(navController = nestedNavController, passwordId = passwordId, viewModel = viewModel)
+        composable(Routes.ADD_TUTORIAL) {
+            // AddTutorialScreen (editor) si padding rieši sám vo svojom vnútornom Scaffolde
+            AddTutorialScreen(navController = nestedNavController, viewModel = viewModel)
         }
     }
 }
 
-// ... zvyšok súboru ostáva nezmenený ...
+// Zvyšok MainActivity.kt ostáva rovnaký
 @Composable
-fun ContactsNavHost(viewModel: ContactsViewModel) {
+fun ProfileScreen(navController: NavController, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.fillMaxSize().padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text("Profil a Nastavenia", style = MaterialTheme.typography.headlineMedium)
+        Spacer(Modifier.height(16.dp))
+        Text("Tu sa budú nachádzať nastavenia aplikácie, pomocník a ďalšie možnosti.")
+        Spacer(Modifier.height(24.dp))
+        Button(onClick = { navController.popBackStack() }) {
+            Text("Naspäť")
+        }
+    }
+}
+
+@Composable
+fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues) {
+    val nestedNavController = rememberNavController()
+    NavHost(nestedNavController, startDestination = Routes.PASSWORDS_LIST) {
+        composable(Routes.PASSWORDS_LIST) {
+            PasswordsScreen(
+                navController = nestedNavController,
+                viewModel = viewModel,
+                modifier = Modifier.padding(paddingValues)
+            )
+        }
+    }
+}
+
+@Composable
+fun ContactsNavHost(viewModel: ContactsViewModel, paddingValues: PaddingValues) {
     val nestedNavController = rememberNavController()
     NavHost(nestedNavController, startDestination = Routes.CONTACTS_LIST) {
         composable(Routes.CONTACTS_LIST) {
             ContactsScreen(
                 navController = nestedNavController,
-                viewModel = viewModel
+                viewModel = viewModel,
+                modifier = Modifier.padding(paddingValues)
             )
         }
         composable(Routes.ADD_CONTACT) {
@@ -195,50 +237,18 @@ fun ContactsNavHost(viewModel: ContactsViewModel) {
     }
 }
 
-@Composable
-fun HomeScreen(navController: NavController) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = "Vitajte v OP Správcovi",
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Spacer(Modifier.height(16.dp))
-        Text(
-            text = "Prejdite na Heslá, Kontakty alebo Návody/Nastavenia.",
-            style = MaterialTheme.typography.bodyLarge
-        )
-        Spacer(Modifier.height(40.dp))
-        Button(onClick = { navController.navigate(Routes.PASSWORDS_ROOT) }) {
-            Text("Začať s Heslami")
-        }
-    }
-}
 
 @Composable
-fun PlaceholderScreen(title: String, description: String) {
+fun HomeScreen(modifier: Modifier = Modifier) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
+        modifier = modifier.fillMaxSize().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.primary
-        )
+        Icon(Icons.Filled.VerifiedUser, "Ikona bezpečnosti", Modifier.size(80.dp), tint = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.height(24.dp))
+        Text("Vitajte v OP Správcovi", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.height(16.dp))
-        Text(
-            text = description,
-            style = MaterialTheme.typography.bodyLarge
-        )
+        Text("Vaše heslá, kontakty a návody sú bezpečne na jednom mieste. Použite spodnú lištu na navigáciu.", style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
     }
 }

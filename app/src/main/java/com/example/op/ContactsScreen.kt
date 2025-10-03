@@ -17,34 +17,20 @@ import androidx.navigation.NavController
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.viewmodel.compose.viewModel
 
-// ----------------------------------------------------------------------
-// POZNÁMKA: DEFINÍCIE triedy ContactItem a objektu Routes boli odstránené,
-// pretože spôsobujú redeklaráciu s existujúcimi súbormi (ContactItem.kt).
-// Aplikácia sa teraz spolieha na ich existenciu v rámci balíčka 'com.example.op'.
-// ----------------------------------------------------------------------
+// ... (poznámka o redeklarácii ostáva)
 
-// --------------------------------------------------
-// Pomocné komponenty a funkcie
-// --------------------------------------------------
-
-/**
- * Pomocná funkcia na získanie ikony na základe kanálu.
- */
+// ... (getChannelIcon a ContactListItem ostávajú bez zmeny)
 fun getChannelIcon(channel: String?): ImageVector {
-    // Mapujeme kanály z ViewModelu na konkrétne Material ikony
     return when (channel) {
         "Jednotka" -> Icons.Filled.LooksOne
         "Dvojka" -> Icons.Filled.LooksTwo
         "24" -> Icons.Filled.Newspaper
         "Sport" -> Icons.Filled.SportsSoccer
         "Iné" -> Icons.Filled.OtherHouses
-        else -> Icons.Filled.Person // Predvolená ikona
+        else -> Icons.Filled.Person
     }
 }
 
-/**
- * Komponent na zobrazenie kontaktu v zozname.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContactListItem(contact: ContactItem, onItemClick: () -> Unit) {
@@ -60,7 +46,6 @@ fun ContactListItem(contact: ContactItem, onItemClick: () -> Unit) {
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Ikona kanálu
             Icon(
                 imageVector = getChannelIcon(contact.channel),
                 contentDescription = contact.channel ?: "Kontakt",
@@ -70,11 +55,8 @@ fun ContactListItem(contact: ContactItem, onItemClick: () -> Unit) {
                     .align(Alignment.CenterVertically)
             )
             Spacer(Modifier.width(16.dp))
-
-            // Detaily kontaktu
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    // Používame pomocnú funkciu getFullName() - predpokladáme, že je v ContactItem
                     text = contact.getFullName(),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
@@ -91,91 +73,52 @@ fun ContactListItem(contact: ContactItem, onItemClick: () -> Unit) {
     }
 }
 
+
 // --------------------------------------------------
-// Hlavná obrazovka pre kontakty
+// Hlavná obrazovka pre kontakty - S OPRAVOU
 // --------------------------------------------------
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContactsScreen(
     navController: NavController,
-    // Použijeme predvolenú inštanciu ViewModel
-    viewModel: ContactsViewModel = viewModel()
+    viewModel: ContactsViewModel = viewModel(),
+    modifier: Modifier = Modifier // <-- KROK 1: PRIDANÝ PARAMETER
 ) {
-    // Čítanie stavov z ViewModelu.
     val searchQuery = viewModel.searchQuery
     val selectedTabFilter = viewModel.selectedTabFilter
-    val ALL_CHANNELS_FILTER = "Všetky" // Konštanta pre jasné porovnanie
-
-    // Zobrazené kontakty
+    val ALL_CHANNELS_FILTER = "Všetky"
     val contacts = viewModel.displayedContacts
-
-    // Definovanie záložiek (Získavame z ViewModelu)
     val categories = viewModel.channelOptions.toList()
-    // Zistenie aktuálneho indexu pre správne zobrazenie záložky
     val selectedTabIndex = categories.indexOf(selectedTabFilter)
 
-    Scaffold(
-        topBar = {
-            Column {
-                // 1. TopAppBar (Hlavička)
-                TopAppBar(
-                    title = { Text("Kontakty") },
-                    actions = {
-                        // Navigácia na správu kanálov
-                        IconButton(onClick = { navController.navigate(Routes.MANAGE_CHANNELS) }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "Správa Kanálov")
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                )
+    // Aplikujeme modifier na hlavný Box kontajner, aby sa správne odsadil od líšt.
+    Box(
+        modifier = modifier.fillMaxSize() // <-- KROK 2: APLIKOVANÝ MODIFIER
+    ) {
 
-                // 2. ScrollableTabRow (Záložky)
-                ScrollableTabRow(
-                    selectedTabIndex = if (selectedTabIndex == -1) 0 else selectedTabIndex,
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ) {
-                    categories.forEach { title ->
-                        Tab(
-                            selected = selectedTabFilter == title,
-                            onClick = {
-                                // Ak odchádzame zo záložky "Všetky", vymažeme vyhľadávanie
-                                if (selectedTabFilter == ALL_CHANNELS_FILTER && title != ALL_CHANNELS_FILTER) {
-                                    viewModel.updateSearchQuery("")
-                                }
-                                // Aktualizácia filtra vo ViewModel
-                                viewModel.updateSelectedTabFilter(title)
-                            },
-                            text = { Text(title) },
-                            unselectedContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
-                        )
-                    }
-                }
-            }
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    // Pred navigáciou resetujeme formulár
-                    viewModel.resetForm()
-                    navController.navigate(Routes.ADD_CONTACT)
-                }
+        // Hlavný obsah obrazovky
+        Column(modifier = Modifier.fillMaxSize()) {
+
+            // 1. ScrollableTabRow (Záložky)
+            ScrollableTabRow(
+                selectedTabIndex = if (selectedTabIndex == -1) 0 else selectedTabIndex,
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Pridať kontakt")
+                categories.forEach { title ->
+                    Tab(
+                        selected = selectedTabFilter == title,
+                        onClick = {
+                            if (selectedTabFilter == ALL_CHANNELS_FILTER && title != ALL_CHANNELS_FILTER) {
+                                viewModel.updateSearchQuery("")
+                            }
+                            viewModel.updateSelectedTabFilter(title)
+                        },
+                        text = { Text(title) },
+                    )
+                }
             }
-        }
-    ) { paddingValues ->
-        // Obsah obrazovky pod TopBarom a TabRow
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            // 3. VYHĽADÁVACIE OKNO - Zobrazuje sa IBA, ak je vybrané "Všetky"
+
+            // 2. VYHĽADÁVACIE OKNO
             if (selectedTabFilter == ALL_CHANNELS_FILTER) {
                 OutlinedTextField(
                     value = searchQuery,
@@ -198,10 +141,8 @@ fun ContactsScreen(
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 )
             }
-            // ------------------------------------------------------------------
 
-
-            // 4. Zoznam kontaktov
+            // 3. Zoznam kontaktov
             if (contacts.isEmpty()) {
                 val message = if (selectedTabFilter == ALL_CHANNELS_FILTER && searchQuery.isNotBlank()) {
                     "Nenašli sa žiadne kontakty pre vyhľadávanie \"$searchQuery\"."
@@ -210,19 +151,28 @@ fun ContactsScreen(
                 } else {
                     "Zatiaľ nemáte žiadne kontakty."
                 }
-                Text(
-                    text = message,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                        .padding(top = 16.dp),
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center
-                )
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = message,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
+                }
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                    contentPadding = PaddingValues(
+                        start = 8.dp,
+                        end = 8.dp,
+                        top = 4.dp,
+                        bottom = 80.dp // Padding pre FAB
+                    )
                 ) {
                     items(contacts, key = { it.id }) { contact ->
                         ContactListItem(
@@ -234,6 +184,19 @@ fun ContactsScreen(
                     }
                 }
             }
+        }
+
+        // FloatingActionButton
+        FloatingActionButton(
+            onClick = {
+                viewModel.resetForm()
+                navController.navigate(Routes.ADD_CONTACT)
+            },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+        ) {
+            Icon(Icons.Default.Add, contentDescription = "Pridať kontakt")
         }
     }
 }
