@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete // <-- 1. NOVÝ IMPORT
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -33,11 +34,39 @@ fun AddTutorialScreen(
     navController: NavController,
     tutorialsViewModel: TutorialsViewModel,
     sharedViewModel: SharedViewModel,
-    modifier: Modifier = Modifier // Tento modifier dostane padding z MainScreen
+    modifier: Modifier = Modifier
 ) {
     val contentBlocks by tutorialsViewModel.contentBlocks.collectAsState()
+    val isEditing = tutorialsViewModel.editingTutorialId != null
 
-    // Tento DisposableEffect sa postará o resetovanie líšt pri odchode z obrazovky
+    var showUnsavedChangesDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) } // <-- 2. NOVÝ STAV PRE DIALÓG MAZANIA
+
+    // Dialóg pre neuložené zmeny (tento už máte)
+    if (showUnsavedChangesDialog) {
+        UnsavedChangesDialog(
+            onDismiss = { showUnsavedChangesDialog = false },
+            onConfirm = {
+                showUnsavedChangesDialog = false
+                navController.popBackStack()
+            }
+        )
+    }
+
+    // <-- 3. NOVÝ DIALÓG PRE POTVRDENIE ZMAZANIA -->
+    if (showDeleteConfirmDialog) {
+        DeleteConfirmDialog(
+            onDismiss = { showDeleteConfirmDialog = false },
+            onConfirm = {
+                showDeleteConfirmDialog = false
+                tutorialsViewModel.editingTutorialId?.let { id ->
+                    tutorialsViewModel.deleteTutorial(id)
+                }
+                navController.popBackStack()
+            }
+        )
+    }
+
     DisposableEffect(Unit) {
         onDispose {
             sharedViewModel.resetTopBarState()
@@ -45,30 +74,37 @@ fun AddTutorialScreen(
         }
     }
 
-    // ======================== ZAČIATOK FINÁLNEJ OPRAVY ========================
-
-    // Vytvoríme si vlastný Scaffold, ktorý bude rešpektovať padding z MainScreen
     Scaffold(
-        modifier = modifier, // 1. Aplikujeme padding z MainScreen na celý náš Scaffold
+        modifier = modifier,
         topBar = {
-            // 2. Naša vlastná horná lišta pre túto obrazovku
             TopAppBar(
-                title = { Text("Nový návod") },
+                title = { Text(if (isEditing) "Upraviť návod" else "Nový návod") },
                 navigationIcon = {
                     IconButton(onClick = {
-                        sharedViewModel.resetTopBarState() // Pri návrate resetujeme lištu
-                        sharedViewModel.setShowBottomBar(true)
-                        navController.popBackStack()
+                        if (tutorialsViewModel.hasUnsavedChanges()) {
+                            showUnsavedChangesDialog = true
+                        } else {
+                            navController.popBackStack()
+                        }
                     }) {
                         Icon(Icons.Filled.ArrowBack, "Naspäť")
                     }
                 },
                 actions = {
+                    // <-- 4. ÚPRAVA AKCIÍ V HORNEJ LIŠTE -->
+                    // Ak upravujeme, zobrazíme aj ikonu koša
+                    if (isEditing) {
+                        IconButton(onClick = { showDeleteConfirmDialog = true }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Zmazať návod")
+                        }
+                    }
+
+                    // Tlačidlo Uložiť
                     Button(
                         onClick = {
                             if (tutorialsViewModel.tutorialTitle.isNotBlank()) {
-                                tutorialsViewModel.addTutorial()
-                                navController.popBackStack() // onDispose sa postará o reset
+                                tutorialsViewModel.saveTutorial()
+                                navController.popBackStack()
                             }
                         },
                         enabled = tutorialsViewModel.tutorialTitle.isNotBlank()
@@ -79,20 +115,16 @@ fun AddTutorialScreen(
             )
         },
         bottomBar = {
-            // 3. Naša vlastná spodná lišta pre pridávanie blokov
             EditorControls(
                 onAddText = { tutorialsViewModel.addTextBlock() },
                 onAddImage = { tutorialsViewModel.addImageBlock() }
             )
-        },
-        // Tu už nepoužívame LaunchedEffect, lebo topBar sa mení priamo tu.
-        // Skrytie hlavnej spodnej lišty zabezpečíme v TutorialsNavHost.
+        }
     ) { innerPadding ->
-        // 4. LazyColumn dostane 'innerPadding' z NÁŠHO Scaffoldu, ktorý už vie o našich lištách
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding), // Kľúčová zmena!
+                .padding(innerPadding),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -134,12 +166,60 @@ fun AddTutorialScreen(
             }
         }
     }
-    // ======================== KONIEC FINÁLNEJ OPRAVY ========================
+}
+
+// Dialóg pre neuložené zmeny (tento už máte)
+@Composable
+fun UnsavedChangesDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Neuložené zmeny") },
+        text = { Text("Naozaj chcete odísť bez uloženia zmien?") },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Odísť")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Zostať")
+            }
+        }
+    )
+}
+
+// <-- 5. NOVÁ FUNKCIA PRE DIALÓG MAZANIA -->
+@Composable
+fun DeleteConfirmDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Zmazať návod") },
+        text = { Text("Naozaj chcete natrvalo zmazať tento návod?") },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text("Zmazať")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Zrušiť")
+            }
+        }
+    )
 }
 
 
-// Ostatné funkcie (TextBlockEditor, ImageBlockEditor, atď.) ostávajú úplne bez zmeny.
-// ... ( zvyšok vášho súboru )
+// --- OSTATNÉ FUNKCIE (TextBlockEditor, atď.) OSTÁVAJÚ BEZ ZMENY ---
+
 @Composable
 fun TextBlockEditor(
     block: TutorialContentBlock.TextBlock,
@@ -287,3 +367,4 @@ fun CategorySelector(
         }
     }
 }
+

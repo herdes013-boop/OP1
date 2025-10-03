@@ -1,7 +1,7 @@
 // súbor: app/src/main/java/com/example/op/TutorialsScreen.kt
 package com.example.op
 
-// Všetky potrebné importy...
+import androidx.compose.foundation.clickable // Uistite sa, že tento import je prítomný
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -16,6 +16,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme // Pridaný import pre lepší prístup k štýlom
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
@@ -28,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TutorialsScreen(
@@ -35,7 +37,6 @@ fun TutorialsScreen(
     viewModel: TutorialsViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {
-    // displayedTutorials je typu Flow<List<TutorialItem>>
     val tutorials by viewModel.displayedTutorials.collectAsState(initial = emptyList())
     val categories = viewModel.categories
     val selectedTab by viewModel.selectedTab.collectAsState()
@@ -45,6 +46,7 @@ fun TutorialsScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
+                    // Pred prechodom na pridávanie vyčistíme formulár
                     viewModel.resetForm()
                     navController.navigate(Routes.ADD_TUTORIAL)
                 }
@@ -61,21 +63,26 @@ fun TutorialsScreen(
             CategoryTabs(
                 categories = categories,
                 selectedCategory = selectedTab,
-                // Použijeme správny názov metódy z ViewModelu
-                // Použijeme správny názov metódy z ViewModelu
                 onCategorySelected = { category -> viewModel.selectCategory(category) }
-
             )
 
+            // ====================== ZMENENÁ ČASŤ ======================
             LazyColumn(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 'tutorial' tu bude automaticky typu TutorialItem
-                items(tutorials) { tutorial ->
-                    TutorialCard(tutorial = tutorial)
+                items(tutorials, key = { it.id }) { tutorial ->
+                    // Poskytneme funkciu onClick pre každú kartu
+                    TutorialCard(
+                        tutorial = tutorial,
+                        onClick = {
+                            // Navigujeme na obrazovku úpravy s ID konkrétneho návodu
+                            navController.navigate(Routes.editTutorial(tutorial.id))
+                        }
+                    )
                 }
             }
+            // ==================== KONIEC ZMENENEJ ČASTI ====================
         }
     }
 }
@@ -101,15 +108,21 @@ fun CategoryTabs(
     }
 }
 
-// === OPRAVENÁ FUNKCIA ===
+// ====================== ZMENENÁ FUNKCIA ======================
+@OptIn(ExperimentalMaterial3Api::class) // Pridaná anotácia
 @Composable
-fun TutorialCard(tutorial: TutorialItem) { // Používame typ TutorialItem, ktorý ViewModel poskytuje
+fun TutorialCard(
+    tutorial: TutorialItem,
+    onClick: () -> Unit // Pridaný parameter onClick
+) {
     Card(
-        modifier = Modifier.fillMaxWidth() // fillMaxSize by spôsobilo, že jedna karta zaberie celú obrazovku
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() } // Aplikovaný clickable modifier
     ) {
         Column(Modifier.padding(16.dp)) {
-            Text(text = tutorial.title, style = androidx.compose.material3.MaterialTheme.typography.titleLarge)
-            // Môžete pridať ďalšie detaily, ak potrebujete
+            Text(text = tutorial.title, style = MaterialTheme.typography.titleLarge)
         }
     }
 }
+// ==================== KONIEC ZMENENEJ FUNKCIE ====================

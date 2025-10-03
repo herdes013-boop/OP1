@@ -171,6 +171,9 @@ fun MainScreen() {
 
 // V súbore MainActivity.kt
 // V súbore MainActivity.kt
+// V súbore MainActivity.kt
+
+// V súbore MainActivity.kt
 @Composable
 fun TutorialsNavHost(
     tutorialsViewModel: TutorialsViewModel,
@@ -178,19 +181,16 @@ fun TutorialsNavHost(
     paddingValues: PaddingValues
 ) {
     val nestedNavController = rememberNavController()
-
-    // Tento blok kódu na sledovanie aktuálnej trasy je veľmi užitočný.
-    // Zabezpečí, že hlavné lišty zmiznú a objavia sa v správny čas.
     val navBackStackEntry by nestedNavController.currentBackStackEntryAsState()
+
     LaunchedEffect(navBackStackEntry) {
         val currentRoute = navBackStackEntry?.destination?.route
-        if (currentRoute == Routes.ADD_TUTORIAL) {
-            // Keď sme na obrazovke editora, skryjeme hlavnú spodnú lištu
-            // a vyprázdnime text hornej lišty, aby sa neprekrývali.
+        val isEditOrAddScreen = currentRoute == Routes.ADD_TUTORIAL || currentRoute == Routes.EDIT_TUTORIAL
+
+        if (isEditOrAddScreen) {
             sharedViewModel.setShowBottomBar(false)
-            sharedViewModel.setTopBarState(TopBarState(title = "")) // Prázdny titul
+            sharedViewModel.setTopBarState(TopBarState(title = ""))
         } else {
-            // Na všetkých ostatných obrazovkách vrátime pôvodné lišty.
             sharedViewModel.setShowBottomBar(true)
             sharedViewModel.resetTopBarState()
         }
@@ -198,7 +198,6 @@ fun TutorialsNavHost(
 
     NavHost(nestedNavController, startDestination = Routes.TUTORIALS_LIST) {
         composable(Routes.TUTORIALS_LIST) {
-            // Obrazovka so zoznamom používa padding z hlavného Scaffoldu.
             TutorialsScreen(
                 navController = nestedNavController,
                 viewModel = tutorialsViewModel,
@@ -206,17 +205,43 @@ fun TutorialsNavHost(
             )
         }
         composable(Routes.ADD_TUTORIAL) {
-            // Obrazovka editora taktiež používa padding z hlavného Scaffoldu.
-            // Tento padding správne odsunie jej vlastný vnútorný Scaffold.
+            // Pred zobrazením obrazovky vyčistíme formulár pre nový záznam
+            LaunchedEffect(Unit) {
+                tutorialsViewModel.resetForm()
+            }
             AddTutorialScreen(
                 navController = nestedNavController,
                 tutorialsViewModel = tutorialsViewModel,
                 sharedViewModel = sharedViewModel,
-                modifier = Modifier.padding(paddingValues) // <--- TENTO RIADOK JE SPRÁVNE, ŽE TU JE!
+                modifier = Modifier.padding(paddingValues)
             )
+        }
+        composable(
+            route = Routes.EDIT_TUTORIAL,
+            arguments = listOf(navArgument("tutorialId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val tutorialId = backStackEntry.arguments?.getString("tutorialId")
+
+            // Načítame dáta pre úpravu, ale iba raz, keď sa composable prvýkrát načíta
+            LaunchedEffect(tutorialId) {
+                if (tutorialId != null) {
+                    tutorialsViewModel.loadTutorialForEditing(tutorialId)
+                }
+            }
+
+            if (tutorialId != null) {
+                AddTutorialScreen(
+                    navController = nestedNavController,
+                    tutorialsViewModel = tutorialsViewModel,
+                    sharedViewModel = sharedViewModel,
+                    modifier = Modifier.padding(paddingValues)
+                )
+            }
         }
     }
 }
+
+
 
 
 
