@@ -4,8 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn // Použijeme LazyColumn
-import androidx.compose.foundation.lazy.items // A jeho 'items' funkciu
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -27,113 +27,119 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 
-// ===== NOVÁ HLAVNÁ FUNKCIA =====
-// Táto funkcia teraz obsahuje Scaffold a stará sa o zobrazenie líšt
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddTutorialScreen(
     navController: NavController,
-    viewModel: TutorialsViewModel
+    tutorialsViewModel: TutorialsViewModel,
+    sharedViewModel: SharedViewModel,
+    modifier: Modifier = Modifier // Tento modifier dostane padding z MainScreen
 ) {
+    val contentBlocks by tutorialsViewModel.contentBlocks.collectAsState()
+
+    // Tento DisposableEffect sa postará o resetovanie líšt pri odchode z obrazovky
+    DisposableEffect(Unit) {
+        onDispose {
+            sharedViewModel.resetTopBarState()
+            sharedViewModel.setShowBottomBar(true)
+        }
+    }
+
+    // ======================== ZAČIATOK FINÁLNEJ OPRAVY ========================
+
+    // Vytvoríme si vlastný Scaffold, ktorý bude rešpektovať padding z MainScreen
     Scaffold(
-        // Vlastná horná lišta pre túto obrazovku
+        modifier = modifier, // 1. Aplikujeme padding z MainScreen na celý náš Scaffold
         topBar = {
+            // 2. Naša vlastná horná lišta pre túto obrazovku
             TopAppBar(
                 title = { Text("Nový návod") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Naspäť")
+                    IconButton(onClick = {
+                        sharedViewModel.resetTopBarState() // Pri návrate resetujeme lištu
+                        sharedViewModel.setShowBottomBar(true)
+                        navController.popBackStack()
+                    }) {
+                        Icon(Icons.Filled.ArrowBack, "Naspäť")
                     }
                 },
                 actions = {
                     Button(
                         onClick = {
-                            if (viewModel.tutorialTitle.isNotBlank()) {
-                                viewModel.addTutorial()
-                                navController.popBackStack()
+                            if (tutorialsViewModel.tutorialTitle.isNotBlank()) {
+                                tutorialsViewModel.addTutorial()
+                                navController.popBackStack() // onDispose sa postará o reset
                             }
                         },
-                        enabled = viewModel.tutorialTitle.isNotBlank()
+                        enabled = tutorialsViewModel.tutorialTitle.isNotBlank()
                     ) {
                         Text("Uložiť")
                     }
                 }
-                // Farby tu nedefinujeme, aby sa použili predvolené, ktoré ladia s témou
             )
         },
-        // Vlastná spodná lišta pre túto obrazovku
         bottomBar = {
+            // 3. Naša vlastná spodná lišta pre pridávanie blokov
             EditorControls(
-                onAddText = { viewModel.addTextBlock() },
-                onAddImage = { viewModel.addImageBlock() }
+                onAddText = { tutorialsViewModel.addTextBlock() },
+                onAddImage = { tutorialsViewModel.addImageBlock() }
             )
-        }
-    ) { paddingValues ->
-        // Obsah obrazovky je teraz samostatná funkcia, ktorá dostane padding zo Scaffoldu
-        AddTutorialContent(
-            paddingValues = paddingValues,
-            viewModel = viewModel
-        )
-    }
-}
+        },
+        // Tu už nepoužívame LaunchedEffect, lebo topBar sa mení priamo tu.
+        // Skrytie hlavnej spodnej lišty zabezpečíme v TutorialsNavHost.
+    ) { innerPadding ->
+        // 4. LazyColumn dostane 'innerPadding' z NÁŠHO Scaffoldu, ktorý už vie o našich lištách
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding), // Kľúčová zmena!
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item(key = "tutorial_title") {
+                OutlinedTextField(
+                    value = tutorialsViewModel.tutorialTitle,
+                    onValueChange = { tutorialsViewModel.onTitleChange(it) },
+                    label = { Text("Názov návodu") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+            }
 
-// ===== NOVÁ OBSAHOVÁ FUNKCIA =====
-// Táto funkcia obsahuje IBA rolovateľný obsah (LazyColumn)
-@Composable
-fun AddTutorialContent(
-    paddingValues: PaddingValues,
-    viewModel: TutorialsViewModel
-) {
-    val contentBlocks by viewModel.contentBlocks.collectAsState()
+            item(key = "tutorial_category") {
+                CategorySelector(
+                    categories = tutorialsViewModel.categories.filter { it != "Všetky" },
+                    selectedCategory = tutorialsViewModel.tutorialCategory,
+                    onCategorySelected = { tutorialsViewModel.onCategoryChange(it) }
+                )
+            }
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues), // Padding zo Scaffoldu vyššie sa aplikuje priamo tu
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item(key = "tutorial_title") {
-            OutlinedTextField(
-                value = viewModel.tutorialTitle,
-                onValueChange = { viewModel.onTitleChange(it) },
-                label = { Text("Názov návodu") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-        }
-
-        item(key = "tutorial_category") {
-            CategorySelector(
-                categories = viewModel.categories.filter { it != "Všetky" },
-                selectedCategory = viewModel.tutorialCategory,
-                onCategorySelected = { viewModel.onCategoryChange(it) }
-            )
-        }
-
-        items(contentBlocks, key = { it.id }) { block ->
-            when (block) {
-                is TutorialContentBlock.TextBlock -> {
-                    TextBlockEditor(
-                        block = block,
-                        onTextChange = { newText -> viewModel.onTextBlockChange(block.id, newText) },
-                        onRemove = { viewModel.removeBlock(block.id) }
-                    )
-                }
-                is TutorialContentBlock.ImageBlock -> {
-                    ImageBlockEditor(
-                        block = block,
-                        onImageChange = { newImage -> viewModel.onImageBlockChange(block.id, newImage) },
-                        onRemove = { viewModel.removeBlock(block.id) }
-                    )
+            items(contentBlocks, key = { it.id }) { block ->
+                when (block) {
+                    is TutorialContentBlock.TextBlock -> {
+                        TextBlockEditor(
+                            block = block,
+                            onTextChange = { newText -> tutorialsViewModel.onTextBlockChange(block.id, newText) },
+                            onRemove = { tutorialsViewModel.removeBlock(block.id) }
+                        )
+                    }
+                    is TutorialContentBlock.ImageBlock -> {
+                        ImageBlockEditor(
+                            block = block,
+                            onImageChange = { newImage -> tutorialsViewModel.onImageBlockChange(block.id, newImage) },
+                            onRemove = { tutorialsViewModel.removeBlock(block.id) }
+                        )
+                    }
                 }
             }
         }
     }
+    // ======================== KONIEC FINÁLNEJ OPRAVY ========================
 }
 
 
-// Zvyšok súboru (jednotlivé editory a pomocné funkcie) ostáva bez zmeny
+// Ostatné funkcie (TextBlockEditor, ImageBlockEditor, atď.) ostávajú úplne bez zmeny.
+// ... ( zvyšok vášho súboru )
 @Composable
 fun TextBlockEditor(
     block: TutorialContentBlock.TextBlock,
@@ -229,11 +235,12 @@ fun ImageBlockEditor(
 
 @Composable
 fun EditorControls(
+    modifier: Modifier = Modifier,
     onAddText: () -> Unit,
     onAddImage: () -> Unit
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shadowElevation = 8.dp
     ) {
         Row(

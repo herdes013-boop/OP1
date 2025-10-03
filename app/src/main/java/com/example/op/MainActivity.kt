@@ -8,6 +8,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -84,49 +86,64 @@ val bottomNavItems = listOf(
 @Composable
 fun MainScreen() {
     val navController = rememberNavController()
+    // Získame inštancie všetkých ViewModelov
+    val sharedViewModel: SharedViewModel = viewModel()
     val passwordsViewModel: PasswordsViewModel = viewModel()
     val contactsViewModel: ContactsViewModel = viewModel()
     val tutorialsViewModel: TutorialsViewModel = viewModel()
 
-    // Hlavný Scaffold, ktorý je aktívny po celú dobu
+    // Získame stavy z SharedViewModelu
+    val topBarState by sharedViewModel.topBarState.collectAsState()
+    val showBottomBar by sharedViewModel.showBottomBar.collectAsState()
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("OP Správca") },
+                title = { Text(topBarState.title) },
+                navigationIcon = { topBarState.navigationIcon?.invoke() },
                 actions = {
-                    IconButton(onClick = { navController.navigate(Routes.SETTINGS_ROOT) }) {
-                        Icon(Icons.Filled.AccountCircle, "Profil a Nastavenia", Modifier.size(28.dp))
+                    // Akcie zobrazujeme len v predvolenom stave
+                    if (topBarState.actions != null) {
+                        topBarState.actions?.invoke()
+                    } else {
+                        // Vlastné akcie pre špecifické obrazovky
+                        val currentActions = topBarState.actions
+                        if (currentActions != null) {
+                            currentActions()
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color(0xFF006400),
                     titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White,
                     actionIconContentColor = Color.White
                 )
             )
         },
         bottomBar = {
-            NavigationBar {
-                val navBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentDestination = navBackStackEntry?.destination
-                bottomNavItems.forEach { screen ->
-                    NavigationBarItem(
-                        icon = { Icon(screen.icon, null) },
-                        label = { Text(screen.label) },
-                        selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
-                        onClick = {
-                            navController.navigate(screen.route) {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
+            if (showBottomBar) {
+                NavigationBar {
+                    val navBackStackEntry by navController.currentBackStackEntryAsState()
+                    val currentDestination = navBackStackEntry?.destination
+                    bottomNavItems.forEach { screen ->
+                        NavigationBarItem(
+                            icon = { Icon(screen.icon, null) },
+                            label = { Text(screen.label) },
+                            selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                            onClick = {
+                                navController.navigate(screen.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
                             }
-                        }
-                    )
+                        )
+                    }
                 }
             }
         }
     ) { paddingValues ->
-        // NavHost, ktorý mení obsah medzi lištami
         NavHost(navController = navController, startDestination = Routes.HOME_ROOT) {
             composable(Routes.HOME_ROOT) {
                 HomeScreen(modifier = Modifier.padding(paddingValues))
@@ -138,8 +155,11 @@ fun MainScreen() {
                 ContactsNavHost(viewModel = contactsViewModel, paddingValues = paddingValues)
             }
             composable(Routes.TUTORIALS_ROOT) {
-                // TutorialsNavHost teraz dostáva padding z hlavného Scaffold-u
-                TutorialsNavHost(viewModel = tutorialsViewModel, paddingValues = paddingValues)
+                TutorialsNavHost(
+                    tutorialsViewModel = tutorialsViewModel,
+                    sharedViewModel = sharedViewModel,
+                    paddingValues = paddingValues
+                )
             }
             composable(Routes.SETTINGS_ROOT) {
                 ProfileScreen(navController = navController, modifier = Modifier.padding(paddingValues))
@@ -148,33 +168,66 @@ fun MainScreen() {
     }
 }
 
-// === ZMENENÁ ČASŤ ===
-// Táto funkcia teraz správne manažuje, kedy zobraziť zoznam a kedy editor
+
+// V súbore MainActivity.kt
+// V súbore MainActivity.kt
 @Composable
-fun TutorialsNavHost(viewModel: TutorialsViewModel, paddingValues: PaddingValues) {
+fun TutorialsNavHost(
+    tutorialsViewModel: TutorialsViewModel,
+    sharedViewModel: SharedViewModel,
+    paddingValues: PaddingValues
+) {
     val nestedNavController = rememberNavController()
+
+    // Tento blok kódu na sledovanie aktuálnej trasy je veľmi užitočný.
+    // Zabezpečí, že hlavné lišty zmiznú a objavia sa v správny čas.
+    val navBackStackEntry by nestedNavController.currentBackStackEntryAsState()
+    LaunchedEffect(navBackStackEntry) {
+        val currentRoute = navBackStackEntry?.destination?.route
+        if (currentRoute == Routes.ADD_TUTORIAL) {
+            // Keď sme na obrazovke editora, skryjeme hlavnú spodnú lištu
+            // a vyprázdnime text hornej lišty, aby sa neprekrývali.
+            sharedViewModel.setShowBottomBar(false)
+            sharedViewModel.setTopBarState(TopBarState(title = "")) // Prázdny titul
+        } else {
+            // Na všetkých ostatných obrazovkách vrátime pôvodné lišty.
+            sharedViewModel.setShowBottomBar(true)
+            sharedViewModel.resetTopBarState()
+        }
+    }
 
     NavHost(nestedNavController, startDestination = Routes.TUTORIALS_LIST) {
         composable(Routes.TUTORIALS_LIST) {
-            // TutorialsScreen (zoznam) používa padding z hlavného Scaffoldu
+            // Obrazovka so zoznamom používa padding z hlavného Scaffoldu.
             TutorialsScreen(
                 navController = nestedNavController,
-                viewModel = viewModel,
+                viewModel = tutorialsViewModel,
                 modifier = Modifier.padding(paddingValues)
             )
         }
         composable(Routes.ADD_TUTORIAL) {
-            // AddTutorialScreen (editor) si padding rieši sám vo svojom vnútornom Scaffolde
-            AddTutorialScreen(navController = nestedNavController, viewModel = viewModel)
+            // Obrazovka editora taktiež používa padding z hlavného Scaffoldu.
+            // Tento padding správne odsunie jej vlastný vnútorný Scaffold.
+            AddTutorialScreen(
+                navController = nestedNavController,
+                tutorialsViewModel = tutorialsViewModel,
+                sharedViewModel = sharedViewModel,
+                modifier = Modifier.padding(paddingValues) // <--- TENTO RIADOK JE SPRÁVNE, ŽE TU JE!
+            )
         }
     }
 }
 
-// Zvyšok MainActivity.kt ostáva rovnaký
+
+
+
+
 @Composable
 fun ProfileScreen(navController: NavController, modifier: Modifier = Modifier) {
     Column(
-        modifier = modifier.fillMaxSize().padding(24.dp),
+        modifier = modifier
+            .fillMaxSize()
+            .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -188,11 +241,14 @@ fun ProfileScreen(navController: NavController, modifier: Modifier = Modifier) {
     }
 }
 
+// Ostatné NavHosty tiež potrebujú prijímať a aplikovať paddingValues
 @Composable
 fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues) {
     val nestedNavController = rememberNavController()
+    // Odstránime modifier z NavHostu
     NavHost(nestedNavController, startDestination = Routes.PASSWORDS_LIST) {
         composable(Routes.PASSWORDS_LIST) {
+            // A pošleme padding ďalej do vnútornej obrazovky
             PasswordsScreen(
                 navController = nestedNavController,
                 viewModel = viewModel,
@@ -205,8 +261,10 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
 @Composable
 fun ContactsNavHost(viewModel: ContactsViewModel, paddingValues: PaddingValues) {
     val nestedNavController = rememberNavController()
+    // Odstránime modifier z NavHostu
     NavHost(nestedNavController, startDestination = Routes.CONTACTS_LIST) {
         composable(Routes.CONTACTS_LIST) {
+            // A pošleme padding ďalej do vnútornej obrazovky
             ContactsScreen(
                 navController = nestedNavController,
                 viewModel = viewModel,
@@ -241,7 +299,9 @@ fun ContactsNavHost(viewModel: ContactsViewModel, paddingValues: PaddingValues) 
 @Composable
 fun HomeScreen(modifier: Modifier = Modifier) {
     Column(
-        modifier = modifier.fillMaxSize().padding(24.dp),
+        modifier = modifier
+            .fillMaxSize()
+            .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
