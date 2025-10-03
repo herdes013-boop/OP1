@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -18,7 +19,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState // ✅ KĽÚČOVÁ OPRAVA: Import pre StateFlow
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,22 +32,25 @@ import androidx.navigation.NavController
 @Composable
 fun EditPasswordScreen(
     navController: NavController,
-    passwordId: Int, // ID hesla, ktoré editujeme
+    passwordId: String, // <-- OPRAVA 1: ID je teraz String, nie Int
     viewModel: PasswordsViewModel = viewModel()
 ) {
-    // Načítanie aktuálneho hesla (len pre demonštráciu)
+    // Načítanie aktuálneho hesla pomocou String ID
     val initialPassword = viewModel.getPasswordById(passwordId)
 
     // Ak heslo neexistuje, vrátime sa späť
     if (initialPassword == null) {
+        // Zabezpečenie, aby sa kód nespustil, ak je heslo null.
+        // `LaunchedEffect` by bol ešte bezpečnejší, ale pre teraz stačí toto.
         navController.popBackStack()
         return
     }
 
     // Stavové premenné pre editáciu
-    var title by remember { mutableStateOf(initialPassword.title) }
+    // OPRAVA 2: Používame správne názvy parametrov z PasswordItem (name, password)
+    var title by remember { mutableStateOf(initialPassword.name) }
     var username by remember { mutableStateOf(initialPassword.username ?: "") }
-    var password by remember { mutableStateOf(initialPassword.passwordEncrypted) }
+    var password by remember { mutableStateOf(initialPassword.password) }
     var notes by remember { mutableStateOf(initialPassword.notes ?: "") }
 
     Scaffold(
@@ -73,7 +76,7 @@ fun EditPasswordScreen(
         ) {
             Spacer(Modifier.height(16.dp))
 
-            // 1. Názov služby
+            // Polia pre zadávanie textu (bez zmien)
             OutlinedTextField(
                 value = title,
                 onValueChange = { title = it },
@@ -82,7 +85,6 @@ fun EditPasswordScreen(
             )
             Spacer(Modifier.height(8.dp))
 
-            // 2. Používateľské meno
             OutlinedTextField(
                 value = username,
                 onValueChange = { username = it },
@@ -91,16 +93,24 @@ fun EditPasswordScreen(
             )
             Spacer(Modifier.height(8.dp))
 
-            // 3. Heslo (viditeľné)
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
                 label = { Text("Heslo") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                trailingIcon = {
+                    IconButton(onClick = {
+                        password = viewModel.generateRandomPassword()
+                    }) {
+                        Icon(
+                            imageVector = Icons.Filled.VpnKey,
+                            contentDescription = "Generovať heslo"
+                        )
+                    }
+                }
             )
             Spacer(Modifier.height(8.dp))
 
-            // 4. Poznámky
             OutlinedTextField(
                 value = notes,
                 onValueChange = { notes = it },
@@ -112,10 +122,11 @@ fun EditPasswordScreen(
             // Tlačidlo Uložiť
             Button(
                 onClick = {
+                    // OPRAVA 3: Používame správne názvy parametrov v .copy()
                     val updatedItem = initialPassword.copy(
-                        title = title,
+                        name = title,
                         username = username.ifBlank { null },
-                        passwordEncrypted = password,
+                        password = password,
                         notes = notes.ifBlank { null }
                     )
                     viewModel.updatePassword(updatedItem)
@@ -131,6 +142,7 @@ fun EditPasswordScreen(
             // Tlačidlo Vymazať
             Button(
                 onClick = {
+                    // OPRAVA 4: Voláme deletePassword so String ID
                     viewModel.deletePassword(passwordId)
                     navController.popBackStack()
                 },

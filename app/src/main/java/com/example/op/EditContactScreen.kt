@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.activity.compose.BackHandler
 import androidx.navigation.NavController
+import kotlinx.coroutines.launch // Nutné pre volanie showSnackbar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,7 +28,6 @@ fun EditContactScreen(
     onBack: () -> Unit
 ) {
     // 🎯 Kľúčové: Načítame a inicializujeme formulár pri prvom vstupe.
-    // Robíme to len raz, vďaka remember.
     val contactData = remember(contactId) {
         viewModel.getContactById(contactId)?.copy()
     }
@@ -38,47 +38,73 @@ fun EditContactScreen(
         return
     }
 
-    // ⭐ OPRAVA REFERENCIE: Zabezpečíme, že sa originalContact berie ako meniteľný stav
-    // Táto hodnota sa mení LEN pri úspešnom uložení.
-    var originalContact by remember { mutableStateOf(contactData) }
+    // -----------------------------------------------------------------
+    // STAVY PRE SNACKBAR
+    // -----------------------------------------------------------------
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+    // -----------------------------------------------------------------
 
-    // 🎯 Kľúčové: lokálny, meniteľný stav, inicializovaný pôvodnými dátami.
+    var originalContact by remember { mutableStateOf(contactData) }
     var localContact by remember { mutableStateOf(originalContact) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-    var showSaveConfirmationDialog by remember { mutableStateOf(false) }
     var showUnsavedChangesDialog by remember { mutableStateOf(false) }
 
     // Dôležité: Porovnáva sa aktuálny stav s pôvodným stavom.
-    // Používame porovnanie dvoch data class (copy/original)
     val hasUnsavedChanges = localContact != originalContact
+
+    // -----------------------------------------------------------------
+    // FUNKCIE PRE SPÄTNÚ VÄZBU
+    // -----------------------------------------------------------------
+
+    /**
+     * Zobrazí úspešnú správu o uložení.
+     */
+    fun showSavedSnackbar() {
+        coroutineScope.launch {
+            snackbarHostState.showSnackbar(
+                message = "Kontakt bol úspešne uložený",
+                duration = SnackbarDuration.Short
+            )
+        }
+    }
 
     // -----------------------------------------------------------------
     // FUNKCIE PRE AKCIE
     // -----------------------------------------------------------------
 
-    // Uloží zmeny a zostane na obrazovke, a ZARESETUJE STAV ZMIEN.
+    /**
+     * Uloží zmeny, aktualizuje 'originalContact', zostane na obrazovke a zobrazí Snackbar.
+     */
     fun saveContactAndStay() {
-        // Voláme novú signatúru: updateContact teraz berie hotový ContactItem
+        // 1. Uložíme zmeny do View Modelu
         viewModel.updateContact(localContact)
-        showSaveConfirmationDialog = false
 
-        // ⭐ OPRAVA PARADOXU: Po uložení aktualizujeme 'originalContact'
+        // 2. Aktualizujeme 'originalContact', aby sa zresetoval stav hasUnsavedChanges
         originalContact = localContact.copy()
+
+        // 3. Zobrazíme Snackbar
+        showSavedSnackbar()
     }
 
-    // Zahodí (resetuje) lokálne zmeny, ale zostane na obrazovke.
+    /**
+     * Zahodí (resetuje) lokálne zmeny, ale zostane na obrazovke.
+     * Táto funkcia sa používa len v dialógoch.
+     */
     fun discardChangesAndStay() {
         // Resetuje localContact na pôvodné hodnoty
         localContact = originalContact.copy()
-        showSaveConfirmationDialog = false
     }
 
-    // Pôvodná funkcia pre spätnú navigáciu
+    /**
+     * Uloží zmeny a naviguje späť.
+     */
     fun saveContactAndNavigateBack() {
-        // Voláme novú signatúru
         viewModel.updateContact(localContact)
-        showSaveConfirmationDialog = false
         showUnsavedChangesDialog = false
+        // 🎯 Kľúčová zmena: Ak sa úspešne uloží cez dialóg, zobrazíme Snackbar,
+        // ale musíme ho stihnúť zobraziť pred onBack().
+        showSavedSnackbar()
         onBack()
     }
 
@@ -88,7 +114,6 @@ fun EditContactScreen(
     }
 
     fun deleteContactAndNavigateBack() {
-        // Voláme novú signatúru: removeContact berie hotový ContactItem
         viewModel.removeContact(originalContact)
         showDeleteDialog = false
         onBack()
@@ -113,10 +138,10 @@ fun EditContactScreen(
     }
 
     val actions: @Composable RowScope.() -> Unit = {
-        // Tlačidlo ULOŽIŤ - OTVÁRA POTVRDZOVACÍ DIALÓG
+        // Tlačidlo ULOŽIŤ - UKLADÁ PRIAMO BEZ DIALÓGU
         IconButton(
-            onClick = { showSaveConfirmationDialog = true },
-            enabled = hasUnsavedChanges // Používa novú podmienku
+            onClick = ::saveContactAndStay,
+            enabled = hasUnsavedChanges
         ) {
             Icon(Icons.Default.Done, contentDescription = "Uložiť")
         }
@@ -131,6 +156,8 @@ fun EditContactScreen(
 
 
     Scaffold(
+        // Pridanie SnackbarHost
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Upraviť Kontakt") },
@@ -253,32 +280,7 @@ fun EditContactScreen(
             )
         }
 
-        // Dialóg PRE POTVRDENIE ULOŽENIA
-        if (showSaveConfirmationDialog) {
-            AlertDialog(
-                onDismissRequest = { showSaveConfirmationDialog = false },
-                title = { Text("Uložiť zmeny?") },
-                text = { Text("Chcete uložiť zmeny a zostať na obrazovke?") },
-                // Tlačidlo Áno (uložiť a zostať)
-                confirmButton = {
-                    Button(
-                        onClick = ::saveContactAndStay
-                    ) {
-                        Text("Uložiť")
-                    }
-                },
-                // Tlačidlo "Nie" (zahodiť zmeny a zostať)
-                dismissButton = {
-                    OutlinedButton(
-                        onClick = ::discardChangesAndStay
-                    ) {
-                        Text("Zahodiť zmeny")
-                    }
-                }
-            )
-        }
-
-        // Dialóg NEULOŽENÝCH ZMIEN - ÚPRAVA ROZLOŽENIA
+        // Dialóg NEULOŽENÝCH ZMIEN
         if (showUnsavedChangesDialog) {
             AlertDialog(
                 onDismissRequest = { showUnsavedChangesDialog = false },
@@ -286,7 +288,7 @@ fun EditContactScreen(
                 text = { Text("Máte neuložené zmeny. Chcete ich uložiť pred odchodom?") },
 
                 confirmButton = {
-                    // Uložiť a späť
+                    // Uložiť a späť - VOLÁ NOVÚ FUNKCIU, KTORÁ ZOBRAZÍ SNACKBAR
                     Button(onClick = ::saveContactAndNavigateBack) {
                         Text("Uložiť")
                     }
@@ -340,7 +342,12 @@ fun ChannelDropdown(
             expanded = expanded,
             onDismissRequest = { expanded = false }
         ) {
-            channelOptions.forEach { selectionOption ->
+            // Vylúčime filter "Všetky", ak je náhodou v options
+            val dropdownOptions = remember(channelOptions) {
+                channelOptions.filter { it != "Všetky" }
+            }
+
+            dropdownOptions.forEach { selectionOption ->
                 DropdownMenuItem(
                     text = { Text(selectionOption) },
                     onClick = {

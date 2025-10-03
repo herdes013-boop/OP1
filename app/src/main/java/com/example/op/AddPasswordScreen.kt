@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.VpnKey // ✅ Import pre ikonu kľúča (generátor)
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -29,7 +30,7 @@ import androidx.navigation.NavController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddPasswordScreen(navController: NavController, viewModel: PasswordsViewModel = viewModel()) { // ✅ OPRAVENÉ: PasswordsViewModel
+fun AddPasswordScreen(navController: NavController, viewModel: PasswordsViewModel = viewModel()) {
     var title by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -76,12 +77,23 @@ fun AddPasswordScreen(navController: NavController, viewModel: PasswordsViewMode
             )
             Spacer(Modifier.height(8.dp))
 
-            // 3. Heslo (viditeľné podľa požiadavky)
+            // 3. Heslo (viditeľné + Generátor)
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
                 label = { Text("Heslo") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                trailingIcon = {
+                    // Tlačidlo, ktoré zavolá generátor hesiel z ViewModelu
+                    IconButton(onClick = {
+                        password = viewModel.generateRandomPassword()
+                    }) {
+                        Icon(
+                            imageVector = Icons.Filled.VpnKey,
+                            contentDescription = "Generovať heslo"
+                        )
+                    }
+                }
             )
             Spacer(Modifier.height(8.dp))
 
