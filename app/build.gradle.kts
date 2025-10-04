@@ -61,6 +61,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2") // Novšia verzia
     implementation("androidx.activity:activity-compose:1.8.2")
     implementation("org.burnoutcrew.composereorderable:reorderable:0.9.6")
+    implementation("io.coil-kt:coil-compose:2.5.0")
 
 
     // Compose BOM na zjednodušenie verzií

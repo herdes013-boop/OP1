@@ -1,6 +1,7 @@
 package com.example.op
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 
 @Composable
 fun TutorialDetailScreen(
@@ -165,15 +167,38 @@ fun TextBlockView(block: TutorialContentBlock.TextBlock) {
 @Composable
 fun ImageBlockView(block: TutorialContentBlock.ImageBlock) {
     val imageRes = block.imageRes
-    if (imageRes != null) {
-        Image(
-            painter = painterResource(id = imageRes),
+
+    if (imageRes != null && imageRes != 0) {
+        // Vytvoríme si chybový placeholder, ktorý sa zobrazí, ak sa obrázok nepodarí načítať
+        val errorPlaceholder = @Composable {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(100.dp)
+                    .background(MaterialTheme.colorScheme.errorContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Chyba: Obrázok sa nepodarilo načítať.",
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+        }
+
+        // AsyncImage je špeciálna Composable funkcia z knižnice Coil,
+        // ktorá je navrhnutá na bezpečné načítavanie obrázkov.
+        AsyncImage(
+            model = imageRes, // Modelom je naše ID zdroja
             contentDescription = "Obrázok v návode",
             modifier = Modifier
                 .fillMaxWidth()
                 .height(200.dp)
                 .clip(RoundedCornerShape(12.dp)),
-            contentScale = ContentScale.Crop
+            contentScale = ContentScale.Crop,
+            // error parameter sa automaticky použije, ak nastane chyba
+            error = painterResource(id = R.drawable.ic_launcher_background), // Tu môžeme dať aj iný placeholder
+            // alebo ešte lepšie, náš vlastný error composable
+            // error = errorPlaceholder
         )
     }
 }
