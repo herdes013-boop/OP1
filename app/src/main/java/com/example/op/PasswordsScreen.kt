@@ -26,7 +26,9 @@ import androidx.navigation.NavController
 @Composable
 fun PasswordsScreen(
     navController: NavController,
-    viewModel: PasswordsViewModel = viewModel(),
+    viewModel: PasswordsViewModel, // Odstránená defaultná inštancia
+    // ======================= KROK 1: Pridanie SharedViewModel =======================
+    sharedViewModel: SharedViewModel,
     modifier: Modifier = Modifier
 ) {
     val passwords by viewModel.passwordList.collectAsState()
@@ -34,6 +36,23 @@ fun PasswordsScreen(
 
     var selectedTabIndex by remember { mutableStateOf(0) }
     val tabs = listOf("Heslá", "IP Adresy")
+
+    // ======================= KROK 2: Pridanie LaunchedEffect =======================
+    // Tento blok sa spustí vždy, keď sa obrazovka stane aktívnou.
+    // Zabezpečí, že po návrate z inej obrazovky sa stav UI vždy správne obnoví.
+    LaunchedEffect(Unit) {
+        sharedViewModel.setTopBarState(
+            TopBarState(
+                title = "Heslá",
+                isVisible = true,
+                actions = null, // Žiadne špeciálne akcie pre zoznam
+                navigationIcon = null // Žiadna šípka späť
+            )
+        )
+        // Tiež zabezpečíme, aby bola spodná lišta viditeľná
+        sharedViewModel.setShowBottomBar(true)
+    }
+    // ==============================================================================
 
     val currentData: List<Any> = when (selectedTabIndex) {
         0 -> passwords
@@ -77,7 +96,6 @@ fun PasswordsScreen(
                         0 -> items(passwords, key = { it.id }) { item ->
                             PasswordListItem(
                                 item = item,
-                                // --- ZMENA: Navigácia na detail hesla ---
                                 onClick = { navController.navigate(Routes.passwordDetail(item.id)) }
                             )
                         }
@@ -93,7 +111,6 @@ fun PasswordsScreen(
         }
 
         FloatingActionButton(
-            // --- ZMENA: Navigácia na pridanie nového záznamu ---
             onClick = {
                 when (selectedTabIndex) {
                     0 -> navController.navigate(Routes.ADD_PASSWORD)
@@ -110,17 +127,19 @@ fun PasswordsScreen(
 }
 
 @Composable
-fun PasswordListItem(item: PasswordItem, onClick: () -> Unit) { // Pridaný onClick parameter
+fun PasswordListItem(item: PasswordItem, onClick: () -> Unit) {
     val clipboardManager = LocalClipboardManager.current
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick), // Použitie onClick parametra
+            .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
@@ -157,17 +176,19 @@ fun PasswordListItem(item: PasswordItem, onClick: () -> Unit) { // Pridaný onCl
 }
 
 @Composable
-fun IpListItem(item: IpItem, onClick: () -> Unit) { // Pridaný onClick parameter
+fun IpListItem(item: IpItem, onClick: () -> Unit) {
     val clipboardManager = LocalClipboardManager.current
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick), // Použitie onClick parametra
+            .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {

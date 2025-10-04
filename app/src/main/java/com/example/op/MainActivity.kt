@@ -240,7 +240,8 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
         composable(Routes.PASSWORDS_LIST) {
             PasswordsScreen(
                 navController = nestedNavController,
-                viewModel = viewModel
+                viewModel = viewModel,
+                sharedViewModel = sharedViewModel // <-- TENTO RIADOK CHÝBAL
             )
         }
         composable(
