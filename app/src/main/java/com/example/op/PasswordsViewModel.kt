@@ -179,6 +179,9 @@ class PasswordsViewModel : ViewModel() {
             _selectedPassword.value = null
         }
     }
+    fun clearSelectedPassword() {
+        _selectedPassword.value = null
+    }
 
     // =================================================================
     // SEKCA PRE IP ADRESY (IpItem)

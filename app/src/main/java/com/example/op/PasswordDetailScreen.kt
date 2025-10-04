@@ -29,49 +29,64 @@ fun PasswordDetailScreen(
     onNavigateToEdit: (String) -> Unit,
     onBack: () -> Unit
 ) {
-    // 1. Povieme ViewModelu, ktoré heslo chceme zobraziť.
-    LaunchedEffect(passwordId) {
-        viewModel.loadPasswordDetail(passwordId)
-    }
-
-    // 2. Sledujeme stav selectedPassword z ViewModelu.
     val passwordItem by viewModel.selectedPassword.collectAsState()
 
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
 
-    // --- Logika pre nastavenie hornej lišty ---
+    // ===== KĽÚČOVÁ ZMENA JE TU =====
+
+    // Tento `LaunchedEffect` sa spustí iba raz, hneď pri vstupe na obrazovku.
+    LaunchedEffect(Unit) {
+        // 1. OKAMŽITE nastavíme správnu štruktúru hornej lišty.
+        //    Tým "prebijeme" starú lištu z `PasswordsScreen`.
+        //    Titulok bude dočasne prázdny.
+        sharedViewModel.setTopBarState(
+            TopBarState(
+                title = " ", // Dôležitá medzera, aby sa titulok nezrútil
+                isVisible = true,
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, "Naspäť")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(Icons.Default.MoreVert, "Viac")
+                    }
+                }
+            )
+        )
+
+        // 2. Až TERAZ povieme ViewModelu, aby začal načítavať dáta.
+        viewModel.loadPasswordDetail(passwordId)
+    }
+
+    // Tento druhý `LaunchedEffect` už len čaká na dáta a doplní titulok.
     LaunchedEffect(passwordItem) {
         if (passwordItem != null) {
-            sharedViewModel.setTopBarState(
-                TopBarState(
-                    title = passwordItem!!.name, // Používame hodnotu zo stavu
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.Default.ArrowBack, "Naspäť")
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { showMenu = true }) {
-                            Icon(Icons.Default.MoreVert, "Viac")
-                        }
-                    }
-                )
-            )
+            // Použijeme našu novú funkciu, ktorá zmení IBA titulok.
+            sharedViewModel.updateTopBarTitle(passwordItem!!.name)
         }
     }
 
-    // Ak sa heslo nenašlo (napr. po zmazaní), vrátime sa späť.
+    // Tento `DisposableEffect` "uprace" po odchode z obrazovky.
+    DisposableEffect(Unit) {
+        onDispose {
+            // Vyčistíme ViewModel, aby si nepamätal posledné heslo.
+            viewModel.clearSelectedPassword()
+        }
+    }
+    // ===== KONIEC ZMIEN =====
+
+    // Ak sa heslo nenašlo alebo sa ešte nenačítalo, zobrazíme prázdnu schránku.
+    // Horná lišta je už ale nastavená správne vďaka prvému LaunchedEffect.
     if (passwordItem == null) {
-        // Tento LaunchedEffect sa spustí, keď sa passwordItem zmení na null
-        // a zabezpečí bezpečný návrat na predchádzajúcu obrazovku.
-        LaunchedEffect(Unit) { onBack() }
-        // Zobrazíme prázdnu obrazovku alebo načítavací indikátor počas návratu.
-        Box(modifier = Modifier.fillMaxSize()) { /* Môže tu byť napr. CircularProgressIndicator */ }
+        Box(modifier = Modifier.fillMaxSize())
         return
     }
 
-    // --- Zvyšok UI ---
+    // --- Zvyšok UI zostáva bez akejkoľvek zmeny ---
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -80,7 +95,6 @@ fun PasswordDetailScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Používame 'passwordItem!!', pretože sme overili, že nie je null.
             DetailItem(label = "Názov služby", value = passwordItem!!.name)
             passwordItem!!.username?.let {
                 DetailItem(label = "Používateľské meno / E-mail", value = it, canBeCopied = true)
@@ -93,7 +107,6 @@ fun PasswordDetailScreen(
             }
         }
 
-        // Dropdown menu pre akcie
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -133,8 +146,6 @@ fun PasswordDetailScreen(
                     onClick = {
                         viewModel.deletePassword(passwordId)
                         showDeleteDialog = false
-                        // onBack() už nie je potrebné volať tu,
-                        // pretože LaunchedEffect(passwordItem == null) to vyrieši za nás.
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) { Text("Zmazať") }
@@ -146,7 +157,7 @@ fun PasswordDetailScreen(
     }
 }
 
-
+// Funkcia DetailItem zostáva bez zmeny
 @Composable
 private fun DetailItem(
     label: String,
@@ -178,3 +189,4 @@ private fun DetailItem(
         Divider()
     }
 }
+

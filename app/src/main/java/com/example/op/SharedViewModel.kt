@@ -5,12 +5,11 @@ import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-// ========= ZMENA TU =========
 data class TopBarState(
     val title: String = "Návody",
     val navigationIcon: (@Composable () -> Unit)? = null,
     val actions: (@Composable () -> Unit)? = null,
-    val isVisible: Boolean = true // PRIDANÝ PARAMETER
+    val isVisible: Boolean = true
 )
 
 class SharedViewModel : ViewModel() {
@@ -23,6 +22,14 @@ class SharedViewModel : ViewModel() {
     fun setTopBarState(newState: TopBarState) {
         _topBarState.value = newState
     }
+
+    // ===== PRIDANÁ FUNKCIA =====
+    // Táto funkcia aktualizuje IBA titulok a ostatné nastavenia lišty
+    // (ikony, akcie, viditeľnosť) nechá nedotknuté.
+    fun updateTopBarTitle(newTitle: String) {
+        _topBarState.value = _topBarState.value.copy(title = newTitle)
+    }
+    // ===== KONIEC PRIDANEJ FUNKCIE =====
 
     fun resetTopBarState() {
         _topBarState.value = TopBarState() // Vráti na predvolený stav
