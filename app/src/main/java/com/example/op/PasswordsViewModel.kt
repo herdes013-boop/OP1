@@ -20,6 +20,17 @@ class PasswordsViewModel : ViewModel() {
     }
 
     // =================================================================
+    // NOVÁ SEKCA: Stav pre používateľské rozhranie (UI State)
+    // =================================================================
+
+    private val _selectedTabIndex = mutableStateOf(0)
+    val selectedTabIndex: State<Int> = _selectedTabIndex
+
+    fun onTabSelected(index: Int) {
+        _selectedTabIndex.value = index
+    }
+
+    // =================================================================
     // SEKCA PRE ZOZNAM HESIEL (PasswordItem)
     // =================================================================
 
@@ -170,7 +181,7 @@ class PasswordsViewModel : ViewModel() {
     }
 
     // =================================================================
-    // SEKCA PRE IP ADRESY (IpItem) - TU SÚ ZMENY
+    // SEKCA PRE IP ADRESY (IpItem)
     // =================================================================
 
     private val _ipList = MutableStateFlow(
@@ -186,7 +197,6 @@ class PasswordsViewModel : ViewModel() {
         _ipList.update { currentList -> currentList + newItem }
     }
 
-    // --- TOTO SÚ NOVÉ FUNKCIE ---
     fun updateIpAddress(updatedItem: IpItem) {
         _ipList.update { currentList ->
             currentList.map { if (it.id == updatedItem.id) updatedItem else it }
@@ -196,5 +206,4 @@ class PasswordsViewModel : ViewModel() {
     fun getIpAddressById(id: String): IpItem? {
         return _ipList.value.find { it.id == id }
     }
-    // --- KONIEC NOVÝCH FUNKCIÍ ---
 }

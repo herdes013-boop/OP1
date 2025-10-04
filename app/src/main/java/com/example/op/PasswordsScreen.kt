@@ -9,8 +9,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -32,7 +30,10 @@ fun PasswordsScreen(
     val passwords by viewModel.passwordList.collectAsState()
     val ipAddresses by viewModel.ipList.collectAsState()
 
-    var selectedTabIndex by remember { mutableStateOf(0) }
+    // --- TU JE ZMENA č.1 ---
+    // Už nepoužívame `var selectedTabIndex by remember...`
+    // Namiesto toho berieme stav priamo z ViewModelu.
+    val selectedTabIndex by viewModel.selectedTabIndex
     val tabs = listOf("Heslá", "IP Adresy")
 
     LaunchedEffect(Unit) {
@@ -62,7 +63,9 @@ fun PasswordsScreen(
                 tabs.forEachIndexed { index, title ->
                     Tab(
                         selected = selectedTabIndex == index,
-                        onClick = { selectedTabIndex = index },
+                        // --- TU JE ZMENA č.2 ---
+                        // Pri kliknutí voláme funkciu z ViewModelu.
+                        onClick = { viewModel.onTabSelected(index) },
                         text = { Text(title) }
                     )
                 }
@@ -92,11 +95,9 @@ fun PasswordsScreen(
                                 onClick = { navController.navigate(Routes.passwordDetail(item.id)) }
                             )
                         }
-                        // --- TU JE ZMENA č.1 ---
                         1 -> items(ipAddresses, key = { it.id }) { item ->
                             IpListItem(
                                 item = item,
-                                // Kliknutie na položku nás presmeruje na úpravu
                                 onClick = { navController.navigate(Routes.editIpAddress(item.id)) }
                             )
                         }
@@ -109,8 +110,12 @@ fun PasswordsScreen(
             onClick = {
                 when (selectedTabIndex) {
                     0 -> navController.navigate(Routes.ADD_PASSWORD)
-                    // --- TU JE ZMENA č.2 ---
-                    1 -> navController.navigate(Routes.ADD_IP_ADDRESS)
+                    // --- TU JE ZMENA č.3 ---
+                    // Keď klikneme na +, povieme ViewModelu, aby si to zapamätal.
+                    1 -> {
+                        viewModel.onTabSelected(1) // Explicitne nastavíme, aby sme boli na IP tabe
+                        navController.navigate(Routes.ADD_IP_ADDRESS)
+                    }
                 }
             },
             modifier = Modifier
@@ -121,6 +126,7 @@ fun PasswordsScreen(
         }
     }
 }
+
 
 // Composable funkcie PasswordListItem a IpListItem zostávajú bez zmeny
 @Composable
@@ -216,4 +222,3 @@ fun IpListItem(item: IpItem, onClick: () -> Unit) {
         }
     }
 }
-
