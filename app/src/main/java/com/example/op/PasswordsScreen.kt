@@ -19,15 +19,13 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PasswordsScreen(
     navController: NavController,
-    viewModel: PasswordsViewModel, // Odstránená defaultná inštancia
-    // ======================= KROK 1: Pridanie SharedViewModel =======================
+    viewModel: PasswordsViewModel,
     sharedViewModel: SharedViewModel,
     modifier: Modifier = Modifier
 ) {
@@ -37,22 +35,17 @@ fun PasswordsScreen(
     var selectedTabIndex by remember { mutableStateOf(0) }
     val tabs = listOf("Heslá", "IP Adresy")
 
-    // ======================= KROK 2: Pridanie LaunchedEffect =======================
-    // Tento blok sa spustí vždy, keď sa obrazovka stane aktívnou.
-    // Zabezpečí, že po návrate z inej obrazovky sa stav UI vždy správne obnoví.
     LaunchedEffect(Unit) {
         sharedViewModel.setTopBarState(
             TopBarState(
                 title = "Heslá",
                 isVisible = true,
-                actions = null, // Žiadne špeciálne akcie pre zoznam
-                navigationIcon = null // Žiadna šípka späť
+                actions = null,
+                navigationIcon = null
             )
         )
-        // Tiež zabezpečíme, aby bola spodná lišta viditeľná
         sharedViewModel.setShowBottomBar(true)
     }
-    // ==============================================================================
 
     val currentData: List<Any> = when (selectedTabIndex) {
         0 -> passwords
@@ -99,10 +92,12 @@ fun PasswordsScreen(
                                 onClick = { navController.navigate(Routes.passwordDetail(item.id)) }
                             )
                         }
+                        // --- TU JE ZMENA č.1 ---
                         1 -> items(ipAddresses, key = { it.id }) { item ->
                             IpListItem(
                                 item = item,
-                                onClick = { /* TODO: Navigácia na detail IP adresy, ak je to potrebné */ }
+                                // Kliknutie na položku nás presmeruje na úpravu
+                                onClick = { navController.navigate(Routes.editIpAddress(item.id)) }
                             )
                         }
                     }
@@ -114,7 +109,8 @@ fun PasswordsScreen(
             onClick = {
                 when (selectedTabIndex) {
                     0 -> navController.navigate(Routes.ADD_PASSWORD)
-                    1 -> { /* TODO: Navigácia na pridanie IP adresy */ }
+                    // --- TU JE ZMENA č.2 ---
+                    1 -> navController.navigate(Routes.ADD_IP_ADDRESS)
                 }
             },
             modifier = Modifier
@@ -126,6 +122,7 @@ fun PasswordsScreen(
     }
 }
 
+// Composable funkcie PasswordListItem a IpListItem zostávajú bez zmeny
 @Composable
 fun PasswordListItem(item: PasswordItem, onClick: () -> Unit) {
     val clipboardManager = LocalClipboardManager.current
@@ -219,3 +216,4 @@ fun IpListItem(item: IpItem, onClick: () -> Unit) {
         }
     }
 }
+

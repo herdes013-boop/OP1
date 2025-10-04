@@ -170,7 +170,7 @@ class PasswordsViewModel : ViewModel() {
     }
 
     // =================================================================
-    // SEKCA PRE IP ADRESY (IpItem) - bez zmeny
+    // SEKCA PRE IP ADRESY (IpItem) - TU SÚ ZMENY
     // =================================================================
 
     private val _ipList = MutableStateFlow(
@@ -185,4 +185,16 @@ class PasswordsViewModel : ViewModel() {
         val newItem = IpItem(id = getNextId(), name = name, ipAddress = ipAddress)
         _ipList.update { currentList -> currentList + newItem }
     }
+
+    // --- TOTO SÚ NOVÉ FUNKCIE ---
+    fun updateIpAddress(updatedItem: IpItem) {
+        _ipList.update { currentList ->
+            currentList.map { if (it.id == updatedItem.id) updatedItem else it }
+        }
+    }
+
+    fun getIpAddressById(id: String): IpItem? {
+        return _ipList.value.find { it.id == id }
+    }
+    // --- KONIEC NOVÝCH FUNKCIÍ ---
 }

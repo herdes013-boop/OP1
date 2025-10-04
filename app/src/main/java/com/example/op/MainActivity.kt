@@ -1,38 +1,13 @@
 package com.example.op
 
-import com.example.op.TutorialsScreen
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.MenuBook
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.VerifiedUser
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -81,6 +56,11 @@ object Routes {
     const val EDIT_PASSWORD = "edit_password/{passwordId}"
     fun passwordDetail(passwordId: String) = "password_detail/$passwordId"
     fun editPassword(passwordId: String) = "edit_password/$passwordId"
+
+    // --- IP ADRESY (NOVÉ) ---
+    const val ADD_IP_ADDRESS = "add_ip_address"
+    const val EDIT_IP_ADDRESS = "edit_ip_address/{ipId}"
+    fun editIpAddress(ipId: String) = "edit_ip_address/$ipId"
 
     // --- KONTAKTY ---
     const val CONTACTS_LIST = "contacts_list"
@@ -224,12 +204,9 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
 
     LaunchedEffect(navBackStackEntry) {
         val currentRoute = navBackStackEntry?.destination?.route
+        // Všetky obrazovky okrem hlavného zoznamu skryjú spodnú lištu
         val isSubScreen = currentRoute != Routes.PASSWORDS_LIST
         sharedViewModel.setShowBottomBar(!isSubScreen)
-
-        // Pre Heslá si každá obrazovka riadi TopBar sama alebo ju neriadi vôbec
-        // (Add/Edit má vlastný, Detail má vlastný, Zoznam používa globálny)
-        // Už to nemusíme explicitne nastavovať tu.
     }
 
     NavHost(
@@ -241,7 +218,7 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
             PasswordsScreen(
                 navController = nestedNavController,
                 viewModel = viewModel,
-                sharedViewModel = sharedViewModel // <-- TENTO RIADOK CHÝBAL
+                sharedViewModel = sharedViewModel
             )
         }
         composable(
@@ -253,7 +230,7 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
                 PasswordDetailScreen(
                     passwordId = passwordId,
                     viewModel = viewModel,
-                    sharedViewModel = sharedViewModel, // <-- PRIDAJTE TOTO
+                    sharedViewModel = sharedViewModel,
                     onNavigateToEdit = { nestedNavController.navigate(Routes.editPassword(it)) },
                     onBack = { nestedNavController.popBackStack() }
                 )
@@ -276,39 +253,52 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
                 passwordId = passwordId
             )
         }
+
+        // --- TU SÚ NOVÉ OBRAZOVKY PRE IP ADRESY ---
+        composable(Routes.ADD_IP_ADDRESS) {
+            AddEditIpAddressScreen(
+                navController = nestedNavController,
+                viewModel = viewModel
+            )
+        }
+        composable(
+            route = Routes.EDIT_IP_ADDRESS,
+            arguments = listOf(navArgument("ipId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val ipId = backStackEntry.arguments?.getString("ipId")
+            AddEditIpAddressScreen(
+                navController = nestedNavController,
+                viewModel = viewModel,
+                ipId = ipId
+            )
+        }
+        // --- KONIEC NOVÝCH OBRAZOVIEK ---
     }
 }
 
+// Ostatné NavHost funkcie (ContactsNavHost, TutorialsNavHost, ...) zostávajú bez zmeny
 @Composable
 fun ContactsNavHost(
     viewModel: ContactsViewModel,
     paddingValues: PaddingValues,
-    // --- KROK 1: Pridajte tento parameter ---
     sharedViewModel: SharedViewModel
 ) {
     val nestedNavController = rememberNavController()
-    // --- KROK 2: Pridajte celý tento blok ---
     val navBackStackEntry by nestedNavController.currentBackStackEntryAsState()
 
     LaunchedEffect(navBackStackEntry) {
         val currentRoute = navBackStackEntry?.destination?.route
         val isSubScreen = currentRoute != Routes.CONTACTS_LIST
-
-        // Skryjeme spodnú lištu, ak nie sme na zozname
         sharedViewModel.setShowBottomBar(!isSubScreen)
 
         val isAddScreen = currentRoute == Routes.ADD_CONTACT
 
         if (isAddScreen) {
-            // Pri pridaní schováme hornú lištu
             sharedViewModel.setTopBarState(TopBarState(isVisible = false))
         } else if (!isSubScreen) {
-            // Ak sme na hlavnom zozname, nastavíme titulok "Kontakty"
             sharedViewModel.setTopBarState(TopBarState(title = "Kontakty", isVisible = true))
         }
-        // Pre detail (editáciu) nerobíme nič, necháme to na EditContactScreen
     }
-    // --- Koniec nového bloku ---
 
     NavHost(nestedNavController, startDestination = Routes.CONTACTS_LIST, modifier = Modifier.padding(paddingValues)) {
         composable(Routes.CONTACTS_LIST) {
@@ -329,7 +319,7 @@ fun ContactsNavHost(
                 navController = nestedNavController,
                 contactId = contactId,
                 viewModel = viewModel,
-                sharedViewModel = sharedViewModel, // Teraz je to správne
+                sharedViewModel = sharedViewModel,
                 onBack = { nestedNavController.popBackStack() }
             )
         }
@@ -346,7 +336,7 @@ fun ContactsNavHost(
 fun TutorialsNavHost(
     tutorialsViewModel: TutorialsViewModel,
     sharedViewModel: SharedViewModel,
-    paddingValues: PaddingValues // Prijíma padding z MainScreen
+    paddingValues: PaddingValues
 ) {
     val nestedNavController = rememberNavController()
     val navBackStackEntry by nestedNavController.currentBackStackEntryAsState()
@@ -355,29 +345,24 @@ fun TutorialsNavHost(
         val currentRoute = navBackStackEntry?.destination?.route
         val isAddOrEditScreen = currentRoute == Routes.ADD_TUTORIAL || currentRoute?.startsWith("edit_tutorial/") == true
 
-        // Skryjeme spodnú lištu, ak nie sme na hlavnom zozname
         sharedViewModel.setShowBottomBar(currentRoute == Routes.TUTORIALS_LIST)
 
-        // Skryjeme hornú lištu len pre Add/Edit, inak ju necháme viditeľnú
         if (isAddOrEditScreen) {
             sharedViewModel.setTopBarState(TopBarState(isVisible = false))
         } else {
-            // Pre zoznam a detail sa názov nastaví v MainScreen, tu len zaistíme viditeľnosť
             sharedViewModel.setTopBarState(TopBarState(title = "Návody", isVisible = true))
         }
     }
 
-    // Tento NavHost už NEMÁ vlastný Scaffold, používa padding z MainScreen
     NavHost(
         navController = nestedNavController,
         startDestination = Routes.TUTORIALS_LIST,
-        modifier = Modifier.padding(paddingValues) // Padding sa aplikuje na všetky obrazovky vnútri
+        modifier = Modifier.padding(paddingValues)
     ) {
         composable(Routes.TUTORIALS_LIST) {
             TutorialsScreen(
                 navController = nestedNavController,
                 viewModel = tutorialsViewModel
-                // Modifier netreba, NavHost ho už aplikuje
             )
         }
         composable(
@@ -393,7 +378,6 @@ fun TutorialsNavHost(
                 onNavigateToEdit = { id ->
                     nestedNavController.navigate(Routes.editTutorial(id))
                 }
-                // Modifier netreba, NavHost ho už aplikuje
             )
         }
         composable(Routes.ADD_TUTORIAL) {
@@ -451,3 +435,4 @@ fun HomeScreen(modifier: Modifier = Modifier) {
         Text("Vaše heslá, kontakty a návody sú bezpečne na jednom mieste. Použite spodnú lištu na navigáciu.", style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
     }
 }
+
