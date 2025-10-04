@@ -1,49 +1,104 @@
 package com.example.op
 
-import androidx.annotation.DrawableRes
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.util.UUID
+
+// Dátová trieda pre celý návod
+data class Tutorial(
+    val id: String = UUID.randomUUID().toString(),
+    var title: String,
+    var category: String,
+    var content: List<TutorialContentBlock>
+)
 
 class TutorialsViewModel : ViewModel() {
 
-    // --- Zdroje dát a filtre ---
-    private val _tutorialList = MutableStateFlow<List<TutorialItem>>(emptyList())
-    private val _selectedTab = MutableStateFlow("Všetky")
-    val selectedTab = _selectedTab.asStateFlow()
-    val categories = listOf("Všetky", "Pre začiatočníkov", "Pre pokročilých")
+    // --- STAVY PRE ZOZNAM NÁVODOV ---
+    private val _tutorials = MutableStateFlow<List<Tutorial>>(emptyList())
+    val tutorials: StateFlow<List<Tutorial>> = _tutorials.asStateFlow()
 
-    val displayedTutorials = combine(_tutorialList, _selectedTab) { tutorials, selectedCategory ->
-        if (selectedCategory == "Všetky") {
-            tutorials
-        } else {
-            tutorials.filter { it.category == selectedCategory }
-        }
-    }
+    private val _filteredTutorials = MutableStateFlow<List<Tutorial>>(emptyList())
+    val filteredTutorials: StateFlow<List<Tutorial>> = _filteredTutorials.asStateFlow()
 
-    // --- Stavy pre formulár ---
+    val categories = listOf("Všetky", "Prihlásenie", "Hardvér", "Softvér", "Iné")
+    var selectedCategory by mutableStateOf(categories.first())
+        private set
+
+    // --- STAVY PRE OBRAZOVKU PRIDANIA/ÚPRAVY ---
     var tutorialTitle by mutableStateOf("")
         private set
-    var tutorialCategory by mutableStateOf(categories[1])
-        private set
-    private val _contentBlocks = MutableStateFlow<List<TutorialContentBlock>>(emptyList())
-    val contentBlocks = _contentBlocks.asStateFlow()
-    var editingTutorialId by mutableStateOf<String?>(null)
+    var tutorialCategory by mutableStateOf(categories.drop(1).first()) // Default kategória bez "Všetky"
         private set
 
-    private var originalTutorialState: TutorialItem? = null
+    private val _contentBlocks = MutableStateFlow<List<TutorialContentBlock>>(emptyList())
+    val contentBlocks: StateFlow<List<TutorialContentBlock>> = _contentBlocks.asStateFlow()
+
+    private var editingTutorialId: String? = null
+
+    // ======================= PRIDANÝ KÓD (KROK 1) =======================
+    // Verejná premenná, ktorá je odvodená z privátnej.
+    // Obrazovka tak vie, či sme v režime úprav, ale nemá priamy prístup k ID.
+    val isEditing: Boolean
+        get() = editingTutorialId != null
+    // =================================================================
+
+    // --- STAV PRE SLEDOVANIE NAČÍTAVANIA ---
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     init {
         loadInitialTutorials()
     }
 
-    // --- Funkcie pre prácu s formulárom ---
+    private fun loadInitialTutorials() {
+        val initialData = listOf(
+            Tutorial(
+                title = "Ako sa prihlásiť do systému",
+                category = "Prihlásenie",
+                content = listOf(
+                    TutorialContentBlock.TextBlock(text = "Pre prihlásenie do systému použite vaše pridelené meno a heslo."),
+                    // Používame placeholder, ktorý existuje
+                    TutorialContentBlock.ImageBlock(imageRes = R.drawable.image_placeholder),
+                    TutorialContentBlock.TextBlock(text = "V prípade zabudnutého hesla kontaktujte administrátora.")
+                )
+            ),
+            Tutorial(
+                title = "Čistenie hardvéru počítača",
+                category = "Hardvér",
+                content = listOf(
+                    TutorialContentBlock.TextBlock(text = "Pravidelne čistite ventilátory a chladiče od prachu, aby ste predišli prehrievaniu komponentov.")
+                )
+            )
+        )
+        _tutorials.value = initialData
+        filterTutorials()
+    }
+
+    // --- FUNKCIE PRE ZOZNAM ---
+
+    fun onCategorySelected(category: String) {
+        selectedCategory = category
+        filterTutorials()
+    }
+
+    private fun filterTutorials() {
+        _filteredTutorials.value = if (selectedCategory == "Všetky") {
+            _tutorials.value
+        } else {
+            _tutorials.value.filter { it.category == selectedCategory }
+        }
+    }
+
+    // --- FUNKCIE PRE PRIDÁVANIE/UPRAVOVANIE/MAZANIE ---
 
     fun onTitleChange(newTitle: String) {
         tutorialTitle = newTitle
@@ -54,110 +109,96 @@ class TutorialsViewModel : ViewModel() {
     }
 
     fun addTextBlock() {
-        _contentBlocks.update { it + TutorialContentBlock.TextBlock() }
+        _contentBlocks.update { it + TutorialContentBlock.TextBlock(text = "") }
     }
 
     fun addImageBlock() {
-        _contentBlocks.update { it + TutorialContentBlock.ImageBlock() }
+        _contentBlocks.update { it + TutorialContentBlock.ImageBlock(imageRes = R.drawable.image_placeholder) }
     }
 
-    fun removeBlock(blockId: String) {
-        _contentBlocks.update { it.filterNot { b -> b.id == blockId } }
-    }
-
-    fun onTextBlockChange(blockId: String, newText: String) {
-        _contentBlocks.update { blocks ->
-            blocks.map { if (it.id == blockId && it is TutorialContentBlock.TextBlock) it.copy(text = newText) else it }
+    fun onContentBlockChange(index: Int, newBlock: TutorialContentBlock) {
+        val currentBlocks = _contentBlocks.value.toMutableList()
+        if (index in currentBlocks.indices) {
+            currentBlocks[index] = newBlock
+            _contentBlocks.value = currentBlocks
         }
     }
 
-    fun onImageBlockChange(blockId: String, @DrawableRes newImageRes: Int) {
-        _contentBlocks.update { blocks ->
-            blocks.map { if (it.id == blockId && it is TutorialContentBlock.ImageBlock) it.copy(imageRes = newImageRes) else it }
+    fun removeContentBlock(index: Int) {
+        _contentBlocks.update {
+            it.toMutableList().apply { removeAt(index) }
         }
     }
 
-    // === NOVÁ FUNKCIA PRE DRAG-AND-DROP ===
-    /**
-     * Presunie blok zo starej pozície (from) na novú (to).
-     */
-    fun moveBlock(from: Int, to: Int) {
-        _contentBlocks.update { currentBlocks ->
-            currentBlocks.toMutableList().apply {
-                add(to, removeAt(from))
-            }
-        }
-    }
-
-    /**
-     * Vyčistí formulár a resetuje ID upravovaného návodu.
-     */
-    fun resetForm() {
-        tutorialTitle = ""
-        tutorialCategory = categories[1]
-        _contentBlocks.value = emptyList()
-        editingTutorialId = null
-        originalTutorialState = null
-    }
-
-    /**
-     * Načíta dáta existujúceho návodu do formulára a nastaví jeho ID.
-     */
-    fun loadTutorialForEditing(tutorialId: String) {
-        val tutorial = _tutorialList.value.find { it.id == tutorialId }
-        if (tutorial != null) {
-            tutorialTitle = tutorial.title
-            tutorialCategory = tutorial.category
-            _contentBlocks.value = tutorial.contentBlocks
-            editingTutorialId = tutorial.id
-            originalTutorialState = tutorial.copy()
-        }
-    }
-
-    /**
-     * Vráti `true`, ak sa aktuálny stav formulára líši od pôvodného.
-     */
-    fun hasUnsavedChanges(): Boolean {
-        if (originalTutorialState == null) return false
-        val titleChanged = tutorialTitle != originalTutorialState?.title
-        val categoryChanged = tutorialCategory != originalTutorialState?.category
-        val contentChanged = _contentBlocks.value != originalTutorialState?.contentBlocks
-        return titleChanged || categoryChanged || contentChanged
-    }
-
-    // --- CRUD Operácie ---
-
-    fun selectCategory(category: String) {
-        _selectedTab.value = category
-    }
-
-    private fun addTutorial() {
-        val newTutorial = TutorialItem(title = tutorialTitle, category = tutorialCategory, contentBlocks = _contentBlocks.value)
-        _tutorialList.update { it + newTutorial }
-    }
-
-    private fun updateTutorial() {
-        val idToUpdate = editingTutorialId ?: return
-        _tutorialList.update { list ->
-            list.map {
-                if (it.id == idToUpdate) it.copy(title = tutorialTitle, category = tutorialCategory, contentBlocks = _contentBlocks.value) else it
+    fun moveContentBlock(from: Int, to: Int) {
+        _contentBlocks.update {
+            it.toMutableList().apply {
+                val item = removeAt(from)
+                add(to, item)
             }
         }
     }
 
     fun saveTutorial() {
-        if (editingTutorialId == null) addTutorial() else updateTutorial()
+        if (tutorialTitle.isBlank()) return
+
+        viewModelScope.launch {
+            val editedTutorial = Tutorial(
+                id = editingTutorialId ?: UUID.randomUUID().toString(),
+                title = tutorialTitle,
+                category = tutorialCategory,
+                content = _contentBlocks.value
+            )
+
+            if (editingTutorialId == null) {
+                _tutorials.update { it + editedTutorial }
+            } else {
+                _tutorials.update { list ->
+                    list.map { if (it.id == editingTutorialId) editedTutorial else it }
+                }
+            }
+            filterTutorials()
+            resetForm()
+        }
+    }
+
+    fun loadTutorialForEditing(tutorialId: String) {
+        _isLoading.value = true
+        viewModelScope.launch {
+            try {
+                val tutorial = _tutorials.value.firstOrNull { it.id == tutorialId }
+                if (tutorial != null) {
+                    editingTutorialId = tutorial.id
+                    tutorialTitle = tutorial.title
+                    tutorialCategory = tutorial.category
+                    _contentBlocks.value = tutorial.content
+                }
+            } finally {
+                _isLoading.value = false
+            }
+        }
     }
 
     fun deleteTutorial(tutorialId: String) {
-        _tutorialList.update { it.filterNot { t -> t.id == tutorialId } }
+        viewModelScope.launch {
+            _tutorials.update { list -> list.filterNot { it.id == tutorialId } }
+            filterTutorials()
+        }
     }
 
-    private fun loadInitialTutorials() {
-        _tutorialList.value = listOf(
-            TutorialItem(id = UUID.randomUUID().toString(), title = "Ako pridať nové heslo", category = "Pre začiatočníkov", contentBlocks = listOf(TutorialContentBlock.TextBlock("1. Prejdite do sekcie 'Heslá'."), TutorialContentBlock.TextBlock("2. Kliknite na tlačidlo '+' vpravo dole."), TutorialContentBlock.TextBlock("3. Vyplňte všetky polia a kliknite na 'Uložiť'."))),
-            TutorialItem(id = UUID.randomUUID().toString(), title = "Kopírovanie hesla do schránky", category = "Pre začiatočníkov", contentBlocks = listOf(TutorialContentBlock.TextBlock("V zozname hesiel jednoducho kliknite na ikonu kópie vedľa položky, ktorú chcete skopírovať."), TutorialContentBlock.ImageBlock(R.drawable.ic_launcher_foreground), TutorialContentBlock.TextBlock("Heslo sa bezpečne uloží do schránky."))),
-            TutorialItem(id = UUID.randomUUID().toString(), title = "Pokročilá správa kontaktov", category = "Pre pokročilých", contentBlocks = listOf(TutorialContentBlock.TextBlock("V sekcii 'Kontakty' môžete spravovať aj kanály cez príslušné tlačidlo.")))
-        )
+    // ======================= PRIDANÝ KÓD (KROK 2) =======================
+    // Verejná funkcia, ktorá bezpečne zmaže práve upravovaný návod.
+    fun deleteCurrentlyEditingTutorial() {
+        editingTutorialId?.let {
+            deleteTutorial(it)
+        }
+    }
+    // =================================================================
+
+    fun resetForm() {
+        editingTutorialId = null
+        tutorialTitle = ""
+        tutorialCategory = categories.drop(1).first()
+        _contentBlocks.value = emptyList()
     }
 }

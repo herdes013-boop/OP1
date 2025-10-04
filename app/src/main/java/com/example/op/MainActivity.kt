@@ -1,6 +1,6 @@
 package com.example.op
 
-import TutorialsScreen
+import com.example.op.TutorialsScreen
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
