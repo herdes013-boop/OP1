@@ -10,36 +10,74 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditPasswordScreen(
     navController: NavController,
-    viewModel: PasswordsViewModel = viewModel(),
+    viewModel: PasswordsViewModel,
     passwordId: String? = null
 ) {
-    val isEditing = passwordId != null
-    val initialPassword = if (isEditing) viewModel.getPasswordById(passwordId!!) else null
-
-    // Ak upravujeme neexistujúce heslo, vrátime sa späť
-    if (isEditing && initialPassword == null) {
-        LaunchedEffect(Unit) { navController.popBackStack() }
-        return
+    // Načítame dáta pre úpravu, ak je poskytnuté ID.
+    // LaunchedEffect sa spustí len raz, keď sa obrazovka prvýkrát načíta.
+    LaunchedEffect(passwordId) {
+        if (passwordId != null) {
+            viewModel.loadPasswordForEditing(passwordId)
+        } else {
+            viewModel.resetPasswordForm()
+        }
     }
 
-    var title by remember { mutableStateOf(initialPassword?.name ?: "") }
-    var username by remember { mutableStateOf(initialPassword?.username ?: "") }
-    var password by remember { mutableStateOf(initialPassword?.password ?: "") }
-    var notes by remember { mutableStateOf(initialPassword?.notes ?: "") }
+    // Pri odchode z obrazovky VŽDY resetujeme formulár, aby bol čistý pre ďalšie použitie.
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.resetPasswordForm()
+        }
+    }
+
+    // Získavame stavy priamo z ViewModelu
+    val isEditing by viewModel.isEditing
+    val passwordName by viewModel.passwordName
+    val passwordUsername by viewModel.passwordUsername
+    val passwordValue by viewModel.passwordValue
+    val passwordNotes by viewModel.passwordNotes
+    val isFormValid = viewModel.isPasswordFormValid
+
+    // --- Problém č.2: Dialóg pre neuložené zmeny ---
+    var showUnsavedChangesDialog by remember { mutableStateOf(false) }
+
+    if (showUnsavedChangesDialog) {
+        // Môžeme použiť existujúci UnsavedChangesDialog, ak ho máme, alebo vytvoriť nový
+        AlertDialog(
+            onDismissRequest = { showUnsavedChangesDialog = false },
+            title = { Text("Neuložené zmeny") },
+            text = { Text("Naozaj chcete odísť bez uloženia zmien?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showUnsavedChangesDialog = false
+                    navController.popBackStack()
+                }) { Text("Odísť") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showUnsavedChangesDialog = false }) { Text("Zostať") }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(if (isEditing) "Upraviť heslo" else "Nové heslo") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = {
+                        // --- Problém č.2: Kontrola pred odchodom ---
+                        if (viewModel.hasUnsavedChanges) {
+                            showUnsavedChangesDialog = true
+                        } else {
+                            navController.popBackStack()
+                        }
+                    }) {
                         Icon(Icons.Filled.ArrowBack, "Naspäť")
                     }
                 }
@@ -56,36 +94,36 @@ fun AddEditPasswordScreen(
             Spacer(Modifier.height(8.dp))
 
             OutlinedTextField(
-                value = title,
-                onValueChange = { title = it },
+                value = passwordName,
+                onValueChange = { viewModel.onPasswordNameChange(it) },
                 label = { Text("Názov služby") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
 
             OutlinedTextField(
-                value = username,
-                onValueChange = { username = it },
+                value = passwordUsername,
+                onValueChange = { viewModel.onPasswordUsernameChange(it) },
                 label = { Text("Používateľské meno / E-mail") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
 
             OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
+                value = passwordValue,
+                onValueChange = { viewModel.onPasswordValueChange(it) },
                 label = { Text("Heslo") },
                 modifier = Modifier.fillMaxWidth(),
                 trailingIcon = {
-                    IconButton(onClick = { password = viewModel.generateRandomPassword() }) {
+                    IconButton(onClick = { viewModel.generateAndSetRandomPassword() }) {
                         Icon(Icons.Filled.VpnKey, "Generovať heslo")
                     }
                 }
             )
 
             OutlinedTextField(
-                value = notes,
-                onValueChange = { notes = it },
+                value = passwordNotes,
+                onValueChange = { viewModel.onPasswordNotesChange(it) },
                 label = { Text("Poznámky (voliteľné)") },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -94,21 +132,12 @@ fun AddEditPasswordScreen(
 
             Button(
                 onClick = {
-                    if (isEditing) {
-                        val updatedItem = initialPassword!!.copy(
-                            name = title,
-                            username = username.ifBlank { null },
-                            password = password,
-                            notes = notes.ifBlank { null }
-                        )
-                        viewModel.updatePassword(updatedItem)
-                    } else {
-                        viewModel.addPassword(title, username.ifBlank { null }, password, notes.ifBlank { null })
-                    }
+                    viewModel.savePassword()
                     navController.popBackStack()
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = title.isNotBlank() && password.isNotBlank()
+                // --- Problém č.1: Povolenie tlačidla ---
+                enabled = isFormValid
             ) {
                 Text("Uložiť")
             }

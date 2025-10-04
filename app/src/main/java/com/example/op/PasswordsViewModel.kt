@@ -1,5 +1,7 @@
 package com.example.op
 
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,10 +20,9 @@ class PasswordsViewModel : ViewModel() {
     }
 
     // =================================================================
-    // SEKCA PRE HESLÁ (PasswordItem)
+    // SEKCA PRE ZOZNAM HESIEL (PasswordItem)
     // =================================================================
 
-    // OPRAVA: Používame MutableStateFlow s obyčajným List, bez .toMutableStateList()
     private val _passwordList = MutableStateFlow(
         listOf(
             PasswordItem("1", "Google", "uzivatel@gmail.com", "silneHeslo123", "Hlavný účet"),
@@ -29,20 +30,119 @@ class PasswordsViewModel : ViewModel() {
             PasswordItem("3", "Bank", "IBAN:123456", "superTajne", "Účet na úspory")
         )
     )
-    // Používame .asStateFlow() na vystavenie imutabilnej verzie, ktorú UI nemôže meniť
     val passwordList = _passwordList.asStateFlow()
+
+    // =================================================================
+    // SEKCA: Stav pre Detail obrazovku
+    // =================================================================
+
+    private val _selectedPassword = MutableStateFlow<PasswordItem?>(null)
+    val selectedPassword = _selectedPassword.asStateFlow()
+
+    fun loadPasswordDetail(passwordId: String) {
+        viewModelScope.launch {
+            _selectedPassword.value = _passwordList.value.firstOrNull { it.id == passwordId }
+        }
+    }
+
+    // =================================================================
+    // SEKCA: Stav pre Add/Edit formulár
+    // =================================================================
+
+    private val _passwordName = mutableStateOf("")
+    val passwordName: State<String> = _passwordName
+
+    private val _passwordUsername = mutableStateOf("")
+    val passwordUsername: State<String> = _passwordUsername
+
+    private val _passwordValue = mutableStateOf("")
+    val passwordValue: State<String> = _passwordValue
+
+    private val _passwordNotes = mutableStateOf("")
+    val passwordNotes: State<String> = _passwordNotes
+
+    private val _isEditing = mutableStateOf(false)
+    val isEditing: State<Boolean> = _isEditing
+
+    private var originalPasswordItem: PasswordItem? = null
+
+    val isPasswordFormValid: Boolean
+        get() = _passwordName.value.isNotBlank()
+
+    val hasUnsavedChanges: Boolean
+        get() {
+            return if (originalPasswordItem != null) { // Režim úprav
+                originalPasswordItem?.name != _passwordName.value ||
+                        (originalPasswordItem?.username ?: "") != _passwordUsername.value ||
+                        originalPasswordItem?.password != _passwordValue.value ||
+                        (originalPasswordItem?.notes ?: "") != _passwordNotes.value
+            } else { // Režim pridávania nového hesla
+                _passwordName.value.isNotEmpty() ||
+                        _passwordUsername.value.isNotEmpty() ||
+                        _passwordValue.value.isNotEmpty() ||
+                        _passwordNotes.value.isNotEmpty()
+            }
+        }
+
+    fun onPasswordNameChange(newName: String) { _passwordName.value = newName }
+    fun onPasswordUsernameChange(newUsername: String) { _passwordUsername.value = newUsername }
+    fun onPasswordValueChange(newValue: String) { _passwordValue.value = newValue }
+    fun onPasswordNotesChange(newNotes: String) { _passwordNotes.value = newNotes }
+
+    fun loadPasswordForEditing(passwordId: String) {
+        val password = _passwordList.value.firstOrNull { it.id == passwordId }
+        if (password != null) {
+            originalPasswordItem = password // Uložíme si originál pre porovnanie
+            _passwordName.value = password.name
+            _passwordUsername.value = password.username ?: ""
+            _passwordValue.value = password.password
+            _passwordNotes.value = password.notes ?: ""
+            _isEditing.value = true
+        }
+    }
+
+    fun savePassword() {
+        if (!isPasswordFormValid) return
+
+        if (_isEditing.value) {
+            val updatedItem = originalPasswordItem!!.copy(
+                name = _passwordName.value,
+                username = _passwordUsername.value.ifBlank { null },
+                password = _passwordValue.value,
+                notes = _passwordNotes.value.ifBlank { null }
+            )
+            updatePassword(updatedItem)
+        } else {
+            addPassword(
+                title = _passwordName.value,
+                username = _passwordUsername.value.ifBlank { null },
+                passwordEncrypted = _passwordValue.value,
+                notes = _passwordNotes.value.ifBlank { null }
+            )
+        }
+        resetPasswordForm()
+    }
+
+    fun resetPasswordForm() {
+        originalPasswordItem = null
+        _passwordName.value = ""
+        _passwordUsername.value = ""
+        _passwordValue.value = ""
+        _passwordNotes.value = ""
+        _isEditing.value = false
+    }
 
     // --- FUNKCIA GENERÁTORA HESIEL ---
     private val charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#\$%^&*"
 
-    fun generateRandomPassword(length: Int = 12): String {
-        return (1..length)
+    fun generateAndSetRandomPassword(length: Int = 12) {
+        _passwordValue.value = (1..length)
             .map { charset.random(Random) }
             .joinToString("")
     }
 
-    // --- CRUD OPERÁCIE PRE HESLÁ (upravené pre imutabilitu) ---
-    fun addPassword(title: String, username: String?, passwordEncrypted: String, notes: String?) {
+    // --- CRUD OPERÁCIE ---
+    private fun addPassword(title: String, username: String?, passwordEncrypted: String, notes: String?) {
         val newItem = PasswordItem(
             id = getNextId(),
             name = title,
@@ -50,34 +150,29 @@ class PasswordsViewModel : ViewModel() {
             password = passwordEncrypted,
             notes = notes
         )
-        // OPRAVA: Vytvárame nový zoznam (+) namiesto modifikácie starého (.add)
         _passwordList.update { currentList -> currentList + newItem }
     }
 
-    fun updatePassword(updatedItem: PasswordItem) {
+    private fun updatePassword(updatedItem: PasswordItem) {
         _passwordList.update { currentList ->
-            // Prejdeme zoznam a nahradíme len ten prvok, ktorý sa zhoduje s id
             currentList.map { if (it.id == updatedItem.id) updatedItem else it }
         }
     }
 
     fun deletePassword(id: String) {
         _passwordList.update { currentList ->
-            // Vytvoríme nový zoznam, ktorý neobsahuje prvok s daným id
             currentList.filterNot { it.id == id }
+        }
+        // Ak mažeme práve zobrazené heslo, resetujeme aj stav pre detail
+        if (_selectedPassword.value?.id == id) {
+            _selectedPassword.value = null
         }
     }
 
-    fun getPasswordById(id: String): PasswordItem? {
-        return _passwordList.value.find { it.id == id }
-    }
-
-
     // =================================================================
-    // SEKCA PRE IP ADRESY (IpItem)
+    // SEKCA PRE IP ADRESY (IpItem) - bez zmeny
     // =================================================================
 
-    // OPRAVA: Používame MutableStateFlow s obyčajným List
     private val _ipList = MutableStateFlow(
         listOf(
             IpItem(id = "4", name = "Domáci Router", ipAddress = "192.168.1.1"),
@@ -86,29 +181,8 @@ class PasswordsViewModel : ViewModel() {
     )
     val ipList = _ipList.asStateFlow()
 
-    // --- CRUD OPERÁCIE PRE IP ADRESY (upravené pre imutabilitu) ---
     fun addIpAddress(name: String, ipAddress: String) {
-        val newItem = IpItem(
-            id = getNextId(),
-            name = name,
-            ipAddress = ipAddress
-        )
+        val newItem = IpItem(id = getNextId(), name = name, ipAddress = ipAddress)
         _ipList.update { currentList -> currentList + newItem }
-    }
-
-    fun updateIpAddress(updatedItem: IpItem) {
-        _ipList.update { currentList ->
-            currentList.map { if (it.id == updatedItem.id) updatedItem else it }
-        }
-    }
-
-    fun deleteIpAddress(id: String) {
-        _ipList.update { currentList ->
-            currentList.filterNot { it.id == id }
-        }
-    }
-
-    fun getIpAddressById(id: String): IpItem? {
-        return _ipList.value.find { it.id == id }
     }
 }
