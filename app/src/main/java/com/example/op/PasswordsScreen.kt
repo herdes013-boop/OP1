@@ -14,18 +14,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 
+
+// Hlavná obrazovka zostáva takmer bez zmeny
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PasswordsScreen(
     navController: NavController,
     viewModel: PasswordsViewModel,
     sharedViewModel: SharedViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val passwords by viewModel.passwordList.collectAsState()
     val ipAddresses by viewModel.ipList.collectAsState()
@@ -85,6 +90,7 @@ fun PasswordsScreen(
                 ) {
                     when (selectedTabIndex) {
                         0 -> items(passwords, key = { it.id }) { item ->
+                            // Používa sa už upravený PasswordListItem
                             PasswordListItem(
                                 item = item,
                                 onClick = { navController.navigate(Routes.passwordDetail(item.id)) }
@@ -120,56 +126,108 @@ fun PasswordsScreen(
     }
 }
 
+// ========================================================================
+// ===                   ZAČIATOK ZMIEN V `PasswordListItem`              ===
+// ========================================================================
 
+/**
+ * Pomocná funkcia, ktorá zobrazí text hesla a zafarbí číslice.
+ */
+@Composable
+private fun ColoredPasswordText(
+    password: String,
+    modifier: Modifier = Modifier,
+    defaultColor: Color = MaterialTheme.colorScheme.onSurface,
+    numberColor: Color = MaterialTheme.colorScheme.primary, // Farba pre číslice
+) {
+    val annotatedString = buildAnnotatedString {
+        password.forEach { char ->
+            if (char.isDigit()) {
+                // Ak je znak číslica, pridá ho s farbou pre čísla a tučným štýlom
+                withStyle(style = SpanStyle(color = numberColor, fontWeight = FontWeight.Bold)) {
+                    append(char)
+                }
+            } else {
+                // Inak ho pridá s predvolenou farbou
+                withStyle(style = SpanStyle(color = defaultColor)) {
+                    append(char)
+                }
+            }
+        }
+    }
+    Text(
+        text = annotatedString,
+        modifier = modifier,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis
+    )
+}
+
+/**
+ * Kompletne prepracovaný Composable pre položku v zozname hesiel.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PasswordListItem(item: PasswordItem, onClick: () -> Unit) {
-    val clipboardManager = LocalClipboardManager.current
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp) // Medzera medzi riadkami
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                item.username?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            IconButton(
-                onClick = { clipboardManager.setText(AnnotatedString(item.password)) }
+            // --- HORNÝ RIADOK: Názov služby ---
+            Text(
+                text = item.name,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            // --- SPODNÝ RIADOK: Používateľské meno a Heslo ---
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    Icons.Filled.ContentCopy,
-                    contentDescription = "Kopírovať heslo",
-                    tint = MaterialTheme.colorScheme.primary
+                // Používateľské meno (ak existuje)
+                item.username?.let {
+                    if (it.isNotBlank()) {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.secondary,
+                            // weight(1f) spôsobí, že meno zaberie voľné miesto
+                            modifier = Modifier.weight(1f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                }
+
+                // Heslo s farebnými číslami
+                ColoredPasswordText(
+                    password = item.password,
+                    // Ak meno neexistuje, heslo zaberie celý spodný riadok
+                    modifier = if (item.username.isNullOrBlank()) Modifier.weight(1f) else Modifier
                 )
             }
         }
     }
 }
 
+// ========================================================================
+// ===                    KONIEC ZMIEN V `PasswordListItem`               ===
+// ========================================================================
+
+
+// IpListItem zostáva bez zmeny
 @Composable
 fun IpListItem(item: IpItem, onClick: () -> Unit) {
     val clipboardManager = LocalClipboardManager.current
@@ -214,3 +272,4 @@ fun IpListItem(item: IpItem, onClick: () -> Unit) {
         }
     }
 }
+
