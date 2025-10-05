@@ -12,12 +12,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-
-// ... (poznámka o redeklarácii ostáva)
+import androidx.navigation.NavController
 
 // ... (getChannelIcon a ContactListItem ostávajú bez zmeny)
 fun getChannelIcon(channel: String?): ImageVector {
@@ -83,7 +82,7 @@ fun ContactListItem(contact: ContactItem, onItemClick: () -> Unit) {
 fun ContactsScreen(
     navController: NavController,
     viewModel: ContactsViewModel = viewModel(),
-    modifier: Modifier = Modifier // <-- KROK 1: PRIDANÝ PARAMETER
+    modifier: Modifier = Modifier
 ) {
     val searchQuery = viewModel.searchQuery
     val selectedTabFilter = viewModel.selectedTabFilter
@@ -92,16 +91,15 @@ fun ContactsScreen(
     val categories = viewModel.channelOptions.toList()
     val selectedTabIndex = categories.indexOf(selectedTabFilter)
 
-    // Aplikujeme modifier na hlavný Box kontajner, aby sa správne odsadil od líšt.
     Box(
-        modifier = modifier.fillMaxSize() // <-- KROK 2: APLIKOVANÝ MODIFIER
+        modifier = modifier.fillMaxSize()
     ) {
 
-        // Hlavný obsah obrazovky
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // 1. ScrollableTabRow (Záložky)
-            ScrollableTabRow(
+            // =========== KĽÚČOVÁ ZMENA JE TU ===========
+            // Použijeme TabRow namiesto ScrollableTabRow
+            TabRow(
                 selectedTabIndex = if (selectedTabIndex == -1) 0 else selectedTabIndex,
             ) {
                 categories.forEach { title ->
@@ -113,12 +111,19 @@ fun ContactsScreen(
                             }
                             viewModel.updateSelectedTabFilter(title)
                         },
-                        text = { Text(title) },
+                        // Pridané maxLines a overflow pre prípad veľmi dlhého textu
+                        text = {
+                            Text(
+                                text = title,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        },
                     )
                 }
             }
+            // ============================================
 
-            // 2. VYHĽADÁVACIE OKNO
             if (selectedTabFilter == ALL_CHANNELS_FILTER) {
                 OutlinedTextField(
                     value = searchQuery,
@@ -142,7 +147,6 @@ fun ContactsScreen(
                 )
             }
 
-            // 3. Zoznam kontaktov
             if (contacts.isEmpty()) {
                 val message = if (selectedTabFilter == ALL_CHANNELS_FILTER && searchQuery.isNotBlank()) {
                     "Nenašli sa žiadne kontakty pre vyhľadávanie \"$searchQuery\"."
@@ -186,7 +190,6 @@ fun ContactsScreen(
             }
         }
 
-        // FloatingActionButton
         FloatingActionButton(
             onClick = {
                 viewModel.resetForm()

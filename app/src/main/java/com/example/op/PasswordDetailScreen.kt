@@ -23,9 +23,7 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun PasswordDetailScreen(
-    // ========== ZMENA: PRIDANÝ NOVÝ PARAMETER `modifier` ==========
-    modifier: Modifier = Modifier, // Tento modifier bude obsahovať správny padding
-    // ==============================================================
+    modifier: Modifier = Modifier,
     passwordId: String,
     viewModel: PasswordsViewModel,
     sharedViewModel: SharedViewModel,
@@ -67,19 +65,17 @@ fun PasswordDetailScreen(
         return
     }
 
-    // ============ FINÁLNE A SPRÁVNE RIEŠENIE ============
-    // Box teraz preberá `modifier`, ktorý obsahuje `paddingValues` od Scaffold-u.
-    // Tým je zaručené, že obsah sa vykreslí na správnom mieste hneď na prvýkrát.
     Box(
-        modifier = modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize()
     ) {
+        // ======================= KĽÚČOVÁ ZMENA JE TU =======================
         Column(
-            // Vnútorný padding už len dopĺňa bočné a spodné odsadenie.
-            // Odsadenie zhora už rieši `modifier` na vonkajšom Boxe.
-            modifier = Modifier
+            // Pôvodný modifier zostáva, ale pridáme k nemu ďalšie odsadenie
+            modifier = modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                // KĽÚČOVÁ ZMENA: Natvrdo pridáme 56.dp zhora
+                .padding(top = 56.dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             DetailItem(label = "Názov služby", value = passwordItem.name)
@@ -93,6 +89,7 @@ fun PasswordDetailScreen(
                 }
             }
         }
+        // =====================================================================
 
         Box(
             modifier = Modifier
@@ -122,7 +119,6 @@ fun PasswordDetailScreen(
             }
         }
     }
-    // =======================================================
 
     if (showDeleteDialog) {
         AlertDialog(
