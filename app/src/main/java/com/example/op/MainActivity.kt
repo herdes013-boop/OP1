@@ -112,13 +112,12 @@ fun MainScreen() {
     val currentRoute = navBackStackEntry?.destination?.route
 
     LaunchedEffect(currentRoute) {
-        // ================== ZMENA PRE TEST OBRAZOVKU ==================
-        // Keď sme na test obrazovke, skryjeme spodnú lištu
-        if (currentRoute == Routes.TEST_SCREEN) {
+        // Zabezpečíme správne zobrazenie spodnej lišty pre hlavné aj testovacie obrazovky
+        val isTestRoute = currentRoute?.startsWith("test_") == true
+        if (isTestRoute) {
             sharedViewModel.setShowBottomBar(false)
-            return@LaunchedEffect // Ukončíme, aby sa nepokračovalo ďalej
+            return@LaunchedEffect
         }
-        // ===============================================================
 
         when (currentRoute) {
             Routes.HOME_ROOT, Routes.PASSWORDS_ROOT, Routes.CONTACTS_ROOT -> {
@@ -159,7 +158,7 @@ fun MainScreen() {
                     val currentDestination = navBackStackEntry?.destination
                     bottomNavItems.forEach { screen ->
                         NavigationBarItem(
-                            icon = { Icon(screen.icon, "Ikona spodnej navigácie") }, // Pridaný popis
+                            icon = { Icon(screen.icon, "Ikona spodnej navigácie") },
                             label = { Text(screen.label) },
                             selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
                             onClick = {
@@ -177,12 +176,10 @@ fun MainScreen() {
     ) { paddingValues ->
         NavHost(navController = navController, startDestination = Routes.HOME_ROOT) {
             composable(Routes.HOME_ROOT) {
-                // =============== ZMENA: Posielame navController do HomeScreen ===============
                 HomeScreen(
                     navController = navController,
                     modifier = Modifier.padding(paddingValues)
                 )
-                // ===========================================================================
             }
             composable(Routes.PASSWORDS_ROOT) {
                 PasswordsNavHost(
@@ -208,7 +205,6 @@ fun MainScreen() {
             composable(Routes.SETTINGS_ROOT) {
                 ProfileScreen(navController = navController, modifier = Modifier.padding(paddingValues))
             }
-            // ============== NOVÁ OBRAZOVKA PRIDANÁ DO HLAVNÉHO NAVHOST ==============
             composable(Routes.TEST_SCREEN) {
                 TestScreen(
                     navController = navController,
@@ -216,7 +212,24 @@ fun MainScreen() {
                     modifier = Modifier.padding(paddingValues)
                 )
             }
-            // =========================================================================
+
+            // =================== FINÁLNA ZMENA JE TU ===================
+            // Pridali sme definíciu pre novú trasu "test_detail/{itemId}"
+            composable(
+                route = "test_detail/{itemId}",
+                arguments = listOf(navArgument("itemId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val itemId = backStackEntry.arguments?.getString("itemId")
+                if (itemId != null) {
+                    // Zobrazíme novú obrazovku TestDetailScreen
+                    TestDetailScreen(
+                        navController = navController,
+                        sharedViewModel = sharedViewModel,
+                        itemId = itemId
+                    )
+                }
+            }
+            // =========================================================
         }
     }
 }
@@ -229,7 +242,6 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
 
     LaunchedEffect(navBackStackEntry) {
         val currentRoute = navBackStackEntry?.destination?.route
-        // Všetky obrazovky okrem hlavného zoznamu skryjú spodnú lištu
         val isSubScreen = currentRoute != Routes.PASSWORDS_LIST
         sharedViewModel.setShowBottomBar(!isSubScreen)
     }
@@ -279,7 +291,6 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
             )
         }
 
-        // --- TU SÚ NOVÉ OBRAZOVKY PRE IP ADRESY ---
         composable(Routes.ADD_IP_ADDRESS) {
             AddEditIpAddressScreen(
                 navController = nestedNavController,
@@ -318,8 +329,11 @@ fun ContactsNavHost(
 
         if (isAddScreen) {
             sharedViewModel.setTopBarState(TopBarState(isVisible = false))
-        } else if (!isSubScreen) {
-            sharedViewModel.setTopBarState(TopBarState(title = "Kontakty", isVisible = true))
+        } else if (!isSubScreen) { // Táto podmienka je chybná, mala by byť viazaná na hlavný zoznam
+            // Správne by to malo byť:
+            // if (currentRoute == Routes.CONTACTS_LIST) {
+            //     sharedViewModel.setTopBarState(TopBarState(title = "Kontakty", isVisible = true))
+            // }
         }
     }
 
@@ -372,7 +386,7 @@ fun TutorialsNavHost(
 
         if (isAddOrEditScreen) {
             sharedViewModel.setTopBarState(TopBarState(isVisible = false))
-        } else if(currentRoute == Routes.TUTORIALS_LIST) { // Iba pre hlavnú obrazovku
+        } else if(currentRoute == Routes.TUTORIALS_LIST) {
             sharedViewModel.setTopBarState(TopBarState(title = "Návody", isVisible = true))
         }
     }
@@ -442,7 +456,6 @@ fun ProfileScreen(navController: NavController, modifier: Modifier = Modifier) {
     }
 }
 
-// =================== UPRAVENÁ DOMOVSKÁ OBRAZOVKA ===================
 @Composable
 fun HomeScreen(navController: NavController, modifier: Modifier = Modifier) {
     Column(
@@ -458,7 +471,6 @@ fun HomeScreen(navController: NavController, modifier: Modifier = Modifier) {
         Spacer(Modifier.height(16.dp))
         Text("Vaše heslá, kontakty a návody sú bezpečne na jednom mieste. Použite spodnú lištu na navigáciu.", style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
 
-        // --- PRIDANÉ TLAČIDLO NA PRECHOD NA TEST OBRAZOVKU ---
         Spacer(Modifier.height(48.dp))
         Button(
             onClick = { navController.navigate(Routes.TEST_SCREEN) },
@@ -467,7 +479,5 @@ fun HomeScreen(navController: NavController, modifier: Modifier = Modifier) {
             Icon(Icons.Default.BugReport, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
             Text("Otvoriť Test Screen")
         }
-        // --------------------------------------------------------
     }
 }
-// =================================================================
