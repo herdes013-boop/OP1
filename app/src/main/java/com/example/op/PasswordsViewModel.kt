@@ -43,17 +43,36 @@ class PasswordsViewModel : ViewModel() {
     )
     val passwordList = _passwordList.asStateFlow()
 
+
     // =================================================================
-    // SEKCA: Stav pre Detail obrazovku
+    //         ZMENA: Metóda na okamžité získanie hesla
+    // =================================================================
+    /**
+     * OKAMŽITE vráti heslo podľa ID zo zoznamu, ktorý je už v pamäti.
+     * Toto je neblokujúca (synchrónna) operácia, pretože dáta už máme.
+     */
+    fun getPasswordById(id: String): PasswordItem? {
+        return _passwordList.value.find { it.id == id }
+    }
+    // =================================================================
+
+
+    // =================================================================
+    // SEKCA: Stav pre Detail obrazovku (Pôvodné metódy už nebudú potrebné pre detail)
     // =================================================================
 
     private val _selectedPassword = MutableStateFlow<PasswordItem?>(null)
     val selectedPassword = _selectedPassword.asStateFlow()
 
+    // Táto metóda je teraz redundantná pre zobrazenie detailu, ale nechávame ju pre prípad iného použitia.
     fun loadPasswordDetail(passwordId: String) {
         viewModelScope.launch {
             _selectedPassword.value = _passwordList.value.firstOrNull { it.id == passwordId }
         }
+    }
+    // Túto metódu už pre detail nepotrebujeme, ale môže byť užitočná inde.
+    fun clearSelectedPassword() {
+        _selectedPassword.value = null
     }
 
     // =================================================================
@@ -179,9 +198,7 @@ class PasswordsViewModel : ViewModel() {
             _selectedPassword.value = null
         }
     }
-    fun clearSelectedPassword() {
-        _selectedPassword.value = null
-    }
+
 
     // =================================================================
     // SEKCA PRE IP ADRESY (IpItem)

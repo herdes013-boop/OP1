@@ -1,6 +1,8 @@
 package com.example.op
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.VpnKey
@@ -12,15 +14,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditPasswordScreen(
+    modifier: Modifier = Modifier,
     navController: NavController,
     viewModel: PasswordsViewModel,
+    // ==============================================================
+    // ========== ZMENA: PRIDANÝ CHÝBAJÚCI PARAMETER ==========
+    sharedViewModel: SharedViewModel,
+    // ==============================================================
     passwordId: String? = null
 ) {
-    // Načítame dáta pre úpravu, ak je poskytnuté ID.
-    // LaunchedEffect sa spustí len raz, keď sa obrazovka prvýkrát načíta.
     LaunchedEffect(passwordId) {
         if (passwordId != null) {
             viewModel.loadPasswordForEditing(passwordId)
@@ -29,14 +33,12 @@ fun AddEditPasswordScreen(
         }
     }
 
-    // Pri odchode z obrazovky VŽDY resetujeme formulár, aby bol čistý pre ďalšie použitie.
     DisposableEffect(Unit) {
         onDispose {
             viewModel.resetPasswordForm()
         }
     }
 
-    // Získavame stavy priamo z ViewModelu
     val isEditing by viewModel.isEditing
     val passwordName by viewModel.passwordName
     val passwordUsername by viewModel.passwordUsername
@@ -44,11 +46,31 @@ fun AddEditPasswordScreen(
     val passwordNotes by viewModel.passwordNotes
     val isFormValid = viewModel.isPasswordFormValid
 
-    // --- Problém č.2: Dialóg pre neuložené zmeny ---
     var showUnsavedChangesDialog by remember { mutableStateOf(false) }
 
+    // DYNAMICKÉ NASTAVENIE HORNEJ LIŠTY (teraz už bude fungovať)
+    LaunchedEffect(isEditing, viewModel.hasUnsavedChanges) {
+        val title = if (isEditing) "Upraviť heslo" else "Nové heslo"
+        sharedViewModel.setTopBarState(
+            TopBarState(
+                title = title,
+                isVisible = true,
+                navigationIcon = {
+                    IconButton(onClick = {
+                        if (viewModel.hasUnsavedChanges) {
+                            showUnsavedChangesDialog = true
+                        } else {
+                            navController.popBackStack()
+                        }
+                    }) {
+                        Icon(Icons.Default.ArrowBack, "Naspäť")
+                    }
+                }
+            )
+        )
+    }
+
     if (showUnsavedChangesDialog) {
-        // Môžeme použiť existujúci UnsavedChangesDialog, ak ho máme, alebo vytvoriť nový
         AlertDialog(
             onDismissRequest = { showUnsavedChangesDialog = false },
             title = { Text("Neuložené zmeny") },
@@ -65,82 +87,61 @@ fun AddEditPasswordScreen(
         )
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(if (isEditing) "Upraviť heslo" else "Nové heslo") },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        // --- Problém č.2: Kontrola pred odchodom ---
-                        if (viewModel.hasUnsavedChanges) {
-                            showUnsavedChangesDialog = true
-                        } else {
-                            navController.popBackStack()
-                        }
-                    }) {
-                        Icon(Icons.Filled.ArrowBack, "Naspäť")
-                    }
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Spacer(Modifier.height(8.dp))
+
+        OutlinedTextField(
+            value = passwordName,
+            onValueChange = { viewModel.onPasswordNameChange(it) },
+            label = { Text("Názov služby") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+
+        OutlinedTextField(
+            value = passwordUsername,
+            onValueChange = { viewModel.onPasswordUsernameChange(it) },
+            label = { Text("Používateľské meno / E-mail") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+
+        OutlinedTextField(
+            value = passwordValue,
+            onValueChange = { viewModel.onPasswordValueChange(it) },
+            label = { Text("Heslo") },
+            modifier = Modifier.fillMaxWidth(),
+            trailingIcon = {
+                IconButton(onClick = { viewModel.generateAndSetRandomPassword() }) {
+                    Icon(Icons.Filled.VpnKey, "Generovať heslo")
                 }
-            )
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Spacer(Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = passwordName,
-                onValueChange = { viewModel.onPasswordNameChange(it) },
-                label = { Text("Názov služby") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-
-            OutlinedTextField(
-                value = passwordUsername,
-                onValueChange = { viewModel.onPasswordUsernameChange(it) },
-                label = { Text("Používateľské meno / E-mail") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-
-            OutlinedTextField(
-                value = passwordValue,
-                onValueChange = { viewModel.onPasswordValueChange(it) },
-                label = { Text("Heslo") },
-                modifier = Modifier.fillMaxWidth(),
-                trailingIcon = {
-                    IconButton(onClick = { viewModel.generateAndSetRandomPassword() }) {
-                        Icon(Icons.Filled.VpnKey, "Generovať heslo")
-                    }
-                }
-            )
-
-            OutlinedTextField(
-                value = passwordNotes,
-                onValueChange = { viewModel.onPasswordNotesChange(it) },
-                label = { Text("Poznámky (voliteľné)") },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            Button(
-                onClick = {
-                    viewModel.savePassword()
-                    navController.popBackStack()
-                },
-                modifier = Modifier.fillMaxWidth(),
-                // --- Problém č.1: Povolenie tlačidla ---
-                enabled = isFormValid
-            ) {
-                Text("Uložiť")
             }
+        )
+
+        OutlinedTextField(
+            value = passwordNotes,
+            onValueChange = { viewModel.onPasswordNotesChange(it) },
+            label = { Text("Poznámky (voliteľné)") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        Button(
+            onClick = {
+                viewModel.savePassword()
+                navController.popBackStack()
+            },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = isFormValid
+        ) {
+            Text("Uložiť")
         }
     }
 }

@@ -30,9 +30,6 @@ fun PasswordsScreen(
     val passwords by viewModel.passwordList.collectAsState()
     val ipAddresses by viewModel.ipList.collectAsState()
 
-    // --- TU JE ZMENA č.1 ---
-    // Už nepoužívame `var selectedTabIndex by remember...`
-    // Namiesto toho berieme stav priamo z ViewModelu.
     val selectedTabIndex by viewModel.selectedTabIndex
     val tabs = listOf("Heslá", "IP Adresy")
 
@@ -63,8 +60,6 @@ fun PasswordsScreen(
                 tabs.forEachIndexed { index, title ->
                     Tab(
                         selected = selectedTabIndex == index,
-                        // --- TU JE ZMENA č.2 ---
-                        // Pri kliknutí voláme funkciu z ViewModelu.
                         onClick = { viewModel.onTabSelected(index) },
                         text = { Text(title) }
                     )
@@ -110,10 +105,8 @@ fun PasswordsScreen(
             onClick = {
                 when (selectedTabIndex) {
                     0 -> navController.navigate(Routes.ADD_PASSWORD)
-                    // --- TU JE ZMENA č.3 ---
-                    // Keď klikneme na +, povieme ViewModelu, aby si to zapamätal.
                     1 -> {
-                        viewModel.onTabSelected(1) // Explicitne nastavíme, aby sme boli na IP tabe
+                        viewModel.onTabSelected(1)
                         navController.navigate(Routes.ADD_IP_ADDRESS)
                     }
                 }
@@ -128,7 +121,6 @@ fun PasswordsScreen(
 }
 
 
-// Composable funkcie PasswordListItem a IpListItem zostávajú bez zmeny
 @Composable
 fun PasswordListItem(item: PasswordItem, onClick: () -> Unit) {
     val clipboardManager = LocalClipboardManager.current

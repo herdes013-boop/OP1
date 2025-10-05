@@ -48,12 +48,8 @@ object Routes {
     const val CONTACTS_ROOT = "contacts_root"
     const val TUTORIALS_ROOT = "tutorials_root"
     const val SETTINGS_ROOT = "settings_root"
-
-    // ================== NOVÁ TRASA PRE TEST OBRAZOVKU ==================
     const val TEST_SCREEN = "test_screen"
-    // =================================================================
 
-    // --- HESLÁ ---
     const val PASSWORDS_LIST = "passwords_list"
     const val ADD_PASSWORD = "add_password"
     const val PASSWORD_DETAIL = "password_detail/{passwordId}"
@@ -61,19 +57,16 @@ object Routes {
     fun passwordDetail(passwordId: String) = "password_detail/$passwordId"
     fun editPassword(passwordId: String) = "edit_password/$passwordId"
 
-    // --- IP ADRESY (NOVÉ) ---
     const val ADD_IP_ADDRESS = "add_ip_address"
     const val EDIT_IP_ADDRESS = "edit_ip_address/{ipId}"
     fun editIpAddress(ipId: String) = "edit_ip_address/$ipId"
 
-    // --- KONTAKTY ---
     const val CONTACTS_LIST = "contacts_list"
     const val ADD_CONTACT = "add_contact"
     const val EDIT_CONTACT = "edit_contact/{contactId}"
     fun editContact(contactId: Int) = "edit_contact/$contactId"
     const val MANAGE_CHANNELS = "manage_channels"
 
-    // --- NÁVODY ---
     const val TUTORIALS_LIST = "tutorials_list"
     const val TUTORIAL_DETAIL = "tutorial_detail/{tutorialId}"
     fun tutorialDetail(tutorialId: String) = "tutorial_detail/$tutorialId"
@@ -112,7 +105,6 @@ fun MainScreen() {
     val currentRoute = navBackStackEntry?.destination?.route
 
     LaunchedEffect(currentRoute) {
-        // Zabezpečíme správne zobrazenie spodnej lišty pre hlavné aj testovacie obrazovky
         val isTestRoute = currentRoute?.startsWith("test_") == true
         if (isTestRoute) {
             sharedViewModel.setShowBottomBar(false)
@@ -212,16 +204,12 @@ fun MainScreen() {
                     modifier = Modifier.padding(paddingValues)
                 )
             }
-
-            // =================== FINÁLNA ZMENA JE TU ===================
-            // Pridali sme definíciu pre novú trasu "test_detail/{itemId}"
             composable(
                 route = "test_detail/{itemId}",
                 arguments = listOf(navArgument("itemId") { type = NavType.StringType })
             ) { backStackEntry ->
                 val itemId = backStackEntry.arguments?.getString("itemId")
                 if (itemId != null) {
-                    // Zobrazíme novú obrazovku TestDetailScreen
                     TestDetailScreen(
                         navController = navController,
                         sharedViewModel = sharedViewModel,
@@ -229,7 +217,6 @@ fun MainScreen() {
                     )
                 }
             }
-            // =========================================================
         }
     }
 }
@@ -242,17 +229,18 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
 
     LaunchedEffect(navBackStackEntry) {
         val currentRoute = navBackStackEntry?.destination?.route
+        // Riadenie spodnej lišty zostáva rovnaké
         val isSubScreen = currentRoute != Routes.PASSWORDS_LIST
         sharedViewModel.setShowBottomBar(!isSubScreen)
     }
 
     NavHost(
         navController = nestedNavController,
-        startDestination = Routes.PASSWORDS_LIST,
-        modifier = Modifier.padding(paddingValues)
+        startDestination = Routes.PASSWORDS_LIST
     ) {
         composable(Routes.PASSWORDS_LIST) {
             PasswordsScreen(
+                modifier = Modifier.padding(paddingValues),
                 navController = nestedNavController,
                 viewModel = viewModel,
                 sharedViewModel = sharedViewModel
@@ -265,6 +253,7 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
             val passwordId = backStackEntry.arguments?.getString("passwordId")
             if (passwordId != null) {
                 PasswordDetailScreen(
+                    modifier = Modifier.padding(paddingValues),
                     passwordId = passwordId,
                     viewModel = viewModel,
                     sharedViewModel = sharedViewModel,
@@ -275,8 +264,10 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
         }
         composable(Routes.ADD_PASSWORD) {
             AddEditPasswordScreen(
+                modifier = Modifier.padding(paddingValues),
                 navController = nestedNavController,
-                viewModel = viewModel
+                viewModel = viewModel,
+                sharedViewModel = sharedViewModel // <--- TOTO DOPLŇTE
             )
         }
         composable(
@@ -285,16 +276,20 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
         ) { backStackEntry ->
             val passwordId = backStackEntry.arguments?.getString("passwordId")
             AddEditPasswordScreen(
+                modifier = Modifier.padding(paddingValues),
                 navController = nestedNavController,
                 viewModel = viewModel,
-                passwordId = passwordId
+                passwordId = passwordId,
+                sharedViewModel = sharedViewModel // <--- TOTO DOPLŇTE
             )
         }
 
         composable(Routes.ADD_IP_ADDRESS) {
             AddEditIpAddressScreen(
+                modifier = Modifier.padding(paddingValues),
                 navController = nestedNavController,
-                viewModel = viewModel
+                viewModel = viewModel,
+                sharedViewModel = sharedViewModel // <--- TOTO DOPLŇTE
             )
         }
         composable(
@@ -303,13 +298,17 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
         ) { backStackEntry ->
             val ipId = backStackEntry.arguments?.getString("ipId")
             AddEditIpAddressScreen(
+                modifier = Modifier.padding(paddingValues),
                 navController = nestedNavController,
                 viewModel = viewModel,
-                ipId = ipId
+                ipId = ipId,
+                sharedViewModel = sharedViewModel // <--- TOTO DOPLŇTE
             )
         }
     }
 }
+
+// Ostatné NavHosty (Contacts, Tutorials) a ďalšie funkcie zostávajú bez zmeny
 
 @Composable
 fun ContactsNavHost(
@@ -329,11 +328,8 @@ fun ContactsNavHost(
 
         if (isAddScreen) {
             sharedViewModel.setTopBarState(TopBarState(isVisible = false))
-        } else if (!isSubScreen) { // Táto podmienka je chybná, mala by byť viazaná na hlavný zoznam
-            // Správne by to malo byť:
-            // if (currentRoute == Routes.CONTACTS_LIST) {
-            //     sharedViewModel.setTopBarState(TopBarState(title = "Kontakty", isVisible = true))
-            // }
+        } else if (currentRoute == Routes.CONTACTS_LIST) {
+            sharedViewModel.setTopBarState(TopBarState(title = "Kontakty", isVisible = true))
         }
     }
 

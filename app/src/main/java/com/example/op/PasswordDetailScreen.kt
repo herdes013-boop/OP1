@@ -23,27 +23,26 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun PasswordDetailScreen(
+    // ========== ZMENA: PRIDANÝ NOVÝ PARAMETER `modifier` ==========
+    modifier: Modifier = Modifier, // Tento modifier bude obsahovať správny padding
+    // ==============================================================
     passwordId: String,
     viewModel: PasswordsViewModel,
     sharedViewModel: SharedViewModel,
     onNavigateToEdit: (String) -> Unit,
     onBack: () -> Unit
 ) {
-    val passwordItem by viewModel.selectedPassword.collectAsState()
+    val passwordItem = remember(passwordId) {
+        viewModel.getPasswordById(passwordId)
+    }
 
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
 
-    // ===== KĽÚČOVÁ ZMENA JE TU =====
-
-    // Tento `LaunchedEffect` sa spustí iba raz, hneď pri vstupe na obrazovku.
-    LaunchedEffect(Unit) {
-        // 1. OKAMŽITE nastavíme správnu štruktúru hornej lišty.
-        //    Tým "prebijeme" starú lištu z `PasswordsScreen`.
-        //    Titulok bude dočasne prázdny.
+    LaunchedEffect(passwordItem) {
         sharedViewModel.setTopBarState(
             TopBarState(
-                title = " ", // Dôležitá medzera, aby sa titulok nezrútil
+                title = passwordItem?.name ?: "Detail",
                 isVisible = true,
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -51,56 +50,44 @@ fun PasswordDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showMenu = true }) {
-                        Icon(Icons.Default.MoreVert, "Viac")
+                    if (passwordItem != null) {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Default.MoreVert, "Viac")
+                        }
                     }
                 }
             )
         )
-
-        // 2. Až TERAZ povieme ViewModelu, aby začal načítavať dáta.
-        viewModel.loadPasswordDetail(passwordId)
     }
 
-    // Tento druhý `LaunchedEffect` už len čaká na dáta a doplní titulok.
-    LaunchedEffect(passwordItem) {
-        if (passwordItem != null) {
-            // Použijeme našu novú funkciu, ktorá zmení IBA titulok.
-            sharedViewModel.updateTopBarTitle(passwordItem!!.name)
-        }
-    }
-
-    // Tento `DisposableEffect` "uprace" po odchode z obrazovky.
-    DisposableEffect(Unit) {
-        onDispose {
-            // Vyčistíme ViewModel, aby si nepamätal posledné heslo.
-            viewModel.clearSelectedPassword()
-        }
-    }
-    // ===== KONIEC ZMIEN =====
-
-    // Ak sa heslo nenašlo alebo sa ešte nenačítalo, zobrazíme prázdnu schránku.
-    // Horná lišta je už ale nastavená správne vďaka prvému LaunchedEffect.
     if (passwordItem == null) {
-        Box(modifier = Modifier.fillMaxSize())
+        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("Chyba: Heslo sa nenašlo.")
+        }
         return
     }
 
-    // --- Zvyšok UI zostáva bez akejkoľvek zmeny ---
-    Box(modifier = Modifier.fillMaxSize()) {
+    // ============ FINÁLNE A SPRÁVNE RIEŠENIE ============
+    // Box teraz preberá `modifier`, ktorý obsahuje `paddingValues` od Scaffold-u.
+    // Tým je zaručené, že obsah sa vykreslí na správnom mieste hneď na prvýkrát.
+    Box(
+        modifier = modifier.fillMaxSize()
+    ) {
         Column(
+            // Vnútorný padding už len dopĺňa bočné a spodné odsadenie.
+            // Odsadenie zhora už rieši `modifier` na vonkajšom Boxe.
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(rememberScrollState())
+                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            DetailItem(label = "Názov služby", value = passwordItem!!.name)
-            passwordItem!!.username?.let {
+            DetailItem(label = "Názov služby", value = passwordItem.name)
+            passwordItem.username?.let {
                 DetailItem(label = "Používateľské meno / E-mail", value = it, canBeCopied = true)
             }
-            DetailItem(label = "Heslo", value = "••••••••", displayValue = passwordItem!!.password, canBeCopied = true)
-            passwordItem!!.notes?.let {
+            DetailItem(label = "Heslo", value = "••••••••", displayValue = passwordItem.password, canBeCopied = true)
+            passwordItem.notes?.let {
                 if (it.isNotBlank()) {
                     DetailItem(label = "Poznámky", value = it)
                 }
@@ -135,17 +122,19 @@ fun PasswordDetailScreen(
             }
         }
     }
+    // =======================================================
 
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             title = { Text("Zmazať heslo") },
-            text = { Text("Naozaj chcete natrvalo zmazať toto heslo?") },
+            text = { Text("Naozaj chcete natrvalo zmazať heslo '${passwordItem.name}'?") },
             confirmButton = {
                 Button(
                     onClick = {
                         viewModel.deletePassword(passwordId)
                         showDeleteDialog = false
+                        onBack()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) { Text("Zmazať") }
@@ -157,7 +146,7 @@ fun PasswordDetailScreen(
     }
 }
 
-// Funkcia DetailItem zostáva bez zmeny
+// DetailItem zostáva bez zmeny
 @Composable
 private fun DetailItem(
     label: String,
@@ -189,4 +178,3 @@ private fun DetailItem(
         Divider()
     }
 }
-
