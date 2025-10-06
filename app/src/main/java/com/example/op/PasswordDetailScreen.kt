@@ -5,7 +5,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
@@ -15,9 +14,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -68,28 +69,27 @@ fun PasswordDetailScreen(
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        // ======================= KĽÚČOVÁ ZMENA JE TU =======================
         Column(
-            // Pôvodný modifier zostáva, ale pridáme k nemu ďalšie odsadenie
             modifier = modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                // KĽÚČOVÁ ZMENA: Natvrdo pridáme 56.dp zhora
-                .padding(top = 56.dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
+                .padding(top = 16.dp, start = 16.dp, end = 16.dp, bottom = 16.dp), // Zmazané fixné odsadenie zhora
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // === ZMENA č. 1: Odstránenie `canBeCopied` a zmena zobrazenia hesla ===
             DetailItem(label = "Názov služby", value = passwordItem.name)
             passwordItem.username?.let {
-                DetailItem(label = "Používateľské meno / E-mail", value = it, canBeCopied = true)
+                // Ikona kopírovania odstránená
+                DetailItem(label = "Používateľské meno / E-mail", value = it)
             }
-            DetailItem(label = "Heslo", value = "••••••••", displayValue = passwordItem.password, canBeCopied = true)
+            // Zobrazenie hesla ako farebného textu, ikona kopírovania odstránená
+            PasswordDetailItem(label = "Heslo", password = passwordItem.password)
             passwordItem.notes?.let {
                 if (it.isNotBlank()) {
                     DetailItem(label = "Poznámky", value = it)
                 }
             }
         }
-        // =====================================================================
 
         Box(
             modifier = Modifier
@@ -142,15 +142,55 @@ fun PasswordDetailScreen(
     }
 }
 
-// DetailItem zostáva bez zmeny
+/**
+ * ZMENA č. 2: Upravená funkcia `DetailItem`, ktorá už nepotrebuje parametre
+ * `displayValue` a `canBeCopied`. Je teraz oveľa jednoduchšia.
+ */
 @Composable
 private fun DetailItem(
     label: String,
-    value: String,
-    displayValue: String = value,
-    canBeCopied: Boolean = false
+    value: String
 ) {
-    val clipboardManager = LocalClipboardManager.current
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary
+        )
+        // Riadok bol zjednodušený, už neobsahuje logiku pre ikonu.
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
+            fontWeight = FontWeight.SemiBold,
+        )
+        Divider()
+    }
+}
+
+/**
+ * ZMENA č. 3: NOVÁ pomocná funkcia špeciálne pre zobrazenie hesla s farebnými číslami.
+ * Využíva rovnaký princíp ako `ColoredPasswordText` zo zoznamu.
+ */
+@Composable
+private fun PasswordDetailItem(
+    label: String,
+    password: String,
+    defaultColor: Color = LocalContentColor.current,
+    numberColor: Color = MaterialTheme.colorScheme.primary
+) {
+    val annotatedString = buildAnnotatedString {
+        password.forEach { char ->
+            if (char.isDigit()) {
+                withStyle(style = SpanStyle(color = numberColor, fontWeight = FontWeight.Bold)) {
+                    append(char)
+                }
+            } else {
+                withStyle(style = SpanStyle(color = defaultColor)) {
+                    append(char)
+                }
+            }
+        }
+    }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -158,19 +198,11 @@ private fun DetailItem(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.primary
         )
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.weight(1f)
-            )
-            if (canBeCopied) {
-                IconButton(onClick = { clipboardManager.setText(AnnotatedString(displayValue)) }) {
-                    Icon(Icons.Default.ContentCopy, "Kopírovať")
-                }
-            }
-        }
+        Text(
+            text = annotatedString,
+            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
+            fontWeight = FontWeight.SemiBold
+        )
         Divider()
     }
 }
