@@ -25,10 +25,11 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditContactScreen(
+    // ✅ Obrazovka prijíma modifier, presne ako pri heslách
+    modifier: Modifier = Modifier,
     navController: NavController,
     contactId: Int,
     viewModel: ContactsViewModel = viewModel(),
-    // pridame SharedViewModel pre komunikaciu s TopAppBar
     sharedViewModel: SharedViewModel,
     onBack: () -> Unit
 ) {
@@ -52,7 +53,6 @@ fun EditContactScreen(
 
     val hasUnsavedChanges = localContact != originalContact
 
-    // --- Funkcie ---
     fun showSavedSnackbar() {
         coroutineScope.launch {
             snackbarHostState.showSnackbar("Kontakt bol úspešne uložený")
@@ -61,6 +61,7 @@ fun EditContactScreen(
 
     fun saveContactAndStay() {
         viewModel.updateContact(localContact)
+        // Resetujeme "originálny" stav, aby `hasUnsavedChanges` bolo false
         originalContact = localContact.copy()
         showSavedSnackbar()
     }
@@ -73,7 +74,6 @@ fun EditContactScreen(
         }
     }
 
-    // --- Logika pre nastavenie hornej lišty ---
     LaunchedEffect(localContact, hasUnsavedChanges) {
         val contactName = listOfNotNull(localContact.firstName, localContact.lastName)
             .joinToString(" ")
@@ -103,96 +103,92 @@ fun EditContactScreen(
 
     BackHandler(onBack = ::handleBackNavigation)
 
-    // --- Zvyšok UI ---
-    Scaffold(
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
-        // TopAppBar je odtialto odstranena
-    ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(16.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // ... vsetky OutlinedTextFieldy zostavaju tu bez zmeny ...
-                OutlinedTextField(
-                    value = localContact.firstName.orEmpty(),
-                    onValueChange = { localContact = localContact.copy(firstName = it) },
-                    label = { Text("Meno") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = localContact.lastName.orEmpty(),
-                    onValueChange = { localContact = localContact.copy(lastName = it) },
-                    label = { Text("Priezvisko") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                // ... atd ...
-                OutlinedTextField(
-                    value = localContact.phone.orEmpty(),
-                    onValueChange = { localContact = localContact.copy(phone = it) },
-                    label = { Text("Telefónne číslo") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = localContact.email.orEmpty(),
-                    onValueChange = { localContact = localContact.copy(email = it) },
-                    label = { Text("Email") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = localContact.function.orEmpty(),
-                    onValueChange = { localContact = localContact.copy(function = it) },
-                    label = { Text("Funkcia/Pozícia") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = localContact.notes.orEmpty(),
-                    onValueChange = { localContact = localContact.copy(notes = it) },
-                    label = { Text("Poznámky") },
-                    minLines = 3,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                val selectedChannelValue: String = localContact.channel ?: viewModel.channelOptions.first()
-
-                ChannelDropdown(
-                    selectedChannel = selectedChannelValue,
-                    onChannelSelected = { localContact = localContact.copy(channel = it) },
-                    channelOptions = viewModel.channelOptions
-                )
-            }
-
-            // Dropdown menu
-            DropdownMenu(
-                expanded = showMenu,
-                onDismissRequest = { showMenu = false },
-                modifier = Modifier.align(Alignment.TopEnd)
-            ) {
-                DropdownMenuItem(
-                    text = { Text("Zmazať") },
-                    onClick = {
-                        showMenu = false
-                        showDeleteDialog = true
-                    },
-                    leadingIcon = { Icon(Icons.Default.Delete, "Zmazať", tint = MaterialTheme.colorScheme.error) }
-                )
-            }
+    // ✅✅✅ ZMENA: Už tu nie je Scaffold! ✅✅✅
+    Box(
+        // Aplikujeme modifier z parametra, ktorý obsahuje správny padding
+        modifier = modifier.fillMaxSize()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp) // Len náš vnútorný padding
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Formulár zostáva bez zmeny
+            OutlinedTextField(
+                value = localContact.firstName.orEmpty(),
+                onValueChange = { localContact = localContact.copy(firstName = it) },
+                label = { Text("Meno") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = localContact.lastName.orEmpty(),
+                onValueChange = { localContact = localContact.copy(lastName = it) },
+                label = { Text("Priezvisko") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = localContact.phone.orEmpty(),
+                onValueChange = { localContact = localContact.copy(phone = it) },
+                label = { Text("Telefónne číslo") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = localContact.email.orEmpty(),
+                onValueChange = { localContact = localContact.copy(email = it) },
+                label = { Text("Email") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = localContact.function.orEmpty(),
+                onValueChange = { localContact = localContact.copy(function = it) },
+                label = { Text("Funkcia/Pozícia") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = localContact.notes.orEmpty(),
+                onValueChange = { localContact = localContact.copy(notes = it) },
+                label = { Text("Poznámky") },
+                minLines = 3,
+                modifier = Modifier.fillMaxWidth()
+            )
+            val selectedChannelValue: String = localContact.channel ?: viewModel.channelOptions.first()
+            ChannelDropdown(
+                selectedChannel = selectedChannelValue,
+                onChannelSelected = { localContact = localContact.copy(channel = it) },
+                channelOptions = viewModel.channelOptions
+            )
         }
+
+        // Dropdown menu a SnackbarHost sú zarovnané v Boxe
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false },
+            modifier = Modifier.align(Alignment.TopEnd)
+        ) {
+            DropdownMenuItem(
+                text = { Text("Zmazať") },
+                onClick = {
+                    showMenu = false
+                    showDeleteDialog = true
+                },
+                leadingIcon = { Icon(Icons.Default.Delete, "Zmazať", tint = MaterialTheme.colorScheme.error) }
+            )
+        }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
     }
 
-    // ... Vsetky dialogy zostavaju bez zmeny ...
+    // Dialogy zostávajú bez zmeny
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
@@ -232,7 +228,6 @@ fun EditContactScreen(
     }
 }
 
-// ChannelDropdown zostava bez zmeny...
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChannelDropdown(
@@ -277,4 +272,3 @@ fun ChannelDropdown(
         }
     }
 }
-

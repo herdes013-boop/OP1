@@ -138,7 +138,7 @@ fun MainScreen() {
                     navigationIcon = { topBarState.navigationIcon?.invoke() },
                     actions = { topBarState.actions?.invoke() },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = TelekomMagenta, // <--- ZMENENÉ!
+                        containerColor = TelekomMagenta,
                         titleContentColor = Color.White,
                         navigationIconContentColor = Color.White,
                         actionIconContentColor = Color.White
@@ -231,7 +231,6 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
 
     LaunchedEffect(navBackStackEntry) {
         val currentRoute = navBackStackEntry?.destination?.route
-        // Riadenie spodnej lišty zostáva rovnaké
         val isSubScreen = currentRoute != Routes.PASSWORDS_LIST
         sharedViewModel.setShowBottomBar(!isSubScreen)
     }
@@ -269,7 +268,7 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
                 modifier = Modifier.padding(paddingValues),
                 navController = nestedNavController,
                 viewModel = viewModel,
-                sharedViewModel = sharedViewModel // <--- TOTO DOPLŇTE
+                sharedViewModel = sharedViewModel
             )
         }
         composable(
@@ -282,16 +281,15 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
                 navController = nestedNavController,
                 viewModel = viewModel,
                 passwordId = passwordId,
-                sharedViewModel = sharedViewModel // <--- TOTO DOPLŇTE
+                sharedViewModel = sharedViewModel
             )
         }
-
         composable(Routes.ADD_IP_ADDRESS) {
             AddEditIpAddressScreen(
                 modifier = Modifier.padding(paddingValues),
                 navController = nestedNavController,
                 viewModel = viewModel,
-                sharedViewModel = sharedViewModel // <--- TOTO DOPLŇTE
+                sharedViewModel = sharedViewModel
             )
         }
         composable(
@@ -304,14 +302,13 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
                 navController = nestedNavController,
                 viewModel = viewModel,
                 ipId = ipId,
-                sharedViewModel = sharedViewModel // <--- TOTO DOPLŇTE
+                sharedViewModel = sharedViewModel
             )
         }
     }
 }
 
-// Ostatné NavHosty (Contacts, Tutorials) a ďalšie funkcie zostávajú bez zmeny
-
+// ✅✅✅ JEDINÁ ZMENA JE V TOMTO BLOKU ✅✅✅
 @Composable
 fun ContactsNavHost(
     viewModel: ContactsViewModel,
@@ -335,22 +332,31 @@ fun ContactsNavHost(
         }
     }
 
-    NavHost(nestedNavController, startDestination = Routes.CONTACTS_LIST, modifier = Modifier.padding(paddingValues)) {
+    // ✅ ZMENA: modifier je PREČ z NavHost-u.
+    NavHost(nestedNavController, startDestination = Routes.CONTACTS_LIST) {
         composable(Routes.CONTACTS_LIST) {
+            // ✅ paddingValues sa aplikuje priamo na obrazovku
             ContactsScreen(
+                modifier = Modifier.padding(paddingValues),
                 navController = nestedNavController,
                 viewModel = viewModel
             )
         }
         composable(Routes.ADD_CONTACT) {
-            AddContactScreen(navController = nestedNavController, viewModel = viewModel)
+            // ✅ OPRAVA: Odstránili sme modifier
+            AddContactScreen(
+                navController = nestedNavController,
+                viewModel = viewModel
+            )
         }
         composable(
             route = Routes.EDIT_CONTACT,
             arguments = listOf(navArgument("contactId") { type = NavType.IntType })
         ) { backStackEntry ->
             val contactId = backStackEntry.arguments?.getInt("contactId") ?: 0
+            // ✅ paddingValues sa aplikuje priamo na obrazovku
             EditContactScreen(
+                modifier = Modifier.padding(paddingValues),
                 navController = nestedNavController,
                 contactId = contactId,
                 viewModel = viewModel,
@@ -359,6 +365,7 @@ fun ContactsNavHost(
             )
         }
         composable(Routes.MANAGE_CHANNELS) {
+            // ✅ OPRAVA: Odstránili sme modifier
             ManageChannelsScreen(
                 viewModel = viewModel,
                 onBack = { nestedNavController.popBackStack() }
@@ -391,11 +398,11 @@ fun TutorialsNavHost(
 
     NavHost(
         navController = nestedNavController,
-        startDestination = Routes.TUTORIALS_LIST,
-        modifier = Modifier.padding(paddingValues)
+        startDestination = Routes.TUTORIALS_LIST
     ) {
         composable(Routes.TUTORIALS_LIST) {
             TutorialsScreen(
+                modifier = Modifier.padding(paddingValues),
                 navController = nestedNavController,
                 viewModel = tutorialsViewModel
             )
@@ -406,6 +413,7 @@ fun TutorialsNavHost(
         ) { backStackEntry ->
             val tutorialId = backStackEntry.arguments?.getString("tutorialId")
             TutorialDetailScreen(
+                modifier = Modifier.padding(paddingValues),
                 navController = nestedNavController,
                 tutorialsViewModel = tutorialsViewModel,
                 sharedViewModel = sharedViewModel,
@@ -417,6 +425,7 @@ fun TutorialsNavHost(
         }
         composable(Routes.ADD_TUTORIAL) {
             AddTutorialScreen(
+                modifier = Modifier.padding(paddingValues),
                 navController = nestedNavController,
                 tutorialsViewModel = tutorialsViewModel,
                 sharedViewModel = sharedViewModel
@@ -427,6 +436,7 @@ fun TutorialsNavHost(
             arguments = listOf(navArgument("tutorialId") { type = NavType.StringType })
         ) { backStackEntry ->
             AddTutorialScreen(
+                modifier = Modifier.padding(paddingValues),
                 navController = nestedNavController,
                 tutorialsViewModel = tutorialsViewModel,
                 sharedViewModel = sharedViewModel
@@ -479,3 +489,4 @@ fun HomeScreen(navController: NavController, modifier: Modifier = Modifier) {
         }
     }
 }
+
