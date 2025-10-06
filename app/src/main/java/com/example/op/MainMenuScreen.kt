@@ -1,5 +1,6 @@
 package com.example.op
 
+import com.example.op.ui.theme.TelekomMagenta
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
@@ -9,7 +10,9 @@ import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import com.example.op.ui.theme.TelekomMagenta // Pre prístup k farbe
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -18,10 +21,9 @@ import androidx.navigation.NavController
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainMenuScreen(navController: NavController) {
+    // ❌ Odstránili sme .systemBarsPadding()
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .systemBarsPadding()
+        modifier = Modifier.fillMaxSize()
     ) {
 
         // --- 1. Top Bar / Hero sekcia ---
@@ -31,28 +33,36 @@ fun MainMenuScreen(navController: NavController) {
                     Text(
                         text = "Dobrý deň,",
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        // Farba sa teraz berie z `titleContentColor` nižšie
                     )
                     Text(
                         text = "Ján Novák",
                         style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        // Farba sa teraz berie z `titleContentColor` nižšie
                     )
                 }
             },
+            // ✅ Upravili sme farby
             colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer
+                // Priamo tu použijeme našu farbu, ktorú sme si definovali
+                containerColor = TelekomMagenta, // Zmena zo zelenej na ružovú
+
+                // A nastavíme farbu textu a ikon na bielu, aby boli čitateľné
+                titleContentColor = Color.White,
+                actionIconContentColor = Color.White
             ),
             actions = {
                 IconButton(onClick = { /* Navigácia na profil */ }) {
                     Icon(
                         Icons.Default.Person,
                         contentDescription = "Profil",
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        // Tint už nie je potrebný, farbu riadi TopAppBar
                     )
                 }
             }
         )
+
+        // --- Zvyšok kódu zostáva bez zmeny ---
 
         // --- 2. Kontajner s hlavným statusom (Elevated Card) ---
         ElevatedCard(
@@ -100,7 +110,6 @@ fun MainMenuScreen(navController: NavController) {
                 .padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // ✅ OPRAVA: weight(1f) aplikujeme priamo v tomto Row
             QuickActionButton(
                 label = "Nové heslo",
                 icon = Icons.Default.Key,
@@ -109,8 +118,6 @@ fun MainMenuScreen(navController: NavController) {
                     .weight(1f)
                     .padding(horizontal = 4.dp)
             )
-
-            // ✅ OPRAVA: weight(1f) aplikujeme priamo v tomto Row
             QuickActionButton(
                 label = "Nový kontakt",
                 icon = Icons.Default.Phone,
@@ -123,20 +130,16 @@ fun MainMenuScreen(navController: NavController) {
     }
 }
 
-// ----------------------------------------------------
-// Pomocná komponenta pre rýchle tlačidlá - teraz prijíma modifikátor
-// ----------------------------------------------------
-
+// Pomocná komponenta zostáva bez zmeny
 @Composable
 fun QuickActionButton(
     label: String,
     icon: ImageVector,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier // ✅ Pridaný nový parameter modifier
+    modifier: Modifier = Modifier,
 ) {
     ElevatedButton(
         onClick = onClick,
-        // ✅ Modifier je teraz prenesený z volania Row
         modifier = modifier,
         contentPadding = PaddingValues(12.dp)
     ) {

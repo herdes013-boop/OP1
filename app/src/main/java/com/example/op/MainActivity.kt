@@ -25,6 +25,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.op.ui.theme.OPTheme
+import com.example.op.ui.theme.TelekomMagenta
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -136,7 +138,7 @@ fun MainScreen() {
                     navigationIcon = { topBarState.navigationIcon?.invoke() },
                     actions = { topBarState.actions?.invoke() },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color(0xFF006400),
+                        containerColor = TelekomMagenta, // <--- ZMENENÉ!
                         titleContentColor = Color.White,
                         navigationIconContentColor = Color.White,
                         actionIconContentColor = Color.White
