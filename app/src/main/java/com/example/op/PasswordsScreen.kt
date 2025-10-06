@@ -6,7 +6,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,8 +24,6 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 
-
-// Hlavná obrazovka zostáva takmer bez zmeny
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PasswordsScreen(
@@ -32,9 +32,11 @@ fun PasswordsScreen(
     sharedViewModel: SharedViewModel,
     modifier: Modifier = Modifier,
 ) {
+    // Stavy z ViewModelu zostávajú rovnaké
     val passwords by viewModel.passwordList.collectAsState()
     val ipAddresses by viewModel.ipList.collectAsState()
-
+    val passwordSearchText by viewModel.passwordSearchText.collectAsState()
+    val ipSearchText by viewModel.ipSearchText.collectAsState()
     val selectedTabIndex by viewModel.selectedTabIndex
     val tabs = listOf("Heslá", "IP Adresy")
 
@@ -50,17 +52,12 @@ fun PasswordsScreen(
         sharedViewModel.setShowBottomBar(true)
     }
 
-    val currentData: List<Any> = when (selectedTabIndex) {
-        0 -> passwords
-        1 -> ipAddresses
-        else -> emptyList()
-    }
-
     Box(
         modifier = modifier.fillMaxSize()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
 
+            // Záložky sú teraz hore, hneď pod hlavnou lištou aplikácie
             TabRow(selectedTabIndex = selectedTabIndex) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
@@ -71,50 +68,51 @@ fun PasswordsScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            if (currentData.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Zatiaľ žiadne záznamy.", style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
+            // ✅ ZMENA: Obsah sa mení podľa záložky a každá má svoje vyhľadávanie
+            when (selectedTabIndex) {
+                0 -> {
+                    // Obsah pre záložku "Heslá"
+                    TabContent(
+                        searchText = passwordSearchText,
+                        onSearchTextChange = viewModel::onPasswordSearchTextChange,
+                        placeholder = "Vyhľadať v heslách...",
+                        data = passwords,
+                        emptyListText = "Zatiaľ žiadne heslá.",
+                        noResultsText = "Žiadne výsledky pre '${passwordSearchText}'"
+                    ) { item ->
+                        val password = item as PasswordItem
+                        PasswordListItem(
+                            item = password,
+                            onClick = { navController.navigate(Routes.passwordDetail(password.id)) }
+                        )
+                    }
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                    contentPadding = PaddingValues(bottom = 80.dp)
-                ) {
-                    when (selectedTabIndex) {
-                        0 -> items(passwords, key = { it.id }) { item ->
-                            // Používa sa už upravený PasswordListItem
-                            PasswordListItem(
-                                item = item,
-                                onClick = { navController.navigate(Routes.passwordDetail(item.id)) }
-                            )
-                        }
-                        1 -> items(ipAddresses, key = { it.id }) { item ->
-                            IpListItem(
-                                item = item,
-                                onClick = { navController.navigate(Routes.editIpAddress(item.id)) }
-                            )
-                        }
+                1 -> {
+                    // Obsah pre záložku "IP Adresy"
+                    TabContent(
+                        searchText = ipSearchText,
+                        onSearchTextChange = viewModel::onIpSearchTextChange,
+                        placeholder = "Vyhľadať v IP adresách...",
+                        data = ipAddresses,
+                        emptyListText = "Zatiaľ žiadne IP adresy.",
+                        noResultsText = "Žiadne výsledky pre '${ipSearchText}'"
+                    ) { item ->
+                        val ip = item as IpItem
+                        IpListItem(
+                            item = ip,
+                            onClick = { navController.navigate(Routes.editIpAddress(ip.id)) }
+                        )
                     }
                 }
             }
         }
 
+        // Floating Action Button zostáva na svojom mieste
         FloatingActionButton(
             onClick = {
                 when (selectedTabIndex) {
                     0 -> navController.navigate(Routes.ADD_PASSWORD)
-                    1 -> {
-                        viewModel.onTabSelected(1)
-                        navController.navigate(Routes.ADD_IP_ADDRESS)
-                    }
+                    1 -> navController.navigate(Routes.ADD_IP_ADDRESS)
                 }
             },
             modifier = Modifier
@@ -126,29 +124,91 @@ fun PasswordsScreen(
     }
 }
 
-// ========================================================================
-// ===                   ZAČIATOK ZMIEN V `PasswordListItem`              ===
-// ========================================================================
-
 /**
- * Pomocná funkcia, ktorá zobrazí text hesla a zafarbí číslice.
+ * ✅ NOVÁ POMOCNÁ KOMPONENTA, ktorá obsahuje SearchBar a LazyColumn.
+ * Je znovupoužiteľná pre obe záložky.
  */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun <T> TabContent(
+    searchText: String,
+    onSearchTextChange: (String) -> Unit,
+    placeholder: String,
+    data: List<T>,
+    emptyListText: String,
+    noResultsText: String,
+    itemContent: @Composable (T) -> Unit
+) {
+    Column {
+        // Vyhľadávacie pole pre danú záložku
+        SearchBar(
+            query = searchText,
+            onQueryChange = onSearchTextChange,
+            onSearch = { /* Hľadá sa priebežne */ },
+            active = false,
+            onActiveChange = {},
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            placeholder = { Text(placeholder) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Ikona vyhľadávania") },
+            trailingIcon = {
+                if (searchText.isNotEmpty()) {
+                    IconButton(onClick = { onSearchTextChange("") }) {
+                        Icon(Icons.Default.Clear, contentDescription = "Vymazať text")
+                    }
+                }
+            }
+        ) {
+            // Prázdny, ale povinný blok
+        }
+
+        // Spacer(modifier = Modifier.height(8.dp)) // Spacer už možno nie je potrebný
+
+        // Zobrazenie výsledkov alebo správy
+        if (data.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(bottom = 80.dp), // padding aby text nebol za FAB
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    if (searchText.isBlank()) emptyListText else noResultsText,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.Gray
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                contentPadding = PaddingValues(bottom = 80.dp) // Priestor pre FAB
+            ) {
+                items(data.size) { index ->
+                    itemContent(data[index])
+                }
+            }
+        }
+    }
+}
+
+
+// Ostatné pomocné Composable funkcie (PasswordListItem, ColoredPasswordText, IpListItem) zostávajú bez zmeny
 @Composable
 private fun ColoredPasswordText(
     password: String,
     modifier: Modifier = Modifier,
     defaultColor: Color = MaterialTheme.colorScheme.onSurface,
-    numberColor: Color = MaterialTheme.colorScheme.primary, // Farba pre číslice
+    numberColor: Color = MaterialTheme.colorScheme.primary,
 ) {
     val annotatedString = buildAnnotatedString {
         password.forEach { char ->
             if (char.isDigit()) {
-                // Ak je znak číslica, pridá ho s farbou pre čísla a tučným štýlom
                 withStyle(style = SpanStyle(color = numberColor, fontWeight = FontWeight.Bold)) {
                     append(char)
                 }
             } else {
-                // Inak ho pridá s predvolenou farbou
                 withStyle(style = SpanStyle(color = defaultColor)) {
                     append(char)
                 }
@@ -163,9 +223,6 @@ private fun ColoredPasswordText(
     )
 }
 
-/**
- * Kompletne prepracovaný Composable pre položku v zozname hesiel.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PasswordListItem(item: PasswordItem, onClick: () -> Unit) {
@@ -179,9 +236,8 @@ fun PasswordListItem(item: PasswordItem, onClick: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp) // Medzera medzi riadkami
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            // --- HORNÝ RIADOK: Názov služby ---
             Text(
                 text = item.name,
                 style = MaterialTheme.typography.titleMedium,
@@ -189,20 +245,16 @@ fun PasswordListItem(item: PasswordItem, onClick: () -> Unit) {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-
-            // --- SPODNÝ RIADOK: Používateľské meno a Heslo ---
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Používateľské meno (ak existuje)
                 item.username?.let {
                     if (it.isNotBlank()) {
                         Text(
                             text = it,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.secondary,
-                            // weight(1f) spôsobí, že meno zaberie voľné miesto
                             modifier = Modifier.weight(1f),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -210,11 +262,8 @@ fun PasswordListItem(item: PasswordItem, onClick: () -> Unit) {
                         Spacer(modifier = Modifier.width(8.dp))
                     }
                 }
-
-                // Heslo s farebnými číslami
                 ColoredPasswordText(
                     password = item.password,
-                    // Ak meno neexistuje, heslo zaberie celý spodný riadok
                     modifier = if (item.username.isNullOrBlank()) Modifier.weight(1f) else Modifier
                 )
             }
@@ -222,12 +271,6 @@ fun PasswordListItem(item: PasswordItem, onClick: () -> Unit) {
     }
 }
 
-// ========================================================================
-// ===                    KONIEC ZMIEN V `PasswordListItem`               ===
-// ========================================================================
-
-
-// IpListItem zostáva bez zmeny
 @Composable
 fun IpListItem(item: IpItem, onClick: () -> Unit) {
     val clipboardManager = LocalClipboardManager.current
@@ -272,4 +315,3 @@ fun IpListItem(item: IpItem, onClick: () -> Unit) {
         }
     }
 }
-

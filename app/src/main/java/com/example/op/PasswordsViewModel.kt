@@ -5,7 +5,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.random.Random
@@ -20,7 +23,28 @@ class PasswordsViewModel : ViewModel() {
     }
 
     // =================================================================
-    // NOVÁ SEKCA: Stav pre používateľské rozhranie (UI State)
+    //         ✅ UPRAVENÁ SEKCA: Oddelené vyhľadávanie
+    // =================================================================
+    // Vyhľadávanie pre Heslá
+    private val _passwordSearchText = MutableStateFlow("")
+    val passwordSearchText = _passwordSearchText.asStateFlow()
+
+    fun onPasswordSearchTextChange(text: String) {
+        _passwordSearchText.value = text
+    }
+
+    // Vyhľadávanie pre IP Adresy
+    private val _ipSearchText = MutableStateFlow("")
+    val ipSearchText = _ipSearchText.asStateFlow()
+
+    fun onIpSearchTextChange(text: String) {
+        _ipSearchText.value = text
+    }
+    // =================================================================
+
+
+    // =================================================================
+    // SEKCA: Stav pre používateľské rozhranie (UI State)
     // =================================================================
 
     private val _selectedTabIndex = mutableStateOf(0)
@@ -29,6 +53,7 @@ class PasswordsViewModel : ViewModel() {
     fun onTabSelected(index: Int) {
         _selectedTabIndex.value = index
     }
+
 
     // =================================================================
     // SEKCA PRE ZOZNAM HESIEL (PasswordItem)
@@ -41,88 +66,69 @@ class PasswordsViewModel : ViewModel() {
             PasswordItem("3", "Bank", "IBAN:123456", "superTajne", "Účet na úspory")
         )
     )
-    val passwordList = _passwordList.asStateFlow()
 
+    // ✅ Upravený zoznam, ktorý reaguje na _passwordSearchText
+    val passwordList = passwordSearchText
+        .combine(_passwordList) { text, passwords ->
+            if (text.isBlank()) {
+                passwords
+            } else {
+                passwords.filter { it.doesMatchSearchQuery(text) }
+            }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = _passwordList.value
+        )
 
-    // =================================================================
-    //         ZMENA: Metóda na okamžité získanie hesla
-    // =================================================================
-    /**
-     * OKAMŽITE vráti heslo podľa ID zo zoznamu, ktorý je už v pamäti.
-     * Toto je neblokujúca (synchrónna) operácia, pretože dáta už máme.
-     */
+    // Ostatné funkcie pre heslá zostávajú rovnaké...
     fun getPasswordById(id: String): PasswordItem? {
         return _passwordList.value.find { it.id == id }
     }
-    // =================================================================
-
-
-    // =================================================================
-    // SEKCA: Stav pre Detail obrazovku (Pôvodné metódy už nebudú potrebné pre detail)
-    // =================================================================
-
     private val _selectedPassword = MutableStateFlow<PasswordItem?>(null)
     val selectedPassword = _selectedPassword.asStateFlow()
-
-    // Táto metóda je teraz redundantná pre zobrazenie detailu, ale nechávame ju pre prípad iného použitia.
     fun loadPasswordDetail(passwordId: String) {
         viewModelScope.launch {
             _selectedPassword.value = _passwordList.value.firstOrNull { it.id == passwordId }
         }
     }
-    // Túto metódu už pre detail nepotrebujeme, ale môže byť užitočná inde.
     fun clearSelectedPassword() {
         _selectedPassword.value = null
     }
-
-    // =================================================================
-    // SEKCA: Stav pre Add/Edit formulár
-    // =================================================================
-
     private val _passwordName = mutableStateOf("")
     val passwordName: State<String> = _passwordName
-
     private val _passwordUsername = mutableStateOf("")
     val passwordUsername: State<String> = _passwordUsername
-
     private val _passwordValue = mutableStateOf("")
     val passwordValue: State<String> = _passwordValue
-
     private val _passwordNotes = mutableStateOf("")
     val passwordNotes: State<String> = _passwordNotes
-
     private val _isEditing = mutableStateOf(false)
     val isEditing: State<Boolean> = _isEditing
-
     private var originalPasswordItem: PasswordItem? = null
-
-    val isPasswordFormValid: Boolean
-        get() = _passwordName.value.isNotBlank()
-
-    val hasUnsavedChanges: Boolean
-        get() {
-            return if (originalPasswordItem != null) { // Režim úprav
-                originalPasswordItem?.name != _passwordName.value ||
-                        (originalPasswordItem?.username ?: "") != _passwordUsername.value ||
-                        originalPasswordItem?.password != _passwordValue.value ||
-                        (originalPasswordItem?.notes ?: "") != _passwordNotes.value
-            } else { // Režim pridávania nového hesla
-                _passwordName.value.isNotEmpty() ||
-                        _passwordUsername.value.isNotEmpty() ||
-                        _passwordValue.value.isNotEmpty() ||
-                        _passwordNotes.value.isNotEmpty()
-            }
+    val isPasswordFormValid: Boolean get() = _passwordName.value.isNotBlank()
+    val hasUnsavedChanges: Boolean get() {
+        return if (originalPasswordItem != null) {
+            originalPasswordItem?.name != _passwordName.value ||
+                    (originalPasswordItem?.username ?: "") != _passwordUsername.value ||
+                    originalPasswordItem?.password != _passwordValue.value ||
+                    (originalPasswordItem?.notes ?: "") != _passwordNotes.value
+        } else {
+            _passwordName.value.isNotEmpty() ||
+                    _passwordUsername.value.isNotEmpty() ||
+                    _passwordValue.value.isNotEmpty() ||
+                    _passwordNotes.value.isNotEmpty()
         }
-
+    }
     fun onPasswordNameChange(newName: String) { _passwordName.value = newName }
     fun onPasswordUsernameChange(newUsername: String) { _passwordUsername.value = newUsername }
     fun onPasswordValueChange(newValue: String) { _passwordValue.value = newValue }
     fun onPasswordNotesChange(newNotes: String) { _passwordNotes.value = newNotes }
-
     fun loadPasswordForEditing(passwordId: String) {
         val password = _passwordList.value.firstOrNull { it.id == passwordId }
         if (password != null) {
-            originalPasswordItem = password // Uložíme si originál pre porovnanie
+            originalPasswordItem = password
             _passwordName.value = password.name
             _passwordUsername.value = password.username ?: ""
             _passwordValue.value = password.password
@@ -130,10 +136,8 @@ class PasswordsViewModel : ViewModel() {
             _isEditing.value = true
         }
     }
-
     fun savePassword() {
         if (!isPasswordFormValid) return
-
         if (_isEditing.value) {
             val updatedItem = originalPasswordItem!!.copy(
                 name = _passwordName.value,
@@ -152,7 +156,6 @@ class PasswordsViewModel : ViewModel() {
         }
         resetPasswordForm()
     }
-
     fun resetPasswordForm() {
         originalPasswordItem = null
         _passwordName.value = ""
@@ -161,17 +164,12 @@ class PasswordsViewModel : ViewModel() {
         _passwordNotes.value = ""
         _isEditing.value = false
     }
-
-    // --- FUNKCIA GENERÁTORA HESIEL ---
-    private val charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#\$%^&*"
-
+    private val charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*"
     fun generateAndSetRandomPassword(length: Int = 12) {
         _passwordValue.value = (1..length)
             .map { charset.random(Random) }
             .joinToString("")
     }
-
-    // --- CRUD OPERÁCIE ---
     private fun addPassword(title: String, username: String?, passwordEncrypted: String, notes: String?) {
         val newItem = PasswordItem(
             id = getNextId(),
@@ -182,18 +180,15 @@ class PasswordsViewModel : ViewModel() {
         )
         _passwordList.update { currentList -> currentList + newItem }
     }
-
     private fun updatePassword(updatedItem: PasswordItem) {
         _passwordList.update { currentList ->
             currentList.map { if (it.id == updatedItem.id) updatedItem else it }
         }
     }
-
     fun deletePassword(id: String) {
         _passwordList.update { currentList ->
             currentList.filterNot { it.id == id }
         }
-        // Ak mažeme práve zobrazené heslo, resetujeme aj stav pre detail
         if (_selectedPassword.value?.id == id) {
             _selectedPassword.value = null
         }
@@ -210,19 +205,31 @@ class PasswordsViewModel : ViewModel() {
             IpItem(id = "5", name = "Pracovný Server", ipAddress = "10.0.0.52")
         )
     )
-    val ipList = _ipList.asStateFlow()
+
+    // ✅ Upravený zoznam, ktorý reaguje na _ipSearchText
+    val ipList = ipSearchText
+        .combine(_ipList) { text, ips ->
+            if (text.isBlank()) {
+                ips
+            } else {
+                ips.filter { it.doesMatchSearchQuery(text) }
+            }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = _ipList.value
+        )
 
     fun addIpAddress(name: String, ipAddress: String) {
         val newItem = IpItem(id = getNextId(), name = name, ipAddress = ipAddress)
         _ipList.update { currentList -> currentList + newItem }
     }
-
     fun updateIpAddress(updatedItem: IpItem) {
         _ipList.update { currentList ->
             currentList.map { if (it.id == updatedItem.id) updatedItem else it }
         }
     }
-
     fun getIpAddressById(id: String): IpItem? {
         return _ipList.value.find { it.id == id }
     }
