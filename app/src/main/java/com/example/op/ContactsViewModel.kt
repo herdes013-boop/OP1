@@ -14,7 +14,7 @@ import androidx.lifecycle.ViewModel
 class ContactsViewModel : ViewModel() {
 
     // Predvolená hodnota pre kanál, ak sa kanál odstráni
-    private val DEFAULT_CHANNEL = "Iné"
+    private val DEFAULT_CHANNEL = "24"
     private val ALL_CHANNELS_FILTER = "Všetky"
 
     // 1. DÁTA: Zoznam kontaktov
@@ -44,13 +44,13 @@ class ContactsViewModel : ViewModel() {
     // 2. FILTRE A STAVY
 
     // Zoznam dostupných kanálov okrem fixného "Všetky"
+    // ❌ PÔVODNÝ KÓD
     private val availableChannels = mutableStateListOf("Jednotka", "Dvojka", "Sport", DEFAULT_CHANNEL)
 
     // DerivedState pre všetky možnosti (vrátane filtračnej "Všetky")
     val channelOptions: List<String> by derivedStateOf {
-        mutableListOf(ALL_CHANNELS_FILTER).apply { addAll(availableChannels.sorted()) }
+        listOf(ALL_CHANNELS_FILTER) + availableChannels
     }
-
     var selectedTabFilter by mutableStateOf(ALL_CHANNELS_FILTER)
         private set
     var searchQuery by mutableStateOf("")

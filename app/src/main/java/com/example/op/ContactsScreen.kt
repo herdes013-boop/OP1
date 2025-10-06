@@ -23,10 +23,9 @@ fun getChannelIcon(channel: String?): ImageVector {
     return when (channel) {
         "Jednotka" -> Icons.Filled.LooksOne
         "Dvojka" -> Icons.Filled.LooksTwo
-        "24" -> Icons.Filled.Newspaper
+        "24" -> Icons.Filled.Newspaper // Pridaná ikona pre "24"
         "Sport" -> Icons.Filled.SportsSoccer
-        "Iné" -> Icons.Filled.OtherHouses
-        else -> Icons.Filled.Person
+        else -> Icons.Filled.Person // "Iné" bolo odstránené, "else" pokryje ostatné prípady
     }
 }
 

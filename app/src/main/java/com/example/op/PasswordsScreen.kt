@@ -273,10 +273,8 @@ fun PasswordListItem(item: PasswordItem, onClick: () -> Unit) {
 
 @Composable
 fun IpListItem(item: IpItem, onClick: () -> Unit) {
-    val clipboardManager = LocalClipboardManager.current
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = Modifier            .fillMaxWidth()
             .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -302,16 +300,7 @@ fun IpListItem(item: IpItem, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Spacer(modifier = Modifier.width(16.dp))
-            IconButton(
-                onClick = { clipboardManager.setText(AnnotatedString(item.ipAddress)) }
-            ) {
-                Icon(
-                    Icons.Filled.ContentCopy,
-                    contentDescription = "Kopírovať IP adresu",
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
+            // Spacer a IconButton sú odtiaľto zámerne odstránené.
         }
     }
 }
