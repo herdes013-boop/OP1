@@ -60,11 +60,9 @@ fun EditContactScreen(
         }
     }
 
-    fun saveContactAndStay() {
+    fun saveContactAndGoBack() {
         viewModel.updateContact(localContact)
-        // Resetujeme "originálny" stav, aby `hasUnsavedChanges` bolo false
-        originalContact = localContact.copy()
-        showSavedSnackbar()
+        onBack() // Pridali sme návrat na predchádzajúcu obrazovku
     }
 
     fun handleBackNavigation() {
@@ -95,7 +93,7 @@ fun EditContactScreen(
             // Zobrazí výrazné tlačidlo "ULOŽIŤ" iba vtedy, ak sú neuložené zmeny.
             if (hasUnsavedChanges) {
                 Button(
-                    onClick = ::saveContactAndStay,
+                    onClick = ::saveContactAndGoBack,
                     modifier = Modifier.padding(horizontal = 8.dp),
                     // Pridáme farbu tlačidla
                     colors = ButtonDefaults.buttonColors(
@@ -228,7 +226,7 @@ fun EditContactScreen(
             text = { Text("Máte neuložené zmeny. Chcete ich uložiť pred odchodom?") },
             confirmButton = {
                 Button(onClick = {
-                    saveContactAndStay()
+                    saveContactAndGoBack()
                     onBack()
                 }) { Text("Uložiť a odísť") }
             },
