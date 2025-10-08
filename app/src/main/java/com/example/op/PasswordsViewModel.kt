@@ -21,6 +21,14 @@ class PasswordsViewModel : ViewModel() {
         lastId++
         return lastId.toString()
     }
+    fun createEmptyPasswordItem(): PasswordItem {
+        return PasswordItem(
+            id = getNextId(),name = "",
+            username = null,
+            password = "",
+            notes = null
+        )
+    }
 
     // =================================================================
     //         FINÁLNA SEKCIA PRE OVLÁDANIE ZÁLOŽIEK (TABS)
@@ -172,12 +180,16 @@ class PasswordsViewModel : ViewModel() {
             )
             updatePassword(updatedItem)
         } else {
-            addPassword(
-                title = _passwordName.value,
+            // Vytvoríme nový objekt PasswordItem s dátami z formulára
+            val newItem = PasswordItem(
+                id = getNextId(), // Použijeme vašu funkciu na generovanie ID
+                name = _passwordName.value,
                 username = _passwordUsername.value.ifBlank { null },
-                passwordEncrypted = _passwordValue.value,
+                password = _passwordValue.value,
                 notes = _passwordNotes.value.ifBlank { null }
             )
+            // A pošleme do funkcie celý objekt
+            addPassword(newItem)
         }
         resetPasswordForm()
     }
@@ -195,17 +207,10 @@ class PasswordsViewModel : ViewModel() {
             .map { charset.random(Random) }
             .joinToString("")
     }
-    private fun addPassword(title: String, username: String?, passwordEncrypted: String, notes: String?) {
-        val newItem = PasswordItem(
-            id = getNextId(),
-            name = title,
-            username = username,
-            password = passwordEncrypted,
-            notes = notes
-        )
-        _passwordList.update { currentList -> currentList + newItem }
+    fun addPassword(item: PasswordItem) {
+        _passwordList.update { currentList -> currentList + item }
     }
-    private fun updatePassword(updatedItem: PasswordItem) {
+    fun updatePassword(updatedItem: PasswordItem) {
         _passwordList.update { currentList ->
             currentList.map { if (it.id == updatedItem.id) updatedItem else it }
         }

@@ -1,72 +1,191 @@
 package com.example.op
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.VpnKey
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditPasswordScreen(
     modifier: Modifier = Modifier,
     navController: NavController,
     viewModel: PasswordsViewModel,
-    // ==============================================================
-    // ========== ZMENA: PRIDANÝ CHÝBAJÚCI PARAMETER ==========
     sharedViewModel: SharedViewModel,
-    // ==============================================================
     passwordId: String? = null
 ) {
-    LaunchedEffect(passwordId) {
-        if (passwordId != null) {
-            viewModel.loadPasswordForEditing(passwordId)
+    // 1. Príprava stavov a načítanie dát
+    val isNewItem = passwordId == null
+
+    // Načítame položku alebo vytvoríme novú
+    val originalPasswordItem: PasswordItem = remember(passwordId) {
+        if (isNewItem) {
+            viewModel.createEmptyPasswordItem() // Zmenené
         } else {
-            viewModel.resetPasswordForm()
+            viewModel.getPasswordById(passwordId!!) ?: viewModel.createEmptyPasswordItem() // Zmenené
         }
     }
 
-    DisposableEffect(Unit) {
-        onDispose {
-            viewModel.resetPasswordForm()
-        }
-    }
+    // Lokálny stav, ktorý používateľ upravuje vo formulári
+    var localPasswordItem by remember { mutableStateOf(originalPasswordItem) } // Zmenené
 
-    val isEditing by viewModel.isEditing
-    val passwordName by viewModel.passwordName
-    val passwordUsername by viewModel.passwordUsername
-    val passwordValue by viewModel.passwordValue
-    val passwordNotes by viewModel.passwordNotes
-    val isFormValid = viewModel.isPasswordFormValid
-
+    // Stavy pre dialógy a menu
+    var showDeleteDialog by remember { mutableStateOf(false) }
     var showUnsavedChangesDialog by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
 
-    // DYNAMICKÉ NASTAVENIE HORNEJ LIŠTY (teraz už bude fungovať)
-    LaunchedEffect(isEditing, viewModel.hasUnsavedChanges) {
-        val title = if (isEditing) "Upraviť heslo" else "Nové heslo"
+    // Vypočítaný stav, ktorý zisťuje, či sú zmeny
+    val hasUnsavedChanges by remember {
+        derivedStateOf { localPasswordItem != originalPasswordItem } // Zmenené
+    }
+
+    // Ak upravujeme neexistujúcu položku, vrátime sa späť
+    if (!isNewItem && viewModel.getPasswordById(passwordId!!) == null) { // Zmenené
+        LaunchedEffect(Unit) { navController.popBackStack() }
+        return
+    }
+
+    // 2. Funkcie pre ukladanie, mazanie a navigáciu
+    fun saveItemAndGoBack() {
+        if (isNewItem) {
+            viewModel.addPassword(localPasswordItem) // Zmenené
+        } else {
+            viewModel.updatePassword(localPasswordItem) // Zmenené
+        }
+        navController.popBackStack()
+    }
+
+    fun handleBackNavigation() {
+        if (hasUnsavedChanges) {
+            showUnsavedChangesDialog = true
+        } else {
+            navController.popBackStack()
+        }
+    }
+
+    // 3. Nastavenie horného panela (TopAppBar) cez SharedViewModel
+    LaunchedEffect(isNewItem, hasUnsavedChanges) {
         sharedViewModel.setTopBarState(
             TopBarState(
-                title = title,
-                isVisible = true,
+                title = if (isNewItem) "Nové heslo" else "Upraviť heslo", // Zmenené
                 navigationIcon = {
-                    IconButton(onClick = {
-                        if (viewModel.hasUnsavedChanges) {
-                            showUnsavedChangesDialog = true
-                        } else {
-                            navController.popBackStack()
-                        }
-                    }) {
+                    IconButton(onClick = ::handleBackNavigation) {
                         Icon(Icons.Default.ArrowBack, "Naspäť")
+                    }
+                },
+                actions = {
+                    if (hasUnsavedChanges) {
+                        Button(
+                            onClick = ::saveItemAndGoBack,
+                            modifier = Modifier.padding(horizontal = 8.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF4CAF50)
+                            )
+                        ) {
+                            Text("ULOŽIŤ")
+                        }
+                    }
+                    if (!isNewItem) {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Default.MoreVert, "Viac")
+                        }
                     }
                 }
             )
+        )
+    }
+
+    BackHandler(onBack = ::handleBackNavigation)
+
+    // 4. Hlavný obsah obrazovky (formulár)
+    Box(modifier = modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Zmenené polia pre heslo
+            OutlinedTextField(
+                value = localPasswordItem.name,
+                onValueChange = { localPasswordItem = localPasswordItem.copy(name = it) },
+                label = { Text("Názov služby (napr. Google)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            OutlinedTextField(
+                value = localPasswordItem.username ?: "",
+                onValueChange = { localPasswordItem = localPasswordItem.copy(username = it) },
+                label = { Text("Meno alebo email") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            OutlinedTextField(
+                value = localPasswordItem.password,
+                onValueChange = { localPasswordItem = localPasswordItem.copy(password = it) },
+                label = { Text("Heslo") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation() // Skryje heslo
+            )
+            OutlinedTextField(
+                value = localPasswordItem.notes ?: "",
+                onValueChange = { localPasswordItem = localPasswordItem.copy(notes = it) },
+                label = { Text("Poznámky (voliteľné)") },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false },
+            modifier = Modifier.align(Alignment.TopEnd).padding(end = 4.dp)
+        ) {
+            DropdownMenuItem(
+                text = { Text("Zmazať", color = MaterialTheme.colorScheme.error) },
+                onClick = {
+                    showMenu = false
+                    showDeleteDialog = true
+                },
+                leadingIcon = { Icon(Icons.Default.Delete, "Zmazať", tint = MaterialTheme.colorScheme.error) }
+            )
+        }
+    }
+
+    // 5. Dialógy pre potvrdenie
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Odstrániť heslo?") }, // Zmenené
+            text = { Text("Naozaj chcete natrvalo odstrániť položku '${originalPasswordItem.name}'?") }, // Zmenené
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) { Text("Zrušiť") }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deletePassword(originalPasswordItem.id) // Zmenené
+                        showDeleteDialog = false
+                        navController.popBackStack()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text("Odstrániť") }
+            }
         )
     }
 
@@ -74,74 +193,17 @@ fun AddEditPasswordScreen(
         AlertDialog(
             onDismissRequest = { showUnsavedChangesDialog = false },
             title = { Text("Neuložené zmeny") },
-            text = { Text("Naozaj chcete odísť bez uloženia zmien?") },
+            text = { Text("Máte neuložené zmeny. Chcete ich zahodiť a odísť?") },
             confirmButton = {
-                TextButton(onClick = {
+                Button(onClick = {
                     showUnsavedChangesDialog = false
                     navController.popBackStack()
-                }) { Text("Odísť") }
+                }) { Text("Zahodiť a odísť") }
             },
             dismissButton = {
                 TextButton(onClick = { showUnsavedChangesDialog = false }) { Text("Zostať") }
             }
         )
     }
-
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Spacer(Modifier.height(8.dp))
-
-        OutlinedTextField(
-            value = passwordName,
-            onValueChange = { viewModel.onPasswordNameChange(it) },
-            label = { Text("Názov služby") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        OutlinedTextField(
-            value = passwordUsername,
-            onValueChange = { viewModel.onPasswordUsernameChange(it) },
-            label = { Text("Používateľské meno / E-mail") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        OutlinedTextField(
-            value = passwordValue,
-            onValueChange = { viewModel.onPasswordValueChange(it) },
-            label = { Text("Heslo") },
-            modifier = Modifier.fillMaxWidth(),
-            trailingIcon = {
-                IconButton(onClick = { viewModel.generateAndSetRandomPassword() }) {
-                    Icon(Icons.Filled.VpnKey, "Generovať heslo")
-                }
-            }
-        )
-
-        OutlinedTextField(
-            value = passwordNotes,
-            onValueChange = { viewModel.onPasswordNotesChange(it) },
-            label = { Text("Poznámky (voliteľné)") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        Button(
-            onClick = {
-                viewModel.savePassword()
-                navController.popBackStack()
-            },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = isFormValid
-        ) {
-            Text("Uložiť")
-        }
-    }
 }
+
