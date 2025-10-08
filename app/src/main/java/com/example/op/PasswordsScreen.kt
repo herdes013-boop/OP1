@@ -57,7 +57,21 @@ fun PasswordsScreen(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // Záložky sú teraz hore, hneď pod hlavnou lištou aplikácie
+            // ✅ ZMENA 1: Zobrazíme správne vyhľadávacie pole podľa vybranej záložky
+            when (selectedTabIndex) {
+                0 -> SearchBar(
+                    query = passwordSearchText,
+                    onQueryChange = viewModel::onPasswordSearchTextChange,
+                    placeholder = "Vyhľadať v heslách..."
+                )
+                1 -> SearchBar(
+                    query = ipSearchText,
+                    onQueryChange = viewModel::onIpSearchTextChange,
+                    placeholder = "Vyhľadať v IP adresách..."
+                )
+            }
+
+            // Záložky sú teraz AŽ POD vyhľadávacím poľom
             TabRow(selectedTabIndex = selectedTabIndex) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
@@ -68,14 +82,11 @@ fun PasswordsScreen(
                 }
             }
 
-            // ✅ ZMENA: Obsah sa mení podľa záložky a každá má svoje vyhľadávanie
+            // Obsah záložiek sa už stará len o zobrazenie zoznamu
             when (selectedTabIndex) {
                 0 -> {
-                    // Obsah pre záložku "Heslá"
                     TabContent(
                         searchText = passwordSearchText,
-                        onSearchTextChange = viewModel::onPasswordSearchTextChange,
-                        placeholder = "Vyhľadať v heslách...",
                         data = passwords,
                         emptyListText = "Zatiaľ žiadne heslá.",
                         noResultsText = "Žiadne výsledky pre '${passwordSearchText}'"
@@ -88,11 +99,8 @@ fun PasswordsScreen(
                     }
                 }
                 1 -> {
-                    // Obsah pre záložku "IP Adresy"
                     TabContent(
                         searchText = ipSearchText,
-                        onSearchTextChange = viewModel::onIpSearchTextChange,
-                        placeholder = "Vyhľadať v IP adresách...",
                         data = ipAddresses,
                         emptyListText = "Zatiaľ žiadne IP adresy.",
                         noResultsText = "Žiadne výsledky pre '${ipSearchText}'"
@@ -125,69 +133,76 @@ fun PasswordsScreen(
 }
 
 /**
- * ✅ NOVÁ POMOCNÁ KOMPONENTA, ktorá obsahuje SearchBar a LazyColumn.
- * Je znovupoužiteľná pre obe záložky.
+ * ✅ ZMENA 2: Vytvorili sme samostatnú komponentu pre SearchBar, aby sme sa neopakovali.
+ * Je to čistejšie.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+private fun SearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    placeholder: String
+) {
+    SearchBar(
+        query = query,
+        onQueryChange = onQueryChange,
+        onSearch = { /* Hľadá sa priebežne */ },
+        active = false,
+        onActiveChange = {},
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        placeholder = { Text(placeholder) },
+        leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Ikona vyhľadávania") },
+        trailingIcon = {
+            if (query.isNotEmpty()) {
+                IconButton(onClick = { onQueryChange("") }) {
+                    Icon(Icons.Default.Clear, contentDescription = "Vymazať text")
+                }
+            }
+        }
+    ) {
+        // Prázdny, ale povinný blok
+    }
+}
+
+
+/**
+ * ✅ ZMENA 3: Z komponenty TabContent sme ODSTRÁNILI SearchBar.
+ * Teraz sa stará iba o zobrazenie zoznamu alebo prázdneho stavu.
+ */
+@Composable
 private fun <T> TabContent(
     searchText: String,
-    onSearchTextChange: (String) -> Unit,
-    placeholder: String,
     data: List<T>,
     emptyListText: String,
     noResultsText: String,
     itemContent: @Composable (T) -> Unit
 ) {
-    Column {
-        // Vyhľadávacie pole pre danú záložku
-        SearchBar(
-            query = searchText,
-            onQueryChange = onSearchTextChange,
-            onSearch = { /* Hľadá sa priebežne */ },
-            active = false,
-            onActiveChange = {},
+    // Spacer(modifier = Modifier.height(8.dp)) // Už nie je potrebný
+
+    // Zobrazenie výsledkov alebo správy
+    if (data.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxSize().padding(bottom = 80.dp), // padding aby text nebol za FAB
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                if (searchText.isBlank()) emptyListText else noResultsText,
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color.Gray
+            )
+        }
+    } else {
+        LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            placeholder = { Text(placeholder) },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Ikona vyhľadávania") },
-            trailingIcon = {
-                if (searchText.isNotEmpty()) {
-                    IconButton(onClick = { onSearchTextChange("") }) {
-                        Icon(Icons.Default.Clear, contentDescription = "Vymazať text")
-                    }
-                }
-            }
+                .padding(horizontal = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            contentPadding = PaddingValues(bottom = 80.dp) // Priestor pre FAB
         ) {
-            // Prázdny, ale povinný blok
-        }
-
-        // Spacer(modifier = Modifier.height(8.dp)) // Spacer už možno nie je potrebný
-
-        // Zobrazenie výsledkov alebo správy
-        if (data.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(bottom = 80.dp), // padding aby text nebol za FAB
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    if (searchText.isBlank()) emptyListText else noResultsText,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.Gray
-                )
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                contentPadding = PaddingValues(bottom = 80.dp) // Priestor pre FAB
-            ) {
-                items(data.size) { index ->
-                    itemContent(data[index])
-                }
+            items(data) { item -> // Používame priamo item, je to bezpečnejšie
+                itemContent(item)
             }
         }
     }
@@ -274,7 +289,8 @@ fun PasswordListItem(item: PasswordItem, onClick: () -> Unit) {
 @Composable
 fun IpListItem(item: IpItem, onClick: () -> Unit) {
     Card(
-        modifier = Modifier            .fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
             .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -300,7 +316,7 @@ fun IpListItem(item: IpItem, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            // Spacer a IconButton sú odtiaľto zámerne odstránené.
         }
     }
 }
+
