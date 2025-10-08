@@ -19,6 +19,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.navigation.NavController
 import kotlinx.coroutines.launch
 
@@ -31,7 +32,7 @@ fun EditContactScreen(
     contactId: Int,
     viewModel: ContactsViewModel = viewModel(),
     sharedViewModel: SharedViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     val contactData = remember(contactId) {
         viewModel.getContactById(contactId)?.copy()
@@ -91,10 +92,17 @@ fun EditContactScreen(
 // a bude riadiť iba zobrazenie ikoniek v `actions` (Uložiť a Viac).
     LaunchedEffect(hasUnsavedChanges) {
         sharedViewModel.updateTopBarActions {
-            // Zobrazí ikonu "Uložiť" iba vtedy, ak sú neuložené zmeny.
+            // Zobrazí výrazné tlačidlo "ULOŽIŤ" iba vtedy, ak sú neuložené zmeny.
             if (hasUnsavedChanges) {
-                IconButton(onClick = ::saveContactAndStay) {
-                    Icon(Icons.Default.Done, "Uložiť")
+                Button(
+                    onClick = ::saveContactAndStay,
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    // Pridáme farbu tlačidla
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF4CAF50) // Pekná zelená farba
+                    )
+                ) {
+                    Text("ULOŽIŤ")
                 }
             }
             // Ikona troch bodiek pre menu sa zobrazí vždy.
@@ -236,7 +244,7 @@ fun EditContactScreen(
 fun ChannelDropdown(
     selectedChannel: String,
     onChannelSelected: (String) -> Unit,
-    channelOptions: List<String>
+    channelOptions: List<String>,
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -252,7 +260,9 @@ fun ChannelDropdown(
             label = { Text("Kanál") },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             colors = ExposedDropdownMenuDefaults.textFieldColors(),
-            modifier = Modifier.menuAnchor().fillMaxWidth()
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth()
         )
         ExposedDropdownMenu(
             expanded = expanded,
