@@ -81,8 +81,8 @@ dependencies {
 
     // 🌟🌟🌟 CHÝBAJÚCE DEPENDENCIES PRE IKONY (OPRAVA "Unresolved reference: Visibility") 🌟🌟🌟
     // Ikony Visibility/VisibilityOff sú v material-icons-extended, nie v základnom material3 balíku.
-    implementation("androidx.compose.material:material-icons-core:1.5.4")
-    implementation("androidx.compose.material:material-icons-extended:1.5.4")
+    implementation("androidx.compose.material:material-icons-core:1.6.5")
+    implementation("androidx.compose.material:material-icons-extended:1.6.5")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

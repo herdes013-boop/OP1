@@ -5,8 +5,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,6 +31,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.op.ui.theme.OPTheme
 import com.example.op.ui.theme.TelekomMagenta
+import kotlinx.coroutines.launch
 
 
 class MainActivity : ComponentActivity() {
@@ -53,6 +57,7 @@ object Routes {
     const val TUTORIALS_ROOT = "tutorials_root"
     const val SETTINGS_ROOT = "settings_root"
     const val TEST_SCREEN = "test_screen"
+    const val ABOUT_SCREEN = "about_screen" // Pridali sme cestu pre "O aplikácii"
 
     const val PASSWORDS_LIST = "passwords_list"
     const val ADD_PASSWORD = "add_password"
@@ -109,6 +114,9 @@ fun MainScreen() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+
     LaunchedEffect(currentRoute) {
         val isTestRoute = currentRoute?.startsWith("test_") == true
         if (isTestRoute) {
@@ -116,154 +124,198 @@ fun MainScreen() {
             return@LaunchedEffect
         }
 
+        // Reset ikony, aby sa nezobrazovala na iných obrazovkách
+        var currentNavIcon: (@Composable () -> Unit)? = null
+
         when (currentRoute) {
-            // ✅ ZMENA 1: ODDEĽTE HOME_ROOT OD OSTATNÝCH
             Routes.HOME_ROOT -> {
                 sharedViewModel.setShowBottomBar(true)
+                // Na domovskej obrazovke nastavíme ikonu menu
+                currentNavIcon = {
+                    IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                        Icon(Icons.Default.Menu, contentDescription = "Menu")
+                    }
+                }
                 sharedViewModel.setTopBarState(
-                    TopBarState(
-                        title = "Domov",
-                        isVisible = true,
-                        // TOTO JE KĽÚČOVÉ: Pridanie ikony menu
-                        navigationIcon = {
-                            IconButton(onClick = { navController.navigate(Routes.SETTINGS_ROOT) }) {
-                                Icon(Icons.Default.Menu, contentDescription = "Menu")
-                            }
-                        }
-                    )
+                    TopBarState(title = "Domov", isVisible = true, navigationIcon = currentNavIcon)
                 )
             }
-            // Pôvodná logika pre heslá a kontakty zostáva
-            Routes.PASSWORDS_ROOT, Routes.CONTACTS_ROOT -> {
+            Routes.PASSWORDS_ROOT, Routes.CONTACTS_ROOT, Routes.TUTORIALS_ROOT -> {
                 sharedViewModel.setShowBottomBar(true)
-                val title = if (currentRoute == Routes.PASSWORDS_ROOT) "Heslá" else "Kontakty"
-                // TU IKONA NIE JE, ČO JE SPRÁVNE
-                sharedViewModel.setTopBarState(TopBarState(title = title, isVisible = true))
-            }
-            Routes.TUTORIALS_ROOT -> {
-                sharedViewModel.setShowBottomBar(true)
-                sharedViewModel.setTopBarState(TopBarState(title = "Návody", isVisible = true))
+                val title = when (currentRoute) {
+                    Routes.PASSWORDS_ROOT -> "Heslá"
+                    Routes.CONTACTS_ROOT -> "Kontakty"
+                    else -> "Návody"
+                }
+                // Na ostatných hlavných obrazovkách ikona nie je
+                sharedViewModel.setTopBarState(TopBarState(title = title, isVisible = true, navigationIcon = null))
             }
         }
     }
 
-    Scaffold(
-        topBar = {
-            if (topBarState.isVisible) {
-                TopAppBar(
-                    title = { Text(topBarState.title) },
-                    navigationIcon = { topBarState.navigationIcon?.invoke() },
-                    actions = topBarState.actions ?: {},
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = TelekomMagenta,
-                        titleContentColor = Color.White,
-                        navigationIconContentColor = Color.White,
-                        actionIconContentColor = Color.White
-                    )
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet {
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    "Menu aplikácie",
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                    label = { Text("Nastavenia") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        navController.navigate(Routes.SETTINGS_ROOT)
+                    },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.Info, contentDescription = null) },
+                    label = { Text("O aplikácii") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        navController.navigate(Routes.ABOUT_SCREEN)
+                    },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
             }
-        },
-        bottomBar = {
-            if (showBottomBar) {
-                NavigationBar {
-                    val currentDestination = navBackStackEntry?.destination
-                    bottomNavItems.forEach { screen ->
-                        NavigationBarItem(
-                            icon = { Icon(screen.icon, "Ikona spodnej navigácie") },
-                            label = { Text(screen.label) },
-                            selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
-                            onClick = {
-                                // ✅ ZAČIATOK ZMENY
-                                // Ak opúšťame sekciu hesiel, povieme to jej ViewModelu
-                                val isLeavingPasswords = currentDestination?.hierarchy?.any { it.route == Routes.PASSWORDS_ROOT } == true &&
-                                        screen.route != Routes.PASSWORDS_ROOT
-                                if (isLeavingPasswords) {
-                                    passwordsViewModel.onExitedMainRoute()
-                                }
-                                // ✅ KONIEC ZMENY
-
-                                // Pôvodná navigačná logika
-                                navController.navigate(screen.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            }
+        }
+    ) {
+        Scaffold(
+            topBar = {
+                if (topBarState.isVisible) {
+                    TopAppBar(
+                        title = { Text(topBarState.title) },
+                        navigationIcon = { topBarState.navigationIcon?.invoke() },
+                        actions = topBarState.actions ?: {},
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = TelekomMagenta,
+                            titleContentColor = Color.White,
+                            navigationIconContentColor = Color.White,
+                            actionIconContentColor = Color.White
                         )
+                    )
+                }
+            },
+            bottomBar = {
+                if (showBottomBar) {
+                    NavigationBar {
+                        val currentDestination = navBackStackEntry?.destination
+                        bottomNavItems.forEach { screen ->
+                            NavigationBarItem(
+                                icon = { Icon(screen.icon, "Ikona spodnej navigácie") },
+                                label = { Text(screen.label) },
+                                selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                                onClick = {
+                                    val isLeavingPasswords = currentDestination?.hierarchy?.any { it.route == Routes.PASSWORDS_ROOT } == true &&
+                                            screen.route != Routes.PASSWORDS_ROOT
+                                    if (isLeavingPasswords) {
+                                        passwordsViewModel.onExitedMainRoute()
+                                    }
+
+                                    navController.navigate(screen.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }
-        }
-    ) { paddingValues ->
-        NavHost(
-            navController = navController,startDestination = Routes.HOME_ROOT,
-            // ✅ ZAČIATOK ZMENY: Tieto 3 riadky vypnú animácie
-            enterTransition = { EnterTransition.None },
-            exitTransition = { ExitTransition.None },
-            popExitTransition = { ExitTransition.None }
-            // ✅ KONIEC ZMENY
-        ) {
-            composable(Routes.HOME_ROOT) {
-                HomeScreen(
-                    navController = navController,
-                    modifier = Modifier.padding(paddingValues),
-                    sharedViewModel = sharedViewModel
-                )
-            }
-            composable(Routes.PASSWORDS_ROOT) {
-                PasswordsNavHost(
-                    viewModel = passwordsViewModel,
-                    paddingValues = paddingValues,
-                    sharedViewModel = sharedViewModel
-                )
-            }
-            composable(Routes.CONTACTS_ROOT) {
-                ContactsNavHost(
-                    viewModel = contactsViewModel,
-                    paddingValues = paddingValues,
-                    sharedViewModel = sharedViewModel
-                )
-            }
-            composable(Routes.TUTORIALS_ROOT) {
-                TutorialsNavHost(
-                    tutorialsViewModel = tutorialsViewModel,
-                    sharedViewModel = sharedViewModel,
-                    paddingValues = paddingValues
-                )
-            }
-            composable(Routes.SETTINGS_ROOT) {
-                ProfileScreen(navController = navController, modifier = Modifier.padding(paddingValues))
-            }
-            composable(Routes.TEST_SCREEN) {
-                TestScreen(
-                    navController = navController,
-                    sharedViewModel = sharedViewModel,
-                    modifier = Modifier.padding(paddingValues)
-                )
-            }
-            composable(
-                route = "test_detail/{itemId}",
-                arguments = listOf(navArgument("itemId") { type = NavType.StringType })
-            ) { backStackEntry ->
-                val itemId = backStackEntry.arguments?.getString("itemId")
-                if (itemId != null) {
-                    TestDetailScreen(
+        ) { paddingValues ->
+            NavHost(
+                navController = navController,
+                startDestination = Routes.HOME_ROOT,
+                enterTransition = { EnterTransition.None },
+                exitTransition = { ExitTransition.None },
+                popExitTransition = { ExitTransition.None }
+            ) {
+                composable(Routes.HOME_ROOT) {
+                    HomeScreen(
                         navController = navController,
                         sharedViewModel = sharedViewModel,
-                        itemId = itemId
+                        modifier = Modifier.padding(paddingValues)
                     )
+                }
+                composable(Routes.PASSWORDS_ROOT) {
+                    PasswordsNavHost(
+                        viewModel = passwordsViewModel,
+                        paddingValues = paddingValues,
+                        sharedViewModel = sharedViewModel
+                    )
+                }
+                composable(Routes.CONTACTS_ROOT) {
+                    ContactsNavHost(
+                        viewModel = contactsViewModel,
+                        paddingValues = paddingValues,
+                        sharedViewModel = sharedViewModel
+                    )
+                }
+                composable(Routes.TUTORIALS_ROOT) {
+                    TutorialsNavHost(
+                        tutorialsViewModel = tutorialsViewModel,
+                        sharedViewModel = sharedViewModel,
+                        paddingValues = paddingValues
+                    )
+                }
+                composable(Routes.SETTINGS_ROOT) {
+                    SettingsScreen(
+                        navController = navController,
+                        sharedViewModel = sharedViewModel,
+                        modifier = Modifier.padding(paddingValues)
+                    )
+                }
+                composable(Routes.ABOUT_SCREEN) {
+                    AboutScreen(
+                        navController = navController,
+                        sharedViewModel = sharedViewModel,
+                        modifier = Modifier.padding(paddingValues)
+                    )
+                }
+                composable(Routes.TEST_SCREEN) {
+                    TestScreen(
+                        navController = navController,
+                        sharedViewModel = sharedViewModel,
+                        modifier = Modifier.padding(paddingValues)
+                    )
+                }
+                composable(
+                    route = "test_detail/{itemId}",
+                    arguments = listOf(navArgument("itemId") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val itemId = backStackEntry.arguments?.getString("itemId")
+                    if (itemId != null) {
+                        TestDetailScreen(
+                            navController = navController,
+                            sharedViewModel = sharedViewModel,
+                            itemId = itemId
+                        )
+                    }
                 }
             }
         }
     }
 }
 
+// =========================================================================
+// Ostatné NavHosty (PasswordsNavHost, ContactsNavHost, atď.) idú sem.
+// Keďže sa nemenili, pre prehľadnosť ich tu nevypisujem znova.
+// Vložte sem váš existujúci kód pre PasswordsNavHost, ContactsNavHost, TutorialsNavHost.
+// =========================================================================
+
 
 @Composable
 fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues, sharedViewModel: SharedViewModel) {
     val nestedNavController = rememberNavController()
-
-    // Spodná lišta sa schováva, keď nie sme na hlavnom zozname
     val navBackStackEntry by nestedNavController.currentBackStackEntryAsState()
     LaunchedEffect(navBackStackEntry) {
         val currentRoute = navBackStackEntry?.destination?.route
@@ -278,7 +330,6 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
         popExitTransition = { ExitTransition.None }
     ) {
         composable(Routes.PASSWORDS_LIST) {
-            // ✅ ZMENA: Odstránili sme "backStackEntry ->" a parameter navBackStackEntry
             PasswordsScreen(
                 modifier = Modifier.padding(paddingValues),
                 navController = nestedNavController,
@@ -286,8 +337,6 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
                 sharedViewModel = sharedViewModel
             )
         }
-
-        // ✅ ZMENA: Nová spoločná cesta pre detail hesla aj IP
         composable(
             route = "item_detail/{itemId}",
             arguments = listOf(navArgument("itemId") { type = NavType.StringType })
@@ -299,7 +348,6 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
                 viewModel = viewModel,
                 sharedViewModel = sharedViewModel,
                 onNavigateToEdit = { id ->
-                    // Rozhodneme sa, kam navigovať na základe toho, či ide o heslo alebo IP
                     val isPassword = viewModel.passwordList.value.any { it.id == id }
                     if (isPassword) {
                         nestedNavController.navigate(Routes.editPassword(id))
@@ -310,8 +358,6 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
                 onBack = { nestedNavController.popBackStack() }
             )
         }
-
-        // Obrazovky pre pridanie/úpravu zostávajú rovnaké
         composable(Routes.ADD_PASSWORD) {
             AddEditPasswordScreen(
                 modifier = Modifier.padding(paddingValues),
@@ -357,7 +403,6 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
     }
 }
 
-// ✅✅✅ JEDINÁ ZMENA JE V TOMTO BLOKU ✅✅✅
 @Composable
 fun ContactsNavHost(
     viewModel: ContactsViewModel,
@@ -365,8 +410,6 @@ fun ContactsNavHost(
     sharedViewModel: SharedViewModel,
 ) {
     val nestedNavController = rememberNavController()
-
-    // Logika pre zobrazenie/skrytie spodnej lišty
     val navBackStackEntry by nestedNavController.currentBackStackEntryAsState()
     LaunchedEffect(navBackStackEntry) {
         val currentRoute = navBackStackEntry?.destination?.route
@@ -380,7 +423,6 @@ fun ContactsNavHost(
         exitTransition = { ExitTransition.None },
         popExitTransition = { ExitTransition.None }
     ) {
-        // 1. Obrazovka so zoznamom kontaktov
         composable(Routes.CONTACTS_LIST) {
             sharedViewModel.setTopBarState(TopBarState(title = "Kontakty", isVisible = true))
             ContactsScreen(
@@ -389,9 +431,6 @@ fun ContactsNavHost(
                 viewModel = viewModel
             )
         }
-
-        // ✅✅✅ 2. NOVÁ OBRAZOVKA PRE DETAIL KONTAKTU ✅✅✅
-        // Skontrolujte, či máte tento blok a či používa Routes.CONTACT_DETAIL
         composable(
             route = Routes.CONTACT_DETAIL,
             arguments = listOf(navArgument("contactId") { type = NavType.IntType })
@@ -406,13 +445,11 @@ fun ContactsNavHost(
                     nestedNavController.navigate(Routes.editContact(id))
                 },
                 onBack = {
-                    viewModel.clearSelectedContact() // Dôležité pre vyčistenie stavu
+                    viewModel.clearSelectedContact()
                     nestedNavController.popBackStack()
                 }
             )
         }
-
-        // 3. Obrazovka pre úpravu kontaktu
         composable(
             route = Routes.EDIT_CONTACT,
             arguments = listOf(navArgument("contactId") { type = NavType.IntType })
@@ -427,8 +464,6 @@ fun ContactsNavHost(
                 onBack = { nestedNavController.popBackStack() }
             )
         }
-
-        // 4. Ostatné obrazovky (pridanie, správa kanálov)
         composable(Routes.ADD_CONTACT) {
             sharedViewModel.setTopBarState(TopBarState(isVisible = false))
             AddContactScreen(
@@ -470,11 +505,9 @@ fun TutorialsNavHost(
     NavHost(
         navController = nestedNavController,
         startDestination = Routes.TUTORIALS_LIST,
-        // ✅ ZAČIATOK ZMENY
         enterTransition = { EnterTransition.None },
         exitTransition = { ExitTransition.None },
         popExitTransition = { ExitTransition.None }
-        // ✅ KONIEC ZMENY
     ) {
         composable(Routes.TUTORIALS_LIST) {
             TutorialsScreen(
@@ -521,8 +554,113 @@ fun TutorialsNavHost(
     }
 }
 
+
+// =========================================================================
+// Obrazovky (Screens)
+// =========================================================================
+
 @Composable
-fun ProfileScreen(navController: NavController, modifier: Modifier = Modifier) {
+fun SettingsScreen(
+    navController: NavController,
+    sharedViewModel: SharedViewModel,
+    modifier: Modifier = Modifier
+) {
+    LaunchedEffect(Unit) {
+        sharedViewModel.setTopBarState(
+            TopBarState(
+                title = "Nastavenia",
+                isVisible = true,
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Naspäť"
+                        )
+                    }
+                }
+            )
+        )
+    }
+
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(top = 16.dp)
+    ) {
+        item {
+            SettingsItem(
+                title = "Spravovať kategórie",
+                subtitle = "Pridajte alebo upravte kategórie návodov",
+                icon = Icons.Default.Category,
+                onClick = { /* TODO: Navigácia na správu kategórií */ }
+            )
+        }
+        item {
+            SettingsItem(
+                title = "Vzhľad",
+                subtitle = "Nastavenie svetlého a tmavého režimu",
+                icon = Icons.Default.Style,
+                onClick = { /* TODO: Navigácia na nastavenia vzhľadu */ }
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsItem(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 20.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(32.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+        Spacer(Modifier.width(20.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = title, style = MaterialTheme.typography.bodyLarge)
+            Text(text = subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.outline)
+        }
+        Icon(
+            imageVector = Icons.Default.ChevronRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.outline
+        )
+    }
+}
+
+@Composable
+fun AboutScreen(
+    navController: NavController,
+    sharedViewModel: SharedViewModel,
+    modifier: Modifier = Modifier
+) {
+    LaunchedEffect(Unit) {
+        sharedViewModel.setTopBarState(
+            TopBarState(
+                title = "O aplikácii",
+                isVisible = true,
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Naspäť"
+                        )
+                    }
+                }
+            )
+        )
+    }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -530,19 +668,23 @@ fun ProfileScreen(navController: NavController, modifier: Modifier = Modifier) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("Profil a Nastavenia", style = MaterialTheme.typography.headlineMedium)
+        Icon(Icons.Filled.Info, "Ikona info", Modifier.size(60.dp), tint = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.height(16.dp))
-        Text("Tu sa budú nachádzať nastavenia aplikácie, pomocník a ďalšie možnosti.")
+        Text("OP Správca", style = MaterialTheme.typography.headlineMedium)
+        Spacer(Modifier.height(8.dp))
+        Text("Verzia 1.0.0", style = MaterialTheme.typography.bodyMedium)
         Spacer(Modifier.height(24.dp))
-        Button(onClick = { navController.popBackStack() }) {
-            Text("Naspäť")
-        }
+        Text("Aplikácia pre bezpečnú správu vašich dát.", textAlign = TextAlign.Center)
     }
 }
 
-@Composable
-fun HomeScreen(navController: NavController, sharedViewModel: SharedViewModel, modifier: Modifier = Modifier) {
 
+@Composable
+fun HomeScreen(
+    navController: NavController,
+    sharedViewModel: SharedViewModel,
+    modifier: Modifier = Modifier
+) {
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -566,4 +708,8 @@ fun HomeScreen(navController: NavController, sharedViewModel: SharedViewModel, m
         }
     }
 }
+
+// Sem patrí vaša obrazovka TestScreen, ak ju máte definovanú inde,
+// inak ju môžete nechať tu.
+
 
