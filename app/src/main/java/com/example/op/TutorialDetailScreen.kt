@@ -76,6 +76,10 @@ fun TutorialDetailScreen(
                                 DropdownMenuItem(
                                     text = { Text("Upraviť") },
                                     onClick = {
+                                        // KROK 1: OKAMŽITE SKRYJEME STARÚ HORNÚ LIŠTU
+                                        sharedViewModel.setTopBarState(TopBarState(isVisible = false))
+
+                                        // KROK 2: AŽ POTOM ZATVORÍME MENU A NAVIGUJEME
                                         showMenu = false
                                         onNavigateToEdit(tutorialId)
                                     },

@@ -31,10 +31,20 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.example.op.ui.theme.TelekomMagenta
 import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.detectReorderAfterLongPress
 import org.burnoutcrew.reorderable.rememberReorderableLazyListState
 import org.burnoutcrew.reorderable.reorderable
+
+
+
+
+
+
+
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,9 +69,7 @@ fun AddTutorialScreen(
         }
     )
 
-    LaunchedEffect(Unit) {
-        sharedViewModel.setTopBarState(TopBarState(isVisible = false))
-    }
+
 
     if (showDeleteConfirmDialog) {
         DeleteConfirmDialog(
@@ -81,11 +89,9 @@ fun AddTutorialScreen(
         }
     }
 
-    // ==========================================================
-    // ===== TU BOLA CHYBA V ZÁTVORKÁCH, TOTO JE OPRAVENÁ VERZIA =====
-    // ==========================================================
     Scaffold(
-        modifier = modifier,
+        // ✅ TOTO JE SPRÁVNA VERZIA PRE VÁŠ PROJEKT
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text(if (isEditing) "Upraviť návod" else "Nový návod") },
@@ -95,10 +101,7 @@ fun AddTutorialScreen(
                     }
                 },
                 actions = {
-                    // Spacer pre medzeru od okraja obrazovky
                     Spacer(modifier = Modifier.width(8.dp))
-
-                    // Zobrazí sa, len ak sú zmeny
                     if (tutorialsViewModel.hasChanges) {
                         Button(
                             onClick = {
@@ -106,18 +109,20 @@ fun AddTutorialScreen(
                                 navController.popBackStack()
                             },
                             enabled = tutorialsViewModel.tutorialTitle.isNotBlank(),
-                            // TOTO JE KĽÚČOVÁ ZMENA: Nastavenie farby tlačidla
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary // Použijeme primárnu farbu témy
+                                containerColor = MaterialTheme.colorScheme.primary
                             )
                         ) {
                             Text("Uložiť")
                         }
                     }
-
-                    // Spacer pre medzeru na konci
                     Spacer(modifier = Modifier.width(8.dp))
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = TelekomMagenta,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
+                )
             )
         },
         bottomBar = {
@@ -253,7 +258,8 @@ fun TextBlockEditor(
 @Composable
 fun ImageBlockEditor(
     block: TutorialContentBlock.ImageBlock,
-    onRemove: () -> Unit,modifier: Modifier = Modifier,
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     // Inteligentný výber modelu pre obrázok
     val imageModel = block.uriString?.toUri() ?: block.imageRes

@@ -64,6 +64,8 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.5.0")
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    implementation("androidx.compose.foundation:foundation-layout:1.6.5")
+
 
 
     // Compose BOM na zjednodušenie verzií
