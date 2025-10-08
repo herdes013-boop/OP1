@@ -1,5 +1,11 @@
 package com.example.op.ui.theme
 
+import com.example.op.ui.theme.Green_OP
+import com.example.op.ui.theme.Green_OP_light
+import com.example.op.ui.theme.Pink40
+import com.example.op.ui.theme.Pink80
+import com.example.op.ui.theme.PurpleGrey40
+import com.example.op.ui.theme.PurpleGrey80
 import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -16,26 +22,25 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
+// ✅ Správne: Farebné schémy teraz používajú naše nové farby z externého súboru Color.kt
 private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+    primary = Green_OP_light,
+    secondary = PurpleGrey80, // <-- ZMENA
+    tertiary = Pink80 // <-- ZMENA
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-    /*
-     Môžete tu nechať aj onPrimary = Color.White, alebo to zmazať,
-     základná schéma si poradí.
-    */
+    primary = Green_OP,
+    secondary = PurpleGrey40, // <-- ZMENA
+    tertiary = Pink40 // <-- ZMENA
 )
 
 @Composable
 fun OPTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = false, // Odporúčam dočasne nastaviť na `false`
+    // Dynamic color je funkcia pre Android 12+, ktorá prispôsobí farby tapete.
+    // Pre konzistentný vzhľad je lepšie mať ju vypnutú.
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val colorScheme = when {
@@ -47,27 +52,16 @@ fun OPTheme(
         else -> LightColorScheme
     }
 
-    // ================== ZAČIATOK KĽÚČOVÝCH ZMIEN ==================
-
     val view = LocalView.current
     if (!view.isInEditMode) {
-        // SideEffect sa postará o to, aby sa tento kód vykonal bezpečne
         SideEffect {
             val window = (view.context as Activity).window
-
-            // 1. Nastavíme farbu systémovej lišty na úplne priehľadnú
-            window.statusBarColor = Color.Transparent.toArgb()
-
-            // 2. Povieme systému, aby nekreslil pozadie systémových líšt
+            window.statusBarColor = Color.Transparent.toArgb() // Priehľadný stavový riadok
             WindowCompat.setDecorFitsSystemWindows(window, false)
-
-            // 3. Nastavíme farbu ikon v systémovej lište (čas, batéria)
-            // Na svetlej téme budú ikony tmavé, na tmavej téme budú svetlé.
+            // Nastaví farbu ikon v stavovom riadku (čas, batéria) na tmavú/svetlú podľa témy
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
         }
     }
-
-    // =================== KONIEC KĽÚČOVÝCH ZMIEN ===================
 
     MaterialTheme(
         colorScheme = colorScheme,
@@ -75,4 +69,3 @@ fun OPTheme(
         content = content
     )
 }
-
