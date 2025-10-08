@@ -3,6 +3,8 @@ package com.example.op
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -168,7 +170,14 @@ fun MainScreen() {
             }
         }
     ) { paddingValues ->
-        NavHost(navController = navController, startDestination = Routes.HOME_ROOT) {
+        NavHost(
+            navController = navController,startDestination = Routes.HOME_ROOT,
+            // ✅ ZAČIATOK ZMENY: Tieto 3 riadky vypnú animácie
+            enterTransition = { EnterTransition.None },
+            exitTransition = { ExitTransition.None },
+            popExitTransition = { ExitTransition.None }
+            // ✅ KONIEC ZMENY
+        ) {
             composable(Routes.HOME_ROOT) {
                 HomeScreen(
                     navController = navController,
@@ -237,7 +246,12 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
 
     NavHost(
         navController = nestedNavController,
-        startDestination = Routes.PASSWORDS_LIST
+        startDestination = Routes.PASSWORDS_LIST,
+        // ✅ ZAČIATOK ZMENY
+        enterTransition = { EnterTransition.None },
+        exitTransition = { ExitTransition.None },
+        popExitTransition = { ExitTransition.None }
+        // ✅ KONIEC ZMENY
     ) {
         composable(Routes.PASSWORDS_LIST) {
             PasswordsScreen(
@@ -313,7 +327,7 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
 fun ContactsNavHost(
     viewModel: ContactsViewModel,
     paddingValues: PaddingValues,
-    sharedViewModel: SharedViewModel
+    sharedViewModel: SharedViewModel,
 ) {
     val nestedNavController = rememberNavController()
     val navBackStackEntry by nestedNavController.currentBackStackEntryAsState()
@@ -333,7 +347,15 @@ fun ContactsNavHost(
     }
 
     // ✅ ZMENA: modifier je PREČ z NavHost-u.
-    NavHost(nestedNavController, startDestination = Routes.CONTACTS_LIST) {
+    NavHost(
+        nestedNavController,
+        startDestination = Routes.CONTACTS_LIST,
+        // ✅ ZAČIATOK ZMENY
+        enterTransition = { EnterTransition.None },
+        exitTransition = { ExitTransition.None },
+        popExitTransition = { ExitTransition.None }
+        // ✅ KONIEC ZMENY
+    ) {
         composable(Routes.CONTACTS_LIST) {
             // ✅ paddingValues sa aplikuje priamo na obrazovku
             ContactsScreen(
@@ -378,7 +400,7 @@ fun ContactsNavHost(
 fun TutorialsNavHost(
     tutorialsViewModel: TutorialsViewModel,
     sharedViewModel: SharedViewModel,
-    paddingValues: PaddingValues
+    paddingValues: PaddingValues,
 ) {
     val nestedNavController = rememberNavController()
     val navBackStackEntry by nestedNavController.currentBackStackEntryAsState()
@@ -398,7 +420,12 @@ fun TutorialsNavHost(
 
     NavHost(
         navController = nestedNavController,
-        startDestination = Routes.TUTORIALS_LIST
+        startDestination = Routes.TUTORIALS_LIST,
+        // ✅ ZAČIATOK ZMENY
+        enterTransition = { EnterTransition.None },
+        exitTransition = { ExitTransition.None },
+        popExitTransition = { ExitTransition.None }
+        // ✅ KONIEC ZMENY
     ) {
         composable(Routes.TUTORIALS_LIST) {
             TutorialsScreen(
