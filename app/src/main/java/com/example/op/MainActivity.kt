@@ -156,7 +156,8 @@ fun MainScreen() {
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet {
+            // Pridajte modifier priamo sem, do zátvoriek ModalDrawerSheet
+            ModalDrawerSheet(modifier = Modifier.width(280.dp)) {
                 Spacer(Modifier.height(16.dp))
                 Text(
                     "Menu aplikácie",
