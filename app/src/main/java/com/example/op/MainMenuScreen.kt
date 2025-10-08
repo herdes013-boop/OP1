@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -21,7 +22,6 @@ import androidx.navigation.NavController
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainMenuScreen(navController: NavController) {
-    // ❌ Odstránili sme .systemBarsPadding()
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -29,34 +29,43 @@ fun MainMenuScreen(navController: NavController) {
         // --- 1. Top Bar / Hero sekcia ---
         TopAppBar(
             title = {
+                // ... titulok zostáva rovnaký ...
                 Column(Modifier.padding(vertical = 4.dp)) {
                     Text(
-                        text = "Dobrý deň,",
-                        style = MaterialTheme.typography.titleMedium,
-                        // Farba sa teraz berie z `titleContentColor` nižšie
-                    )
-                    Text(
-                        text = "Ján Novák",
+                        text = "Domov", // ZMENENÉ PODĽA VAŠEJ POŽIADAVKY
                         style = MaterialTheme.typography.headlineMedium,
-                        // Farba sa teraz berie z `titleContentColor` nižšie
                     )
                 }
             },
-            // ✅ Upravili sme farby
-            colors = TopAppBarDefaults.topAppBarColors(
-                // Priamo tu použijeme našu farbu, ktorú sme si definovali
-                containerColor = TelekomMagenta, // Zmena zo zelenej na ružovú
 
-                // A nastavíme farbu textu a ikon na bielu, aby boli čitateľné
+            // 2. KROK: PRIDÁME BLOK PRE NAVIGAČNÚ IKONU
+            navigationIcon = {
+                IconButton(onClick = {
+                    // Tento príkaz nás neskôr presmeruje na obrazovku nastavení
+                    navController.navigate("settings")
+                }) {
+                    Icon(
+                        imageVector = Icons.Default.Menu,
+                        contentDescription = "Menu"
+                    )
+                }
+            },
+
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = TelekomMagenta,
                 titleContentColor = Color.White,
+
+                // 3. KROK: PRIDÁME FARBU PRE NOVÚ IKONU
+                navigationIconContentColor = Color.White,
+
                 actionIconContentColor = Color.White
             ),
             actions = {
+                // ... ikona profilu zostáva bez zmeny ...
                 IconButton(onClick = { /* Navigácia na profil */ }) {
                     Icon(
                         Icons.Default.Person,
                         contentDescription = "Profil",
-                        // Tint už nie je potrebný, farbu riadi TopAppBar
                     )
                 }
             }
@@ -108,23 +117,29 @@ fun MainMenuScreen(navController: NavController) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+            // Zmeníme usporiadanie, aby sa tlačidlá roztiahli
+            horizontalArrangement = Arrangement.spacedBy(8.dp) // Pridá medzery medzi tlačidlá
         ) {
             QuickActionButton(
                 label = "Nové heslo",
                 icon = Icons.Default.Key,
                 onClick = { navController.navigate("add_password") },
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 4.dp)
+                modifier = Modifier.weight(1f) // Každé tlačidlo zaberie 1/3 šírky
             )
             QuickActionButton(
                 label = "Nový kontakt",
                 icon = Icons.Default.Phone,
                 onClick = { navController.navigate("add_contact") },
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 4.dp)
+                modifier = Modifier.weight(1f)
+            )
+            // ✅ KROK 1: PRIDÁME TOTO TLAČIDLO SPÄŤ
+            QuickActionButton(
+                label = "Návody", // Text tlačidla
+                icon = Icons.Default.Menu, // Použijeme ikonu Menu
+                onClick = {
+                    navController.navigate(Screen.Tutorials.route) // Prejde na obrazovku s návodmi
+                },
+                modifier = Modifier.weight(1f) // Zaberie poslednú tretinu
             )
         }
     }

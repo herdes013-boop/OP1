@@ -117,13 +117,27 @@ fun MainScreen() {
         }
 
         when (currentRoute) {
-            Routes.HOME_ROOT, Routes.PASSWORDS_ROOT, Routes.CONTACTS_ROOT -> {
+            // ✅ ZMENA 1: ODDEĽTE HOME_ROOT OD OSTATNÝCH
+            Routes.HOME_ROOT -> {
                 sharedViewModel.setShowBottomBar(true)
-                val title = when (currentRoute) {
-                    Routes.PASSWORDS_ROOT -> "Heslá"
-                    Routes.CONTACTS_ROOT -> "Kontakty"
-                    else -> "Domov"
-                }
+                sharedViewModel.setTopBarState(
+                    TopBarState(
+                        title = "Domov",
+                        isVisible = true,
+                        // TOTO JE KĽÚČOVÉ: Pridanie ikony menu
+                        navigationIcon = {
+                            IconButton(onClick = { navController.navigate(Routes.SETTINGS_ROOT) }) {
+                                Icon(Icons.Default.Menu, contentDescription = "Menu")
+                            }
+                        }
+                    )
+                )
+            }
+            // Pôvodná logika pre heslá a kontakty zostáva
+            Routes.PASSWORDS_ROOT, Routes.CONTACTS_ROOT -> {
+                sharedViewModel.setShowBottomBar(true)
+                val title = if (currentRoute == Routes.PASSWORDS_ROOT) "Heslá" else "Kontakty"
+                // TU IKONA NIE JE, ČO JE SPRÁVNE
                 sharedViewModel.setTopBarState(TopBarState(title = title, isVisible = true))
             }
             Routes.TUTORIALS_ROOT -> {
@@ -192,7 +206,8 @@ fun MainScreen() {
             composable(Routes.HOME_ROOT) {
                 HomeScreen(
                     navController = navController,
-                    modifier = Modifier.padding(paddingValues)
+                    modifier = Modifier.padding(paddingValues),
+                    sharedViewModel = sharedViewModel
                 )
             }
             composable(Routes.PASSWORDS_ROOT) {
@@ -526,7 +541,8 @@ fun ProfileScreen(navController: NavController, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun HomeScreen(navController: NavController, modifier: Modifier = Modifier) {
+fun HomeScreen(navController: NavController, sharedViewModel: SharedViewModel, modifier: Modifier = Modifier) {
+
     Column(
         modifier = modifier
             .fillMaxSize()
