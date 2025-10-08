@@ -140,8 +140,8 @@ fun AddEditPasswordScreen(
                 onValueChange = { localPasswordItem = localPasswordItem.copy(password = it) },
                 label = { Text("Heslo") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                visualTransformation = PasswordVisualTransformation() // Skryje heslo
+                singleLine = true
+                // Riadok s visualTransformation je preč
             )
             OutlinedTextField(
                 value = localPasswordItem.notes ?: "",
