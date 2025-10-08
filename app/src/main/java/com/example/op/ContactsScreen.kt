@@ -1,13 +1,45 @@
 package com.example.op
 
-import androidx.compose.foundation.layout.*
+// Správne importy pre layout
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+
+// Správne importy pre Material 3 komponenty
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.LooksOne
+import androidx.compose.material.icons.filled.LooksTwo
+import androidx.compose.material.icons.filled.Newspaper
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SportsSoccer
+import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SearchBar
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.Text
+
+// Správne importy pre stav a kompozíciu
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -15,19 +47,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+
+// Správne importy pre ViewModel a Navigáciu
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import android.util.Log
 
+// (Zvyšok vášho kódu zostáva nezmenený)
 
-// ... (getChannelIcon a ContactListItem ostávajú bez zmeny)
+
+// Funkcie getChannelIcon a ContactListItem zostávajú úplne bez zmeny
 fun getChannelIcon(channel: String?): ImageVector {
     return when (channel) {
         "Jednotka" -> Icons.Filled.LooksOne
         "Dvojka" -> Icons.Filled.LooksTwo
-        "24" -> Icons.Filled.Newspaper // Pridaná ikona pre "24"
+        "24" -> Icons.Filled.Newspaper
         "Sport" -> Icons.Filled.SportsSoccer
-        else -> Icons.Filled.Person // "Iné" bolo odstránené, "else" pokryje ostatné prípady
+        else -> Icons.Filled.Person
     }
 }
 
@@ -75,7 +111,7 @@ fun ContactListItem(contact: ContactItem, onItemClick: () -> Unit) {
 
 
 // --------------------------------------------------
-// Hlavná obrazovka pre kontakty - S OPRAVOU
+// Hlavná obrazovka pre kontakty - S POUŽITÍM SCAFFOLD
 // --------------------------------------------------
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -85,36 +121,52 @@ fun ContactsScreen(
     viewModel: ContactsViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {
+    // ✅ Toto je správny spôsob
     val searchQuery = viewModel.searchQuery
     val selectedTabFilter = viewModel.selectedTabFilter
-    val ALL_CHANNELS_FILTER = "Všetky"
     val contacts = viewModel.displayedContacts
-    val categories = viewModel.channelOptions.toList()
+    val categories = viewModel.channelOptions.toList() // Použijeme .toList(), aby sme mali stabilný zoznam pre UI
+
+
+    val ALL_CHANNELS_FILTER = "Všetky"
     val selectedTabIndex = categories.indexOf(selectedTabFilter)
 
-    Box(
-        modifier = modifier.fillMaxSize()
-    ) {
+    // ✅ ZMENA č. 1: Použijeme Scaffold ako hlavný kontajner
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = {
+                    viewModel.resetForm()
+                    navController.navigate(Routes.ADD_CONTACT)
+                }
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Pridať kontakt")
+            }
+        }
+    ) { innerPadding -> // ✅ ZMENA č. 2: Scaffold nám dáva "innerPadding"
 
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            // Aplikujeme padding od Scaffold-u, aby sa obsah neprekryl s FAB
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            // Zvyšok kódu je takmer identický, len je vložený sem
 
-            // =========== TOTO JE JEDINÁ ZMENA, KTORÚ POTREBUJETE ===========
             TabRow(
                 selectedTabIndex = if (selectedTabIndex == -1) 0 else selectedTabIndex,
             ) {
-                categories.forEach { originalTitle -> // Premenoval som premennú pre jasnosť
-
-                    // "Preložíme" pôvodný názov na taký, ktorý chceme zobraziť
+                categories.forEach { originalTitle ->
                     val displayTitle = when (originalTitle) {
                         "Jednotka" -> ":1"
                         "Dvojka" -> ":2"
                         "24" -> ":24"
                         "Sport" -> ":Sport"
-                        else -> originalTitle // "Všetky" a iné zostanú nezmenené
+                        else -> originalTitle
                     }
 
                     Tab(
-                        // Logika stále pracuje s pôvodným názvom (originalTitle)
                         selected = selectedTabFilter == originalTitle,
                         onClick = {
                             if (selectedTabFilter == ALL_CHANNELS_FILTER && originalTitle != ALL_CHANNELS_FILTER) {
@@ -124,7 +176,7 @@ fun ContactsScreen(
                         },
                         text = {
                             Text(
-                                text = displayTitle, // Tu zobrazíme náš nový, skrátený názov
+                                text = displayTitle,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -132,9 +184,7 @@ fun ContactsScreen(
                     )
                 }
             }
-            // ======================= KONIEC ZMENY =======================
 
-            // Zvyšok kódu (SearchBar, LazyColumn, atď.) zostáva úplne bez zmeny
             if (selectedTabFilter == ALL_CHANNELS_FILTER) {
                 SearchBar(
                     query = searchQuery,
@@ -148,16 +198,13 @@ fun ContactsScreen(
                     placeholder = { Text("Vyhľadať v kontaktoch...") },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Ikona vyhľadávania") },
                     trailingIcon = {
-                        // Podmienené zobrazenie ikony "X"
                         if (searchQuery.isNotEmpty()) {
                             IconButton(onClick = { viewModel.updateSearchQuery("") }) {
                                 Icon(Icons.Default.Clear, contentDescription = "Vymazať text")
                             }
                         }
                     }
-                ) {
-                    // Prázdny obsahový blok, ktorý je pre SearchBar povinný
-                }
+                ) { /* Prázdny obsahový blok */ }
             }
 
             if (contacts.isEmpty()) {
@@ -183,41 +230,27 @@ fun ContactsScreen(
                 }
             } else {
                 LazyColumn(
+                    // ✅ ZMENA č. 3: Odstránili sme manuálny `bottom` padding
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(
                         start = 8.dp,
                         end = 8.dp,
-                        top = 4.dp,
-                        bottom = 80.dp // Padding pre FAB
+                        top = 4.dp
+                        // Spodný padding už nie je potrebný, rieši ho Scaffold
                     )
                 ) {
                     items(contacts, key = { it.id }) { contact ->
                         ContactListItem(
                             contact = contact,
                             onItemClick = {
-                                // ✅✅✅ PRIDAJTE TIETO 2 RIADKY ✅✅✅
                                 val route = "contact_detail/${contact.id}"
                                 Log.d("NAV_TEST", "Pokus o navigáciu na:$route")
-
-                                // Pôvodný kód
                                 navController.navigate(route)
                             }
                         )
                     }
                 }
             }
-        }
-
-        FloatingActionButton(
-            onClick = {
-                viewModel.resetForm()
-                navController.navigate(Routes.ADD_CONTACT)
-            },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp)
-        ) {
-            Icon(Icons.Default.Add, contentDescription = "Pridať kontakt")
         }
     }
 }

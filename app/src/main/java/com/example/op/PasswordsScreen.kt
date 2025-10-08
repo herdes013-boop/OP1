@@ -29,7 +29,6 @@ fun PasswordsScreen(
     sharedViewModel: SharedViewModel,
     modifier: Modifier = Modifier,
 ) {
-    // Stavy z ViewModelu
     val passwords by viewModel.passwordList.collectAsState()
     val ipAddresses by viewModel.ipList.collectAsState()
     val passwordSearchText by viewModel.passwordSearchText.collectAsState()
@@ -37,19 +36,36 @@ fun PasswordsScreen(
     val selectedTabIndex by viewModel.selectedTabIndex
     val tabs = listOf("Heslá", "IP Adresy")
 
-    // Tento LaunchedEffect sa spustí vždy, keď sa obrazovka objaví.
     LaunchedEffect(Unit) {
-        viewModel.onScreenAppeared() // Povie ViewModelu, aby sa rozhodol, čo s tabmi.
-
-        // Nastavíme vzhľad, ktorý pre túto obrazovku platí vždy.
+        viewModel.onScreenAppeared()
         sharedViewModel.setTopBarState(TopBarState(title = "Heslá", isVisible = true))
         sharedViewModel.setShowBottomBar(true)
     }
 
-    Box(
-        modifier = modifier.fillMaxSize()
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+    // ✅ ZMENA č. 1: Použijeme Scaffold namiesto Box
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = {
+                    when (selectedTabIndex) {
+                        0 -> navController.navigate(Routes.ADD_PASSWORD)
+                        1 -> navController.navigate(Routes.ADD_IP_ADDRESS)
+                    }
+                }
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = "Pridať")
+            }
+        }
+    ) { innerPadding -> // ✅ ZMENA č. 2: Získame automatický padding
+
+        Column(
+            // Aplikujeme padding od Scaffold-u
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            // Zvyšok kódu je identický, len je vložený sem
             when (selectedTabIndex) {
                 0 -> SearchBar(
                     query = passwordSearchText,
@@ -105,25 +121,9 @@ fun PasswordsScreen(
                 }
             }
         }
-
-        FloatingActionButton(
-            onClick = {
-                when (selectedTabIndex) {
-                    0 -> navController.navigate(Routes.ADD_PASSWORD)
-                    1 -> navController.navigate(Routes.ADD_IP_ADDRESS)
-                }
-            },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp)
-        ) {
-            Icon(Icons.Filled.Add, contentDescription = "Pridať")
-        }
     }
 }
 
-// Zvyšok súboru (SearchBar, TabContent, ListItem, atď.) zostáva úplne bez zmeny...
-// (kód je rovnaký, ako ste poslali, pre úplnosť ho sem pripájam)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -166,9 +166,7 @@ private fun <T> TabContent(
 ) {
     if (data.isEmpty()) {
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = 80.dp), // padding aby text nebol za FAB
+            modifier = Modifier.fillMaxSize(), // Padding už nie je potrebný, rieši ho Scaffold
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -183,7 +181,8 @@ private fun <T> TabContent(
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
-            contentPadding = PaddingValues(bottom = 80.dp) // Priestor pre FAB
+            // ✅ ZMENA č. 3: Odstránili sme manuálny `bottom` padding
+            contentPadding = PaddingValues(bottom = 0.dp) // Priestor už rieši `innerPadding` od Scaffold-u
         ) {
             items(data) { item ->
                 itemContent(item)
@@ -192,6 +191,7 @@ private fun <T> TabContent(
     }
 }
 
+// Zvyšok kódu (ColoredPasswordText, PasswordListItem, IpListItem) zostáva úplne bez zmeny...
 @Composable
 private fun ColoredPasswordText(
     password: String,
