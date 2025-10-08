@@ -1,5 +1,7 @@
 package com.example.op
 
+import androidx.compose.animation.core.copy
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -8,8 +10,9 @@ import kotlinx.coroutines.flow.asStateFlow
 data class TopBarState(
     val title: String = "Návody",
     val navigationIcon: (@Composable () -> Unit)? = null,
-    val actions: (@Composable () -> Unit)? = null,
-    val isVisible: Boolean = true
+    // Zmeníme typ, aby bol kompatibilný s `actions` v TopAppBar
+    val actions: (@Composable RowScope.() -> Unit)? = null,
+    val isVisible: Boolean = true,
 )
 
 class SharedViewModel : ViewModel() {
@@ -38,4 +41,9 @@ class SharedViewModel : ViewModel() {
     fun setShowBottomBar(isVisible: Boolean) {
         _showBottomBar.value = isVisible
     }
+    fun updateTopBarActions(newActions: @Composable RowScope.() -> Unit) {
+        // Namiesto .update { ... } použijeme priame priradenie hodnoty
+        _topBarState.value = _topBarState.value.copy(actions = newActions)
+    }
 }
+

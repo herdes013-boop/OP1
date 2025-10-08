@@ -74,31 +74,34 @@ fun EditContactScreen(
         }
     }
 
-    LaunchedEffect(localContact, hasUnsavedChanges) {
-        val contactName = listOfNotNull(localContact.firstName, localContact.lastName)
-            .joinToString(" ")
-            .ifBlank { "Upraviť Kontakt" }
-
+    LaunchedEffect(Unit) {
         sharedViewModel.setTopBarState(
             TopBarState(
-                title = contactName,
+                title = "Upraviť kontakt", // Titulok je teraz fixný
                 navigationIcon = {
                     IconButton(onClick = ::handleBackNavigation) {
                         Icon(Icons.Default.ArrowBack, "Naspäť")
                     }
-                },
-                actions = {
-                    if (hasUnsavedChanges) {
-                        IconButton(onClick = ::saveContactAndStay) {
-                            Icon(Icons.Default.Done, "Uložiť")
-                        }
-                    }
-                    IconButton(onClick = { showMenu = true }) {
-                        Icon(Icons.Default.MoreVert, "Viac")
-                    }
                 }
             )
         )
+    }
+
+// Tento LaunchedEffect bude reagovať iba na zmenu v `hasUnsavedChanges`
+// a bude riadiť iba zobrazenie ikoniek v `actions` (Uložiť a Viac).
+    LaunchedEffect(hasUnsavedChanges) {
+        sharedViewModel.updateTopBarActions {
+            // Zobrazí ikonu "Uložiť" iba vtedy, ak sú neuložené zmeny.
+            if (hasUnsavedChanges) {
+                IconButton(onClick = ::saveContactAndStay) {
+                    Icon(Icons.Default.Done, "Uložiť")
+                }
+            }
+            // Ikona troch bodiek pre menu sa zobrazí vždy.
+            IconButton(onClick = { showMenu = true }) {
+                Icon(Icons.Default.MoreVert, "Viac")
+            }
+        }
     }
 
     BackHandler(onBack = ::handleBackNavigation)

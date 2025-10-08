@@ -66,6 +66,7 @@ object Routes {
     fun editIpAddress(ipId: String) = "edit_ip_address/$ipId"
 
     const val CONTACTS_LIST = "contacts_list"
+    const val CONTACT_DETAIL = "contact_detail/{contactId}"
     const val ADD_CONTACT = "add_contact"
     const val EDIT_CONTACT = "edit_contact/{contactId}"
     fun editContact(contactId: Int) = "edit_contact/$contactId"
@@ -138,7 +139,7 @@ fun MainScreen() {
                 TopAppBar(
                     title = { Text(topBarState.title) },
                     navigationIcon = { topBarState.navigationIcon?.invoke() },
-                    actions = { topBarState.actions?.invoke() },
+                    actions = topBarState.actions ?: {},
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = TelekomMagenta,
                         titleContentColor = Color.White,
@@ -349,53 +350,59 @@ fun ContactsNavHost(
     sharedViewModel: SharedViewModel,
 ) {
     val nestedNavController = rememberNavController()
-    val navBackStackEntry by nestedNavController.currentBackStackEntryAsState()
 
+    // Logika pre zobrazenie/skrytie spodnej lišty
+    val navBackStackEntry by nestedNavController.currentBackStackEntryAsState()
     LaunchedEffect(navBackStackEntry) {
         val currentRoute = navBackStackEntry?.destination?.route
-        val isSubScreen = currentRoute != Routes.CONTACTS_LIST
-        sharedViewModel.setShowBottomBar(!isSubScreen)
-
-        val isAddScreen = currentRoute == Routes.ADD_CONTACT
-
-        if (isAddScreen) {
-            sharedViewModel.setTopBarState(TopBarState(isVisible = false))
-        } else if (currentRoute == Routes.CONTACTS_LIST) {
-            sharedViewModel.setTopBarState(TopBarState(title = "Kontakty", isVisible = true))
-        }
+        sharedViewModel.setShowBottomBar(currentRoute == Routes.CONTACTS_LIST)
     }
 
-    // ✅ ZMENA: modifier je PREČ z NavHost-u.
     NavHost(
-        nestedNavController,
+        navController = nestedNavController,
         startDestination = Routes.CONTACTS_LIST,
-        // ✅ ZAČIATOK ZMENY
         enterTransition = { EnterTransition.None },
         exitTransition = { ExitTransition.None },
         popExitTransition = { ExitTransition.None }
-        // ✅ KONIEC ZMENY
     ) {
+        // 1. Obrazovka so zoznamom kontaktov
         composable(Routes.CONTACTS_LIST) {
-            // ✅ paddingValues sa aplikuje priamo na obrazovku
+            sharedViewModel.setTopBarState(TopBarState(title = "Kontakty", isVisible = true))
             ContactsScreen(
                 modifier = Modifier.padding(paddingValues),
                 navController = nestedNavController,
                 viewModel = viewModel
             )
         }
-        composable(Routes.ADD_CONTACT) {
-            // ✅ OPRAVA: Odstránili sme modifier
-            AddContactScreen(
-                navController = nestedNavController,
-                viewModel = viewModel
+
+        // ✅✅✅ 2. NOVÁ OBRAZOVKA PRE DETAIL KONTAKTU ✅✅✅
+        // Skontrolujte, či máte tento blok a či používa Routes.CONTACT_DETAIL
+        composable(
+            route = Routes.CONTACT_DETAIL,
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val contactId = backStackEntry.arguments?.getInt("contactId") ?: 0
+            ContactDetailScreen(
+                modifier = Modifier.padding(paddingValues),
+                contactId = contactId,
+                viewModel = viewModel,
+                sharedViewModel = sharedViewModel,
+                onNavigateToEdit = { id ->
+                    nestedNavController.navigate(Routes.editContact(id))
+                },
+                onBack = {
+                    viewModel.clearSelectedContact() // Dôležité pre vyčistenie stavu
+                    nestedNavController.popBackStack()
+                }
             )
         }
+
+        // 3. Obrazovka pre úpravu kontaktu
         composable(
             route = Routes.EDIT_CONTACT,
             arguments = listOf(navArgument("contactId") { type = NavType.IntType })
         ) { backStackEntry ->
             val contactId = backStackEntry.arguments?.getInt("contactId") ?: 0
-            // ✅ paddingValues sa aplikuje priamo na obrazovku
             EditContactScreen(
                 modifier = Modifier.padding(paddingValues),
                 navController = nestedNavController,
@@ -405,8 +412,16 @@ fun ContactsNavHost(
                 onBack = { nestedNavController.popBackStack() }
             )
         }
+
+        // 4. Ostatné obrazovky (pridanie, správa kanálov)
+        composable(Routes.ADD_CONTACT) {
+            sharedViewModel.setTopBarState(TopBarState(isVisible = false))
+            AddContactScreen(
+                navController = nestedNavController,
+                viewModel = viewModel
+            )
+        }
         composable(Routes.MANAGE_CHANNELS) {
-            // ✅ OPRAVA: Odstránili sme modifier
             ManageChannelsScreen(
                 viewModel = viewModel,
                 onBack = { nestedNavController.popBackStack() }

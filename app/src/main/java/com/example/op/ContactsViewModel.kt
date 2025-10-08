@@ -6,6 +6,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.derivedStateOf
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 // --------------------------------------------------
 // VIEW MODEL PRE KONTAKTY
@@ -41,10 +45,31 @@ class ContactsViewModel : ViewModel() {
         )
     )
 
+    // ✅✅✅ ZAČIATOK NOVEJ SEKCIE ✅✅✅
+    // --------------------------------------------------
+    // STAV PRE DETAIL OBRAZOVKU
+    // --------------------------------------------------
+
+    private val _selectedContact = MutableStateFlow<ContactItem?>(null)
+    val selectedContact = _selectedContact.asStateFlow()
+
+    fun loadContactDetail(contactId: Int) {
+        viewModelScope.launch {
+            _selectedContact.value = contacts.firstOrNull { it.id == contactId }
+        }
+    }
+
+    fun clearSelectedContact() {
+        _selectedContact.value = null
+    }
+
+    // --------------------------------------------------
+    // ✅✅✅ KONIEC NOVEJ SEKCIE ✅✅✅
+
+
     // 2. FILTRE A STAVY
 
     // Zoznam dostupných kanálov okrem fixného "Všetky"
-    // ❌ PÔVODNÝ KÓD
     private val availableChannels = mutableStateListOf("Jednotka", "Dvojka", "Sport", DEFAULT_CHANNEL)
 
     // DerivedState pre všetky možnosti (vrátane filtračnej "Všetky")
@@ -60,21 +85,13 @@ class ContactsViewModel : ViewModel() {
         val currentFilter = selectedTabFilter
         val currentQuery = searchQuery.trim().lowercase()
 
-        // ----------------------------------------------------------------------
-        // ✅ NOVÁ LOGIKA FILTROVANIA:
-        // 1. Iba záložka "Všetky" (ALL_CHANNELS_FILTER) umožňuje zobraziť kontakty.
-        // 2. Akákoľvek iná záložka vráti prázdny zoznam (zaistí to 'matchesTab').
-        // ----------------------------------------------------------------------
         val matchesTab = currentFilter == ALL_CHANNELS_FILTER
 
         if (!matchesTab) {
-            return@derivedStateOf emptyList() // Ak nie je vybrané "Všetky", vrátime prázdny zoznam
+            return@derivedStateOf emptyList()
         }
 
-        // ----------------------------------------------------------------------
-
         contacts.filter { contact ->
-            // Ak je vybrané "Všetky", kontakty sa filtrujú len podľa vyhľadávania (matchesQuery)
             val matchesQuery = if (currentQuery.isBlank()) true else
                 contact.getFullName().lowercase().contains(currentQuery) ||
                         contact.function.orEmpty().lowercase().contains(currentQuery)
@@ -88,7 +105,6 @@ class ContactsViewModel : ViewModel() {
     var formId by mutableStateOf(0)
     var formFirstName by mutableStateOf("")
     var formLastName by mutableStateOf("")
-    // Nastavíme predvolený kanál na DEFAULT_CHANNEL
     var formChannel by mutableStateOf(DEFAULT_CHANNEL)
     var formFunction by mutableStateOf("")
     var formPhone by mutableStateOf("")
@@ -107,25 +123,18 @@ class ContactsViewModel : ViewModel() {
 
     // 5. OBSLUHA ULOŽENIA KONTAKTOV
 
-    /**
-     * Resetuje stav formulára.
-     */
     fun resetForm() {
         formId = 0
         formFirstName = ""
         formLastName = ""
-        formChannel = availableChannels.firstOrNull() ?: DEFAULT_CHANNEL // Bezpečný reset
+        formChannel = availableChannels.firstOrNull() ?: DEFAULT_CHANNEL
         formFunction = ""
         formPhone = ""
         formEmail = ""
         formNotes = ""
     }
 
-    /**
-     * Uloží nový kontakt (používa form state).
-     */
     fun saveNewContact() {
-        // ... (Logika zostáva rovnaká)
         val newContactItem = ContactItem(
             id = contacts.maxOfOrNull { it.id }?.plus(1) ?: 1,
             firstName = formFirstName.trim(),
@@ -154,6 +163,10 @@ class ContactsViewModel : ViewModel() {
 
     fun removeContact(contact: ContactItem) {
         contacts.remove(contact)
+        // Ak bol zmazaný kontakt zobrazený v detaile, vyčistíme ho
+        if (_selectedContact.value?.id == contact.id) {
+            clearSelectedContact()
+        }
     }
 
     // Funkcie pre aktualizáciu filtrov z ContactsScreen
@@ -167,9 +180,6 @@ class ContactsViewModel : ViewModel() {
 
     // Metódy pre správu kanálov
 
-    /**
-     * Pridá nový kanál do zoznamu, ak už neexistuje.
-     */
     fun addChannel(channel: String) {
         val trimmedChannel = channel.trim()
         if (trimmedChannel.isNotBlank() && !availableChannels.contains(trimmedChannel)) {
@@ -177,27 +187,19 @@ class ContactsViewModel : ViewModel() {
         }
     }
 
-    /**
-     * Odstráni kanál a aktualizuje všetky kontakty, ktoré ho používali, na predvolený kanál.
-     */
     fun removeChannel(channel: String) {
         if (channel == ALL_CHANNELS_FILTER || channel == DEFAULT_CHANNEL) {
-            // Predvolený kanál a kanál filtra nemôžu byť odstránené
             return
         }
 
-        // 1. Odstránime kanál zo zoznamu možností
         availableChannels.remove(channel)
 
-        // 2. Aktualizujeme kontakty, ktoré používali odstránený kanál
         val contactsToUpdate = contacts.filter { it.channel == channel }
         contactsToUpdate.forEach { contact ->
             val index = contacts.indexOf(contact)
-            // Vytvoríme kópiu s novým kanálom (DEFAULT_CHANNEL)
             contacts[index] = contact.copy(channel = DEFAULT_CHANNEL)
         }
 
-        // 3. Ak bol odstránený kanál vybraný ako filter, resetujeme filter
         if (selectedTabFilter == channel) {
             selectedTabFilter = ALL_CHANNELS_FILTER
         }

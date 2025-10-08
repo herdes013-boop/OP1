@@ -17,6 +17,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import android.util.Log
+
 
 // ... (getChannelIcon a ContactListItem ostávajú bez zmeny)
 fun getChannelIcon(channel: String?): ImageVector {
@@ -181,7 +183,12 @@ fun ContactsScreen(
                         ContactListItem(
                             contact = contact,
                             onItemClick = {
-                                navController.navigate(Routes.editContact(contact.id))
+                                // ✅✅✅ PRIDAJTE TIETO 2 RIADKY ✅✅✅
+                                val route = "contact_detail/${contact.id}"
+                                Log.d("NAV_TEST", "Pokus o navigáciu na:$route")
+
+                                // Pôvodný kód
+                                navController.navigate(route)
                             }
                         )
                     }
