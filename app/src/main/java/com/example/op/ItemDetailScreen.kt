@@ -1,5 +1,6 @@
 package com.example.op
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -30,10 +31,8 @@ fun ItemDetailScreen(
     onNavigateToEdit: (String) -> Unit,
     onBack: () -> Unit,
 ) {
-    // ✅ OPRAVENÉ: Správne použitie derivedStateOf s viacerými kľúčmi
     val detailItem by remember(itemId, viewModel.passwordList, viewModel.ipList) {
         derivedStateOf {
-            // Skús nájsť heslo, ak nie, skús nájsť IP adresu
             viewModel.passwordList.value.find { it.id == itemId }?.let {
                 DetailItem.Password(it)
             } ?: viewModel.ipList.value.find { it.id == itemId }?.let {
@@ -44,8 +43,11 @@ fun ItemDetailScreen(
 
     var showMenu by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    // ================== NOVÉ ==================
+    // Pridávame SnackbarHostState pre zobrazenie notifikácie o kopírovaní
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    // ==========================================
 
     // Nastavenie horného panelu
     LaunchedEffect(detailItem) {
@@ -62,7 +64,6 @@ fun ItemDetailScreen(
                 isVisible = true,
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        // ✅ OPRAVENÉ: Použitá štandardná ikona bez 'AutoMirrored'
                         Icon(Icons.Filled.ArrowBack, "Späť")
                     }
                 },
@@ -98,17 +99,29 @@ fun ItemDetailScreen(
         )
     }
 
+    // ================== UPRAVENÉ ==================
+    // Pridávame `snackbarHost` do Scaffold-u
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { paddingValues ->
+        // ==============================================
         Box(
             modifier = modifier
                 .padding(paddingValues)
                 .fillMaxSize()
         ) {
+            // ================== UPRAVENÉ ==================
+            // Posielame `scope` a `snackbarHostState` ďalej do obsahu
+            val onCopy: (String, String) -> Unit = { value, label ->
+                scope.launch {
+                    snackbarHostState.showSnackbar("'${label}' skopírované do schránky.")
+                }
+            }
+            // ==============================================
+
             when (val currentItem = detailItem) {
-                is DetailItem.Password -> PasswordDetailContent(item = currentItem.item)
-                is DetailItem.IpAddress -> IpDetailContent(item = currentItem.item)
+                is DetailItem.Password -> PasswordDetailContent(item = currentItem.item, onCopy = onCopy)
+                is DetailItem.IpAddress -> IpDetailContent(item = currentItem.item, onCopy = onCopy)
                 null -> {
                     if (itemId != null) {
                         CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
@@ -131,9 +144,7 @@ fun ItemDetailScreen(
                     onClick = {
                         scope.launch {
                             when (itemToDelete) {
-                                // ✅ OPRAVENÉ: Posiela sa iba 'id'
                                 is DetailItem.Password -> viewModel.deletePassword(itemToDelete.item.id)
-                                // ✅ OPRAVENÉ: Volá sa správna metóda a posiela sa iba 'id'
                                 is DetailItem.IpAddress -> viewModel.deleteIpAddress(itemToDelete.item.id)
                                 null -> {}
                             }
@@ -151,8 +162,10 @@ fun ItemDetailScreen(
     }
 }
 
+// ================== UPRAVENÉ ==================
+// Funkcia teraz prijíma `onCopy` lambda funkciu
 @Composable
-private fun PasswordDetailContent(item: PasswordItem) {
+private fun PasswordDetailContent(item: PasswordItem, onCopy: (String, String) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -160,35 +173,53 @@ private fun PasswordDetailContent(item: PasswordItem) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item.username?.takeIf { it.isNotBlank() }?.let {
-            DetailRow(label = "Používateľské meno", value = it, canCopy = true)
+            DetailRow(label = "Používateľské meno", value = it, canCopy = true, onCopy = onCopy)
         }
-        DetailRow(label = "Heslo", value = item.password, canCopy = true)
+        DetailRow(label = "Heslo", value = item.password, canCopy = true, onCopy = onCopy)
         item.notes?.takeIf { it.isNotBlank() }?.let {
-            DetailRow(label = "Poznámky", value = it, canCopy = false)
+            DetailRow(label = "Poznámky", value = it, canCopy = false, onCopy = onCopy)
         }
     }
 }
 
+// ================== UPRAVENÉ ==================
+// Funkcia teraz prijíma `onCopy` lambda funkciu
 @Composable
-private fun IpDetailContent(item: IpItem) {
+private fun IpDetailContent(item: IpItem, onCopy: (String, String) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        DetailRow(label = "IP Adresa", value = item.ipAddress, canCopy = true)
+        DetailRow(label = "IP Adresa", value = item.ipAddress, canCopy = true, onCopy = onCopy)
         item.notes?.takeIf { it.isNotBlank() }?.let {
-            DetailRow(label = "Poznámky", value = it, canCopy = false)
+            DetailRow(label = "Poznámky", value = it, canCopy = false, onCopy = onCopy)
         }
     }
 }
 
+// ================== UPRAVENÉ ==================
+// Celá funkcia je prepracovaná
 @Composable
-private fun DetailRow(label: String, value: String, canCopy: Boolean) {
+private fun DetailRow(
+    label: String,
+    value: String,
+    canCopy: Boolean,    onCopy: (String, String) -> Unit
+) {
+    // ✅ OPRAVENÝ RIADOK
     val clipboardManager = LocalClipboardManager.current
 
-    Column {
+    val rowModifier = if (canCopy) {
+        Modifier.clickable {
+            clipboardManager.setText(AnnotatedString(value))
+            onCopy(value, label)
+        }
+    } else {
+        Modifier
+    }
+
+    Column(modifier = rowModifier.padding(vertical = 4.dp)) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelLarge,
@@ -201,11 +232,7 @@ private fun DetailRow(label: String, value: String, canCopy: Boolean) {
                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                 modifier = Modifier.weight(1f)
             )
-            if (canCopy) {
-                IconButton(onClick = { clipboardManager.setText(AnnotatedString(value)) }) {
-                    Icon(Icons.Default.ContentCopy, "Skopírovať")
-                }
-            }
+            // Blok s ikonou bol odtiaľto zmazaný.
         }
     }
 }
