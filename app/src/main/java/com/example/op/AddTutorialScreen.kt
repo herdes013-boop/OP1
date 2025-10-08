@@ -95,18 +95,28 @@ fun AddTutorialScreen(
                     }
                 },
                 actions = {
-                    if (isEditing) {
-                        IconButton(onClick = { showDeleteConfirmDialog = true }) {
-                            Icon(Icons.Default.Delete, "Zmazať návod", tint = MaterialTheme.colorScheme.error)
+                    // Spacer pre medzeru od okraja obrazovky
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // Zobrazí sa, len ak sú zmeny
+                    if (tutorialsViewModel.hasChanges) {
+                        Button(
+                            onClick = {
+                                tutorialsViewModel.saveTutorial()
+                                navController.popBackStack()
+                            },
+                            enabled = tutorialsViewModel.tutorialTitle.isNotBlank(),
+                            // TOTO JE KĽÚČOVÁ ZMENA: Nastavenie farby tlačidla
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary // Použijeme primárnu farbu témy
+                            )
+                        ) {
+                            Text("Uložiť")
                         }
                     }
-                    Button(
-                        onClick = {
-                            tutorialsViewModel.saveTutorial()
-                            navController.popBackStack()
-                        },
-                        enabled = tutorialsViewModel.tutorialTitle.isNotBlank()
-                    ) { Text("Uložiť") }
+
+                    // Spacer pre medzeru na konci
+                    Spacer(modifier = Modifier.width(8.dp))
                 }
             )
         },

@@ -3,9 +3,11 @@ package com.example.op
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -25,7 +28,7 @@ data class Tutorial(
     val id: String = UUID.randomUUID().toString(),
     var title: String,
     var category: String,
-    var content: List<TutorialContentBlock>
+    var content: List<TutorialContentBlock>,
 )
 
 class TutorialsViewModel : ViewModel() {
@@ -56,8 +59,42 @@ class TutorialsViewModel : ViewModel() {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    // ==========================================================
+    // ===== KROK 1: NOVÉ PREMENNÉ PRE DETEKCIU ZMIEN =====
+    // ==========================================================
+    private var originalTutorial: Tutorial? = null
+
+    /**
+     * Reaktivna premenná, ktorá je `true`, ak sa aktuálny stav líši od originálu.
+     * Pri vytváraní nového návodu je `true` vždy (okrem prázdneho stavu).
+     */
+    var hasChanges by mutableStateOf(false)
+        private set
+    // ==========================================================
+
     init {
         loadInitialTutorials()
+
+        // ==========================================================
+        // ===== KROK 2: SPUSTENIE SLEDOVANIA ZMIEN =====
+        // ==========================================================
+        viewModelScope.launch {
+            // Vytvoríme kombinovaný Flow, ktorý sa aktivuje pri zmene ktoréhokoľvek sledovaného stavu
+            combine(
+                _contentBlocks,
+                snapshotFlow { tutorialTitle },
+                snapshotFlow { tutorialCategory }
+            ) { blocks, title, category ->
+                // Porovnáme aktuálny stav s pôvodným
+                val currentTutorial = originalTutorial?.copy(
+                    title = title,
+                    category = category,
+                    content = blocks
+                )
+                hasChanges = currentTutorial != originalTutorial
+            }.collect {} // .collect {} je nutný na spustenie Flow
+        }
+        // ==========================================================
     }
 
     private fun loadInitialTutorials() {
@@ -67,8 +104,8 @@ class TutorialsViewModel : ViewModel() {
                 category = "Prihlásenie",
                 content = listOf(
                     TutorialContentBlock.TextBlock(text = "Pre prihlásenie do systému použite vaše pridelené meno a heslo."),
-                    // ✅ ZMENA: Používame URI string pre placeholder
-                    TutorialContentBlock.ImageBlock(uriString = "android.resource://com.example.op/${R.drawable.image_placeholder}"),
+                    // Používame `imageRes` pre predvolené obrázky z drawable
+                    TutorialContentBlock.ImageBlock(imageRes = R.drawable.ic_launcher_background),
                     TutorialContentBlock.TextBlock(text = "V prípade zabudnutého hesla kontaktujte administrátora.")
                 )
             ),
@@ -84,12 +121,7 @@ class TutorialsViewModel : ViewModel() {
         filterTutorials()
     }
 
-    // --- FUNKCIE PRE PRIDÁVANIE OBRÁZKOV (NOVÉ A UPRAVENÉ) ---
-
-    /**
-     * Skopíruje obrázok z galérie (sourceUri) do interného úložiska aplikácie.
-     * Vráti nové, stabilné URI, ktoré je bezpečné dlhodobo používať.
-     */
+    // --- FUNKCIE PRE PRIDÁVANIE OBRÁZKOV ---
     private suspend fun saveImageToInternalStorageAndGetUri(context: Context, sourceUri: Uri): Uri? {
         return withContext(Dispatchers.IO) {
             try {
@@ -110,9 +142,6 @@ class TutorialsViewModel : ViewModel() {
         }
     }
 
-    /**
-     * ✅ NOVÁ FUNKCIA: Hlavná funkcia, ktorú volá UI po výbere obrázku z galérie.
-     */
     fun addImageBlockFromUri(uri: Uri, context: Context) {
         viewModelScope.launch {
             val stableUri = saveImageToInternalStorageAndGetUri(context, uri)
@@ -120,12 +149,10 @@ class TutorialsViewModel : ViewModel() {
                 val newBlock = TutorialContentBlock.ImageBlock(uriString = stableUri.toString())
                 _contentBlocks.update { it + newBlock }
             } else {
-                // V prípade chyby môžeme informovať používateľa
                 Log.e("TutorialsViewModel", "Nepodarilo sa spracovať obrázok z URI: $uri")
             }
         }
     }
-
 
     // --- OSTATNÉ FUNKCIE ---
 
@@ -153,8 +180,6 @@ class TutorialsViewModel : ViewModel() {
     fun addTextBlock() {
         _contentBlocks.update { it + TutorialContentBlock.TextBlock(text = "") }
     }
-
-    // ❌ STARÁ FUNKCIA addImageBlock() JE ODSTRÁNENÁ
 
     fun onContentBlockChange(index: Int, newBlock: TutorialContentBlock) {
         val currentBlocks = _contentBlocks.value.toMutableList()
@@ -208,6 +233,12 @@ class TutorialsViewModel : ViewModel() {
             try {
                 val tutorial = _tutorials.value.firstOrNull { it.id == tutorialId }
                 if (tutorial != null) {
+                    // ==========================================================
+                    // ===== KROK 3: ULOŽENIE PÔVODNÉHO STAVU =====
+                    // ==========================================================
+                    originalTutorial = tutorial.copy() // Uložíme si kópiu
+                    // ==========================================================
+
                     editingTutorialId = tutorial.id
                     tutorialTitle = tutorial.title
                     tutorialCategory = tutorial.category
@@ -237,5 +268,12 @@ class TutorialsViewModel : ViewModel() {
         tutorialTitle = ""
         tutorialCategory = categories.drop(1).first()
         _contentBlocks.value = emptyList()
+
+        // ==========================================================
+        // ===== KROK 4: RESETOVANIE STAVU ZMIEN =====
+        // ==========================================================
+        originalTutorial = Tutorial(id = "new", title = "", category = tutorialCategory, content = emptyList())
+        hasChanges = false
+        // ==========================================================
     }
 }
