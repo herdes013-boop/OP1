@@ -119,135 +119,114 @@ fun ContactListItem(contact: ContactItem, onItemClick: () -> Unit) {
 fun ContactsScreen(
     navController: NavController,
     viewModel: ContactsViewModel = viewModel(),
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
-    // ✅ Toto je správny spôsob
     val searchQuery = viewModel.searchQuery
     val selectedTabFilter = viewModel.selectedTabFilter
     val contacts = viewModel.displayedContacts
-    val categories = viewModel.channelOptions.toList() // Použijeme .toList(), aby sme mali stabilný zoznam pre UI
-
+    val categories = viewModel.channelOptions.toList()
 
     val ALL_CHANNELS_FILTER = "Všetky"
     val selectedTabIndex = categories.indexOf(selectedTabFilter)
 
-    // ✅ ZMENA č. 1: Použijeme Scaffold ako hlavný kontajner
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    viewModel.resetForm()
-                    navController.navigate(Routes.ADD_CONTACT)
+    // ✅ ZMENA: Celý obsah obrazovky dáme do jedného Columnu.
+    Column(modifier = modifier.fillMaxSize()) {
+
+        // 1. ZÁLOŽKY - sú hneď na vrchu, bez paddingu
+        TabRow(selectedTabIndex = if (selectedTabIndex == -1) 0 else selectedTabIndex) {
+            categories.forEach { originalTitle ->
+                val displayTitle = when (originalTitle) {
+                    "Jednotka" -> ":1"
+                    "Dvojka" -> ":2"
+                    "24" -> ":24"
+                    "Sport" -> ":Sport"
+                    else -> originalTitle
                 }
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Pridať kontakt")
+                Tab(
+                    selected = selectedTabFilter == originalTitle,
+                    onClick = {
+                        if (selectedTabFilter == ALL_CHANNELS_FILTER && originalTitle != ALL_CHANNELS_FILTER) {
+                            viewModel.updateSearchQuery("")
+                        }
+                        viewModel.updateSelectedTabFilter(originalTitle)
+                    },
+                    text = { Text(displayTitle, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                )
             }
         }
-    ) { innerPadding -> // ✅ ZMENA č. 2: Scaffold nám dáva "innerPadding"
 
-        Column(
-            // Aplikujeme padding od Scaffold-u, aby sa obsah neprekryl s FAB
-            modifier = Modifier
+        // 2. ZVYŠOK OBSAHU - tento je zabalený do Scaffold-u
+        Scaffold(
+            // Odstránime horný padding, lebo ten sme už vyriešili umiestnením záložiek
+            modifier = Modifier.fillMaxSize(),
+            floatingActionButton = {
+                FloatingActionButton(onClick = {
+                    viewModel.resetForm()
+                    navController.navigate(Routes.ADD_CONTACT)
+                }) {
+                    Icon(Icons.Default.Add, contentDescription = "Pridať kontakt")
+                }
+            }
+        ) { innerPadding ->
+            // Column pre zvyšný obsah, ktorý už POUŽÍVA innerPadding
+            Column(modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            // Zvyšok kódu je takmer identický, len je vložený sem
+                .padding(innerPadding)) {
 
-            TabRow(
-                selectedTabIndex = if (selectedTabIndex == -1) 0 else selectedTabIndex,
-            ) {
-                categories.forEach { originalTitle ->
-                    val displayTitle = when (originalTitle) {
-                        "Jednotka" -> ":1"
-                        "Dvojka" -> ":2"
-                        "24" -> ":24"
-                        "Sport" -> ":Sport"
-                        else -> originalTitle
-                    }
-
-                    Tab(
-                        selected = selectedTabFilter == originalTitle,
-                        onClick = {
-                            if (selectedTabFilter == ALL_CHANNELS_FILTER && originalTitle != ALL_CHANNELS_FILTER) {
-                                viewModel.updateSearchQuery("")
-                            }
-                            viewModel.updateSelectedTabFilter(originalTitle)
-                        },
-                        text = {
-                            Text(
-                                text = displayTitle,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        },
-                    )
-                }
-            }
-
-            if (selectedTabFilter == ALL_CHANNELS_FILTER) {
-                SearchBar(
-                    query = searchQuery,
-                    onQueryChange = { viewModel.updateSearchQuery(it) },
-                    onSearch = { /* Hľadá sa priebežne */ },
-                    active = false,
-                    onActiveChange = {},
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    placeholder = { Text("Vyhľadať v kontaktoch...") },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Ikona vyhľadávania") },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { viewModel.updateSearchQuery("") }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Vymazať text")
-                            }
-                        }
-                    }
-                ) { /* Prázdny obsahový blok */ }
-            }
-
-            if (contacts.isEmpty()) {
-                val message = if (selectedTabFilter == ALL_CHANNELS_FILTER && searchQuery.isNotBlank()) {
-                    "Nenašli sa žiadne kontakty pre vyhľadávanie \"$searchQuery\"."
-                } else if (selectedTabFilter != ALL_CHANNELS_FILTER) {
-                    "V kanáli \"$selectedTabFilter\" zatiaľ nie sú žiadne kontakty."
-                } else {
-                    "Zatiaľ nemáte žiadne kontakty."
-                }
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = message,
+                // SearchBar
+                if (selectedTabFilter == ALL_CHANNELS_FILTER) {
+                    SearchBar(
+                        query = searchQuery,
+                        onQueryChange = { viewModel.updateSearchQuery(it) },
+                        // ✅ DOPLNENÝ RIADOK
+                        onSearch = { /* Hľadá sa priebežne, tento blok môže ostať prázdny */ },
+                        active = false,
+                        onActiveChange = {},
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            } else {
-                LazyColumn(
-                    // ✅ ZMENA č. 3: Odstránili sme manuálny `bottom` padding
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(
-                        start = 8.dp,
-                        end = 8.dp,
-                        top = 4.dp
-                        // Spodný padding už nie je potrebný, rieši ho Scaffold
-                    )
-                ) {
-                    items(contacts, key = { it.id }) { contact ->
-                        ContactListItem(
-                            contact = contact,
-                            onItemClick = {
-                                val route = "contact_detail/${contact.id}"
-                                Log.d("NAV_TEST", "Pokus o navigáciu na:$route")
-                                navController.navigate(route)
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        placeholder = { Text("Vyhľadať v kontaktoch...") },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Ikona vyhľadávania") },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { viewModel.updateSearchQuery("") }) {
+                                    Icon(Icons.Default.Clear, contentDescription = "Vymazať text")
+                                }
                             }
+                        }
+                    ) {}
+                }
+
+                // Zoznam alebo správa o prázdnom stave
+                if (contacts.isEmpty()) {
+                    val message = if (selectedTabFilter == ALL_CHANNELS_FILTER && searchQuery.isNotBlank()) {
+                        "Nenašli sa žiadne kontakty pre vyhľadávanie \"$searchQuery\"."
+                    } else if (selectedTabFilter != ALL_CHANNELS_FILTER) {
+                        "V kanáli \"$selectedTabFilter\" zatiaľ nie sú žiadne kontakty."
+                    } else {
+                        "Zatiaľ nemáte žiadne kontakty."
+                    }
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = message,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = TextAlign.Center
                         )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 4.dp)
+                    ) {
+                        items(contacts, key = { it.id }) { contact ->
+                            ContactListItem(
+                                contact = contact,
+                                onItemClick = { navController.navigate("contact_detail/${contact.id}") }
+                            )
+                        }
                     }
                 }
             }
