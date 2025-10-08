@@ -264,22 +264,27 @@ fun PasswordListItem(item: PasswordItem, onClick: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                item.username?.let {
-                    if (it.isNotBlank()) {
-                        Text(
-                            text = it,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.weight(1f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
+                // Ak username existuje a nie je prázdne, zobrazíme ho.
+                if (!item.username.isNullOrBlank()) {
+                    Text(
+                        text = item.username,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.weight(1f), // Zaberie všetko voľné miesto
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    // Medzera medzi username a heslom
+                    Spacer(modifier = Modifier.width(8.dp))
+                } else {
+                    // Ak username neexistuje, zobrazíme namiesto neho
+                    // prázdny Spacer s rovnakou váhou, ktorý odtlačí heslo doprava.
+                    Spacer(modifier = Modifier.weight(1f))
                 }
+
+                // Heslo sa teraz vždy zobrazí na konci, pretože má pred sebou prvok s váhou.
                 ColoredPasswordText(
-                    password = item.password,
-                    modifier = if (item.username.isNullOrBlank()) Modifier.weight(1f) else Modifier
+                    password = item.password
                 )
             }
         }
