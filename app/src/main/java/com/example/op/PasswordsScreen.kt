@@ -7,15 +7,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -32,7 +29,7 @@ fun PasswordsScreen(
     sharedViewModel: SharedViewModel,
     modifier: Modifier = Modifier,
 ) {
-    // Stavy z ViewModelu zostávajú rovnaké
+    // Stavy z ViewModelu
     val passwords by viewModel.passwordList.collectAsState()
     val ipAddresses by viewModel.ipList.collectAsState()
     val passwordSearchText by viewModel.passwordSearchText.collectAsState()
@@ -40,15 +37,12 @@ fun PasswordsScreen(
     val selectedTabIndex by viewModel.selectedTabIndex
     val tabs = listOf("Heslá", "IP Adresy")
 
+    // Tento LaunchedEffect sa spustí vždy, keď sa obrazovka objaví.
     LaunchedEffect(Unit) {
-        sharedViewModel.setTopBarState(
-            TopBarState(
-                title = "Heslá",
-                isVisible = true,
-                actions = null,
-                navigationIcon = null
-            )
-        )
+        viewModel.onScreenAppeared() // Povie ViewModelu, aby sa rozhodol, čo s tabmi.
+
+        // Nastavíme vzhľad, ktorý pre túto obrazovku platí vždy.
+        sharedViewModel.setTopBarState(TopBarState(title = "Heslá", isVisible = true))
         sharedViewModel.setShowBottomBar(true)
     }
 
@@ -56,8 +50,6 @@ fun PasswordsScreen(
         modifier = modifier.fillMaxSize()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-
-            // ✅ ZMENA 1: Zobrazíme správne vyhľadávacie pole podľa vybranej záložky
             when (selectedTabIndex) {
                 0 -> SearchBar(
                     query = passwordSearchText,
@@ -71,7 +63,6 @@ fun PasswordsScreen(
                 )
             }
 
-            // Záložky sú teraz AŽ POD vyhľadávacím poľom
             TabRow(selectedTabIndex = selectedTabIndex) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
@@ -82,7 +73,6 @@ fun PasswordsScreen(
                 }
             }
 
-            // Obsah záložiek sa už stará len o zobrazenie zoznamu
             when (selectedTabIndex) {
                 0 -> {
                     TabContent(
@@ -94,7 +84,6 @@ fun PasswordsScreen(
                         val password = item as PasswordItem
                         PasswordListItem(
                             item = password,
-                            // ✅ ZMENA: Navigujeme na novú spoločnú detailnú obrazovku
                             onClick = { navController.navigate("item_detail/${password.id}") }
                         )
                     }
@@ -109,7 +98,6 @@ fun PasswordsScreen(
                         val ip = item as IpItem
                         IpListItem(
                             item = ip,
-                            // ✅ ZMENA: Navigujeme na novú spoločnú detailnú obrazovku
                             onClick = { navController.navigate("item_detail/${ip.id}") }
                         )
                     }
@@ -117,7 +105,6 @@ fun PasswordsScreen(
             }
         }
 
-        // Floating Action Button zostáva na svojom mieste
         FloatingActionButton(
             onClick = {
                 when (selectedTabIndex) {
@@ -134,16 +121,15 @@ fun PasswordsScreen(
     }
 }
 
-/**
- * ✅ ZMENA 2: Vytvorili sme samostatnú komponentu pre SearchBar, aby sme sa neopakovali.
- * Je to čistejšie.
- */
+// Zvyšok súboru (SearchBar, TabContent, ListItem, atď.) zostáva úplne bez zmeny...
+// (kód je rovnaký, ako ste poslali, pre úplnosť ho sem pripájam)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
-    placeholder: String
+    placeholder: String,
 ) {
     SearchBar(
         query = query,
@@ -169,24 +155,19 @@ private fun SearchBar(
 }
 
 
-/**
- * ✅ ZMENA 3: Z komponenty TabContent sme ODSTRÁNILI SearchBar.
- * Teraz sa stará iba o zobrazenie zoznamu alebo prázdneho stavu.
- */
 @Composable
 private fun <T> TabContent(
     searchText: String,
     data: List<T>,
     emptyListText: String,
     noResultsText: String,
-    itemContent: @Composable (T) -> Unit
+    itemContent: @Composable (T) -> Unit,
 ) {
-    // Spacer(modifier = Modifier.height(8.dp)) // Už nie je potrebný
-
-    // Zobrazenie výsledkov alebo správy
     if (data.isEmpty()) {
         Box(
-            modifier = Modifier.fillMaxSize().padding(bottom = 80.dp), // padding aby text nebol za FAB
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = 80.dp), // padding aby text nebol za FAB
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -203,15 +184,13 @@ private fun <T> TabContent(
             verticalArrangement = Arrangement.spacedBy(4.dp),
             contentPadding = PaddingValues(bottom = 80.dp) // Priestor pre FAB
         ) {
-            items(data) { item -> // Používame priamo item, je to bezpečnejšie
+            items(data) { item ->
                 itemContent(item)
             }
         }
     }
 }
 
-
-// Ostatné pomocné Composable funkcie (PasswordListItem, ColoredPasswordText, IpListItem) zostávajú bez zmeny
 @Composable
 private fun ColoredPasswordText(
     password: String,
@@ -266,25 +245,19 @@ fun PasswordListItem(item: PasswordItem, onClick: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Ak username existuje a nie je prázdne, zobrazíme ho.
                 if (!item.username.isNullOrBlank()) {
                     Text(
                         text = item.username,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.weight(1f), // Zaberie všetko voľné miesto
+                        modifier = Modifier.weight(1f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    // Medzera medzi username a heslom
                     Spacer(modifier = Modifier.width(8.dp))
                 } else {
-                    // Ak username neexistuje, zobrazíme namiesto neho
-                    // prázdny Spacer s rovnakou váhou, ktorý odtlačí heslo doprava.
                     Spacer(modifier = Modifier.weight(1f))
                 }
-
-                // Heslo sa teraz vždy zobrazí na konci, pretože má pred sebou prvok s váhou.
                 ColoredPasswordText(
                     password = item.password
                 )
@@ -326,4 +299,3 @@ fun IpListItem(item: IpItem, onClick: () -> Unit) {
         }
     }
 }
-

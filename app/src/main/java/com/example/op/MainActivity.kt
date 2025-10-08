@@ -158,6 +158,16 @@ fun MainScreen() {
                             label = { Text(screen.label) },
                             selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
                             onClick = {
+                                // ✅ ZAČIATOK ZMENY
+                                // Ak opúšťame sekciu hesiel, povieme to jej ViewModelu
+                                val isLeavingPasswords = currentDestination?.hierarchy?.any { it.route == Routes.PASSWORDS_ROOT } == true &&
+                                        screen.route != Routes.PASSWORDS_ROOT
+                                if (isLeavingPasswords) {
+                                    passwordsViewModel.onExitedMainRoute()
+                                }
+                                // ✅ KONIEC ZMENY
+
+                                // Pôvodná navigačná logika
                                 navController.navigate(screen.route) {
                                     popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                                     launchSingleTop = true
@@ -252,6 +262,7 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
         popExitTransition = { ExitTransition.None }
     ) {
         composable(Routes.PASSWORDS_LIST) {
+            // ✅ ZMENA: Odstránili sme "backStackEntry ->" a parameter navBackStackEntry
             PasswordsScreen(
                 modifier = Modifier.padding(paddingValues),
                 navController = nestedNavController,

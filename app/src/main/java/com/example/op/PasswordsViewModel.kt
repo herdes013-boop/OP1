@@ -23,8 +23,48 @@ class PasswordsViewModel : ViewModel() {
     }
 
     // =================================================================
-    //         ✅ UPRAVENÁ SEKCA: Oddelené vyhľadávanie
+    //         FINÁLNA SEKCIA PRE OVLÁDANIE ZÁLOŽIEK (TABS)
     // =================================================================
+
+    // Stav, či sa majú záložky pri najbližšom zobrazení resetovať.
+    // Predvolene áno.
+    private var shouldResetTabs = true
+
+    private val _selectedTabIndex = mutableStateOf(0)
+    val selectedTabIndex: State<Int> = _selectedTabIndex
+
+    /**
+     * Túto funkciu volá obrazovka VŽDY, keď sa zobrazí.
+     */
+    fun onScreenAppeared() {
+        // Ak máme príznak na reset, urobíme ho a príznak zrušíme.
+        if (shouldResetTabs) {
+            _selectedTabIndex.value = 0
+            shouldResetTabs = false
+        }
+        // Ak príznak nemáme (napr. pri návrate z detailu), neurobíme nič.
+    }
+
+    /**
+     * Túto funkciu volá MainActivity, keď používateľ opustí hlavnú cestu "Heslá".
+     * Pripraví ViewModel na ďalší "čistý" štart.
+     */
+    fun onExitedMainRoute() {
+        shouldResetTabs = true
+    }
+
+    /**
+     * Mení záložku priamo pri kliknutí používateľa.
+     */
+    fun onTabSelected(index: Int) {
+        _selectedTabIndex.value = index
+    }
+
+
+    // =================================================================
+    //         SEKCIA PRE VYHĽADÁVANIE
+    // =================================================================
+
     // Vyhľadávanie pre Heslá
     private val _passwordSearchText = MutableStateFlow("")
     val passwordSearchText = _passwordSearchText.asStateFlow()
@@ -40,19 +80,6 @@ class PasswordsViewModel : ViewModel() {
     fun onIpSearchTextChange(text: String) {
         _ipSearchText.value = text
     }
-    // =================================================================
-
-
-    // =================================================================
-    // SEKCA: Stav pre používateľské rozhranie (UI State)
-    // =================================================================
-
-    private val _selectedTabIndex = mutableStateOf(0)
-    val selectedTabIndex: State<Int> = _selectedTabIndex
-
-    fun onTabSelected(index: Int) {
-        _selectedTabIndex.value = index
-    }
 
 
     // =================================================================
@@ -67,7 +94,6 @@ class PasswordsViewModel : ViewModel() {
         )
     )
 
-    // ✅ Upravený zoznam, ktorý reaguje na _passwordSearchText
     val passwordList = passwordSearchText
         .combine(_passwordList) { text, passwords ->
             if (text.isBlank()) {
@@ -82,7 +108,6 @@ class PasswordsViewModel : ViewModel() {
             initialValue = _passwordList.value
         )
 
-    // Ostatné funkcie pre heslá zostávajú rovnaké...
     fun getPasswordById(id: String): PasswordItem? {
         return _passwordList.value.find { it.id == id }
     }
@@ -206,7 +231,6 @@ class PasswordsViewModel : ViewModel() {
         )
     )
 
-    // ✅ Upravený zoznam, ktorý reaguje na _ipSearchText
     val ipList = ipSearchText
         .combine(_ipList) { text, ips ->
             if (text.isBlank()) {
@@ -226,7 +250,7 @@ class PasswordsViewModel : ViewModel() {
             id = getNextId(),
             name = name,
             ipAddress = ipAddress,
-            notes = notes // <-- TOTO SME PRIDALI
+            notes = notes
         )
         _ipList.update { currentList -> currentList + newItem }
     }
@@ -240,7 +264,6 @@ class PasswordsViewModel : ViewModel() {
         return _ipList.value.find { it.id == id }
     }
 
-    // ✅ TOTO STE PRÁVE PRIDALI ✅
     fun deleteIpAddress(ipId: String) {
         _ipList.update { currentList ->
             currentList.filterNot { it.id == ipId }
