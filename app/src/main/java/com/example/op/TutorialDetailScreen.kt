@@ -60,9 +60,36 @@ fun TutorialDetailScreen(
                             Icon(Icons.Default.ArrowBack, "Naspäť")
                         }
                     },
+                    // ===================================
+                    // ===== KROK 1: TU JE KĽÚČOVÁ ZMENA =====
+                    // ===================================
                     actions = {
-                        IconButton(onClick = { showMenu = true }) {
-                            Icon(Icons.Default.MoreVert, "Možnosti")
+                        Box {
+                            IconButton(onClick = { showMenu = true }) {
+                                Icon(Icons.Default.MoreVert, "Možnosti")
+                            }
+                            // Menu je teraz ukotvené k rodičovskému Boxu
+                            DropdownMenu(
+                                expanded = showMenu,
+                                onDismissRequest = { showMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Upraviť") },
+                                    onClick = {
+                                        showMenu = false
+                                        onNavigateToEdit(tutorialId)
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.Edit, null) }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Zmazať", color = MaterialTheme.colorScheme.error) },
+                                    onClick = {
+                                        showMenu = false
+                                        showDeleteDialog = true
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }
+                                )
+                            }
                         }
                     }
                 )
@@ -119,28 +146,10 @@ fun TutorialDetailScreen(
             }
         }
 
-        DropdownMenu(
-            expanded = showMenu,
-            onDismissRequest = { showMenu = false },
-            modifier = Modifier.align(Alignment.TopEnd)
-        ) {
-            DropdownMenuItem(
-                text = { Text("Upraviť") },
-                onClick = {
-                    showMenu = false
-                    onNavigateToEdit(tutorialId)
-                },
-                leadingIcon = { Icon(Icons.Default.Edit, null) }
-            )
-            DropdownMenuItem(
-                text = { Text("Zmazať", color = MaterialTheme.colorScheme.error) },
-                onClick = {
-                    showMenu = false
-                    showDeleteDialog = true
-                },
-                leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }
-            )
-        }
+        // =============================================
+        // ===== KROK 2: TENTO BLOK SME ODTIAĽTO ZMAZALI =====
+        // =============================================
+        // DropdownMenu(...) bol predtým tu, teraz je hore v `actions`
     }
 
     if (showDeleteDialog) {
@@ -155,6 +164,7 @@ fun TutorialDetailScreen(
     }
 }
 
+// Funkcie TextBlockView a ImageBlockView zostávajú bez zmeny
 @Composable
 fun TextBlockView(block: TutorialContentBlock.TextBlock) {
     Text(
@@ -166,13 +176,11 @@ fun TextBlockView(block: TutorialContentBlock.TextBlock) {
 
 @Composable
 fun ImageBlockView(block: TutorialContentBlock.ImageBlock) {
-    // Inteligentný výber modelu pre obrázok
     val imageModel = block.uriString ?: block.imageRes
 
-    // ✅ FINÁLNA OPRAVA: Overíme, či je model platný.
     if (imageModel != null) {
         AsyncImage(
-            model = imageModel, // Coil si poradí s URI (String) aj s ID (Int)
+            model = imageModel,
             contentDescription = "Obrázok v návode",
             modifier = Modifier
                 .fillMaxWidth()
@@ -180,11 +188,9 @@ fun ImageBlockView(block: TutorialContentBlock.ImageBlock) {
                 .clip(RoundedCornerShape(12.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant),
             contentScale = ContentScale.Crop,
-            // Ako zálohu zobrazíme placeholder, ktorý je skutočný obrázok
-            error = painterResource(id = R.drawable.ic_launcher_background) // Použite ID skutočného obrázka, napr. ikonu launcheru
+            error = painterResource(id = R.drawable.ic_launcher_background)
         )
     } else {
-        // Ak by náhodou nebol zadaný ani uriString, ani imageRes, zobrazíme bezpečný placeholder
         Box(
             modifier = Modifier
                 .fillMaxWidth()
