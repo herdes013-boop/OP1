@@ -1,15 +1,23 @@
 package com.example.op
 
+import android.content.Context
+import android.net.Uri
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
 import java.util.UUID
 
 // Dátová trieda pre celý návod
@@ -36,22 +44,15 @@ class TutorialsViewModel : ViewModel() {
     // --- STAVY PRE OBRAZOVKU PRIDANIA/ÚPRAVY ---
     var tutorialTitle by mutableStateOf("")
         private set
-    var tutorialCategory by mutableStateOf(categories.drop(1).first()) // Default kategória bez "Všetky"
+    var tutorialCategory by mutableStateOf(categories.drop(1).first())
         private set
 
     private val _contentBlocks = MutableStateFlow<List<TutorialContentBlock>>(emptyList())
     val contentBlocks: StateFlow<List<TutorialContentBlock>> = _contentBlocks.asStateFlow()
 
     private var editingTutorialId: String? = null
+    val isEditing: Boolean get() = editingTutorialId != null
 
-    // ======================= PRIDANÝ KÓD (KROK 1) =======================
-    // Verejná premenná, ktorá je odvodená z privátnej.
-    // Obrazovka tak vie, či sme v režime úprav, ale nemá priamy prístup k ID.
-    val isEditing: Boolean
-        get() = editingTutorialId != null
-    // =================================================================
-
-    // --- STAV PRE SLEDOVANIE NAČÍTAVANIA ---
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
@@ -66,8 +67,8 @@ class TutorialsViewModel : ViewModel() {
                 category = "Prihlásenie",
                 content = listOf(
                     TutorialContentBlock.TextBlock(text = "Pre prihlásenie do systému použite vaše pridelené meno a heslo."),
-                    // Používame placeholder, ktorý existuje
-                    TutorialContentBlock.ImageBlock(imageRes = R.drawable.image_placeholder),
+                    // ✅ ZMENA: Používame URI string pre placeholder
+                    TutorialContentBlock.ImageBlock(uriString = "android.resource://com.example.op/${R.drawable.image_placeholder}"),
                     TutorialContentBlock.TextBlock(text = "V prípade zabudnutého hesla kontaktujte administrátora.")
                 )
             ),
@@ -83,7 +84,50 @@ class TutorialsViewModel : ViewModel() {
         filterTutorials()
     }
 
-    // --- FUNKCIE PRE ZOZNAM ---
+    // --- FUNKCIE PRE PRIDÁVANIE OBRÁZKOV (NOVÉ A UPRAVENÉ) ---
+
+    /**
+     * Skopíruje obrázok z galérie (sourceUri) do interného úložiska aplikácie.
+     * Vráti nové, stabilné URI, ktoré je bezpečné dlhodobo používať.
+     */
+    private suspend fun saveImageToInternalStorageAndGetUri(context: Context, sourceUri: Uri): Uri? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val inputStream = context.contentResolver.openInputStream(sourceUri)
+                val fileName = "tutorial_image_${System.currentTimeMillis()}.jpg"
+                val destinationFile = File(context.filesDir, fileName)
+
+                inputStream?.use { input ->
+                    FileOutputStream(destinationFile).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                destinationFile.toUri()
+            } catch (e: Exception) {
+                Log.e("TutorialsViewModel", "Chyba pri kopírovaní obrázka", e)
+                null
+            }
+        }
+    }
+
+    /**
+     * ✅ NOVÁ FUNKCIA: Hlavná funkcia, ktorú volá UI po výbere obrázku z galérie.
+     */
+    fun addImageBlockFromUri(uri: Uri, context: Context) {
+        viewModelScope.launch {
+            val stableUri = saveImageToInternalStorageAndGetUri(context, uri)
+            if (stableUri != null) {
+                val newBlock = TutorialContentBlock.ImageBlock(uriString = stableUri.toString())
+                _contentBlocks.update { it + newBlock }
+            } else {
+                // V prípade chyby môžeme informovať používateľa
+                Log.e("TutorialsViewModel", "Nepodarilo sa spracovať obrázok z URI: $uri")
+            }
+        }
+    }
+
+
+    // --- OSTATNÉ FUNKCIE ---
 
     fun onCategorySelected(category: String) {
         selectedCategory = category
@@ -98,8 +142,6 @@ class TutorialsViewModel : ViewModel() {
         }
     }
 
-    // --- FUNKCIE PRE PRIDÁVANIE/UPRAVOVANIE/MAZANIE ---
-
     fun onTitleChange(newTitle: String) {
         tutorialTitle = newTitle
     }
@@ -112,9 +154,7 @@ class TutorialsViewModel : ViewModel() {
         _contentBlocks.update { it + TutorialContentBlock.TextBlock(text = "") }
     }
 
-    fun addImageBlock() {
-        _contentBlocks.update { it + TutorialContentBlock.ImageBlock(imageRes = R.drawable.image_placeholder) }
-    }
+    // ❌ STARÁ FUNKCIA addImageBlock() JE ODSTRÁNENÁ
 
     fun onContentBlockChange(index: Int, newBlock: TutorialContentBlock) {
         val currentBlocks = _contentBlocks.value.toMutableList()
@@ -186,14 +226,11 @@ class TutorialsViewModel : ViewModel() {
         }
     }
 
-    // ======================= PRIDANÝ KÓD (KROK 2) =======================
-    // Verejná funkcia, ktorá bezpečne zmaže práve upravovaný návod.
     fun deleteCurrentlyEditingTutorial() {
         editingTutorialId?.let {
             deleteTutorial(it)
         }
     }
-    // =================================================================
 
     fun resetForm() {
         editingTutorialId = null

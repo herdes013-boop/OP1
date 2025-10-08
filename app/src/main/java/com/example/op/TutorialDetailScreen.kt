@@ -1,6 +1,7 @@
 package com.example.op
 
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -165,21 +166,18 @@ fun TextBlockView(block: TutorialContentBlock.TextBlock) {
 
 @Composable
 fun ImageBlockView(block: TutorialContentBlock.ImageBlock) {
-    val imageRes = block.imageRes
-
-    if (imageRes != null && imageRes != 0) {
-        // Blok s premennou 'errorPlaceholder' bol kompletne odstránený.
-
-        // AsyncImage zostáva presne tak, ako bol.
-        AsyncImage(
-            model = imageRes,
-            contentDescription = "Obrázok v návode",
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp)
-                .clip(RoundedCornerShape(12.dp)),
-            contentScale = ContentScale.Crop,
-            error = painterResource(id = R.drawable.ic_launcher_background)
-        )
-    }
+    // AsyncImage z knižnice Coil je dosť inteligentný na to, aby zobrazil
+    // obrázok priamo z jeho textovej URI adresy.
+    AsyncImage(
+        model = block.uriString, // Používame novú vlastnosť `uriString`
+        contentDescription = "Obrázok v návode",
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(200.dp) // Výšku si môžete prispôsobiť
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant), // Pridá pozadie počas načítavania
+        contentScale = ContentScale.Crop, // Oreže obrázok, aby vyplnil celý priestor
+        // Zobrazí sa, ak by sa obrázok z nejakého dôvodu nepodarilo načítať
+        error = painterResource(id = R.drawable.image_placeholder)
+    )
 }
