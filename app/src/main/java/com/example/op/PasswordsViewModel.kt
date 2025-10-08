@@ -201,8 +201,8 @@ class PasswordsViewModel : ViewModel() {
 
     private val _ipList = MutableStateFlow(
         listOf(
-            IpItem(id = "4", name = "Domáci Router", ipAddress = "192.168.1.1"),
-            IpItem(id = "5", name = "Pracovný Server", ipAddress = "10.0.0.52")
+            IpItem(id = "4", name = "Domáci Router", ipAddress = "192.168.1.1", notes = "Heslo: admin"),
+            IpItem(id = "5", name = "Pracovný Server", ipAddress = "10.0.0.52", notes = null) // alebo notes = "Firemný server"
         )
     )
 
@@ -221,8 +221,13 @@ class PasswordsViewModel : ViewModel() {
             initialValue = _ipList.value
         )
 
-    fun addIpAddress(name: String, ipAddress: String) {
-        val newItem = IpItem(id = getNextId(), name = name, ipAddress = ipAddress)
+    fun addIpAddress(name: String, ipAddress: String, notes: String?) {
+        val newItem = IpItem(
+            id = getNextId(),
+            name = name,
+            ipAddress = ipAddress,
+            notes = notes // <-- TOTO SME PRIDALI
+        )
         _ipList.update { currentList -> currentList + newItem }
     }
     fun updateIpAddress(updatedItem: IpItem) {
@@ -230,7 +235,15 @@ class PasswordsViewModel : ViewModel() {
             currentList.map { if (it.id == updatedItem.id) updatedItem else it }
         }
     }
+
     fun getIpAddressById(id: String): IpItem? {
         return _ipList.value.find { it.id == id }
+    }
+
+    // ✅ TOTO STE PRÁVE PRIDALI ✅
+    fun deleteIpAddress(ipId: String) {
+        _ipList.update { currentList ->
+            currentList.filterNot { it.id == ipId }
+        }
     }
 }

@@ -236,22 +236,20 @@ fun MainScreen() {
 @Composable
 fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues, sharedViewModel: SharedViewModel) {
     val nestedNavController = rememberNavController()
-    val navBackStackEntry by nestedNavController.currentBackStackEntryAsState()
 
+    // Spodná lišta sa schováva, keď nie sme na hlavnom zozname
+    val navBackStackEntry by nestedNavController.currentBackStackEntryAsState()
     LaunchedEffect(navBackStackEntry) {
         val currentRoute = navBackStackEntry?.destination?.route
-        val isSubScreen = currentRoute != Routes.PASSWORDS_LIST
-        sharedViewModel.setShowBottomBar(!isSubScreen)
+        sharedViewModel.setShowBottomBar(currentRoute == Routes.PASSWORDS_LIST)
     }
 
     NavHost(
         navController = nestedNavController,
         startDestination = Routes.PASSWORDS_LIST,
-        // ✅ ZAČIATOK ZMENY
         enterTransition = { EnterTransition.None },
         exitTransition = { ExitTransition.None },
         popExitTransition = { ExitTransition.None }
-        // ✅ KONIEC ZMENY
     ) {
         composable(Routes.PASSWORDS_LIST) {
             PasswordsScreen(
@@ -261,22 +259,32 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
                 sharedViewModel = sharedViewModel
             )
         }
+
+        // ✅ ZMENA: Nová spoločná cesta pre detail hesla aj IP
         composable(
-            route = Routes.PASSWORD_DETAIL,
-            arguments = listOf(navArgument("passwordId") { type = NavType.StringType })
+            route = "item_detail/{itemId}",
+            arguments = listOf(navArgument("itemId") { type = NavType.StringType })
         ) { backStackEntry ->
-            val passwordId = backStackEntry.arguments?.getString("passwordId")
-            if (passwordId != null) {
-                PasswordDetailScreen(
-                    modifier = Modifier.padding(paddingValues),
-                    passwordId = passwordId,
-                    viewModel = viewModel,
-                    sharedViewModel = sharedViewModel,
-                    onNavigateToEdit = { nestedNavController.navigate(Routes.editPassword(it)) },
-                    onBack = { nestedNavController.popBackStack() }
-                )
-            }
+            val itemId = backStackEntry.arguments?.getString("itemId")
+            ItemDetailScreen(
+                modifier = Modifier.padding(paddingValues),
+                itemId = itemId,
+                viewModel = viewModel,
+                sharedViewModel = sharedViewModel,
+                onNavigateToEdit = { id ->
+                    // Rozhodneme sa, kam navigovať na základe toho, či ide o heslo alebo IP
+                    val isPassword = viewModel.passwordList.value.any { it.id == id }
+                    if (isPassword) {
+                        nestedNavController.navigate(Routes.editPassword(id))
+                    } else {
+                        nestedNavController.navigate(Routes.editIpAddress(id))
+                    }
+                },
+                onBack = { nestedNavController.popBackStack() }
+            )
         }
+
+        // Obrazovky pre pridanie/úpravu zostávajú rovnaké
         composable(Routes.ADD_PASSWORD) {
             AddEditPasswordScreen(
                 modifier = Modifier.padding(paddingValues),

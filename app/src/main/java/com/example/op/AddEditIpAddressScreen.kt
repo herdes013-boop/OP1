@@ -11,15 +11,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 
-// ZMENA: Obrazovka už nepoužíva @OptIn, keďže nemá vlastný TopAppBar
 @Composable
 fun AddEditIpAddressScreen(
-    // ========== ZMENA: PRIDANÝ NOVÝ PARAMETER `modifier` ==========
     modifier: Modifier = Modifier,
-    // ==============================================================
     navController: NavController,
     viewModel: PasswordsViewModel,
-    sharedViewModel: SharedViewModel, // Potrebujeme pre nastavenie TopBar
+    sharedViewModel: SharedViewModel,
     ipId: String? = null
 ) {
     val isEditing = ipId != null
@@ -31,10 +28,11 @@ fun AddEditIpAddressScreen(
 
     var name by remember(initialIpItem) { mutableStateOf(initialIpItem?.name ?: "") }
     var ipAddress by remember(initialIpItem) { mutableStateOf(initialIpItem?.ipAddress ?: "") }
+    // NOVÉ: Premenná pre uloženie stavu poľa pre poznámky
+    var notes by remember(initialIpItem) { mutableStateOf(initialIpItem?.notes ?: "") }
 
     val isFormValid = name.isNotBlank() && ipAddress.isNotBlank()
 
-    // DYNAMICKÉ NASTAVENIE HORNEJ LIŠTY
     LaunchedEffect(isEditing) {
         val title = if (isEditing) "Upraviť IP adresu" else "Nová IP adresa"
         sharedViewModel.setTopBarState(
@@ -55,12 +53,11 @@ fun AddEditIpAddressScreen(
         return
     }
 
-    // ========== ZMENA: OBRAZOVKA UŽ NEPOUŽÍVA SCAFFOLD ==========
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp), // Jednoduchý padding, zvyšok rieši `modifier`
+            .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         OutlinedTextField(
@@ -79,15 +76,33 @@ fun AddEditIpAddressScreen(
             singleLine = true
         )
 
+        // NOVÉ: Textové pole pre poznámky
+        OutlinedTextField(
+            value = notes,
+            onValueChange = { notes = it },
+            label = { Text("Poznámky (voliteľné)") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
         Spacer(Modifier.height(16.dp))
 
         Button(
             onClick = {
                 if (isEditing) {
-                    val updatedItem = initialIpItem!!.copy(name = name, ipAddress = ipAddress)
+                    // UPRAVENÉ: Pri úprave posielame aj poznámky
+                    val updatedItem = initialIpItem!!.copy(
+                        name = name,
+                        ipAddress = ipAddress,
+                        notes = notes.ifBlank { null } // Ak je pole prázdne, uloží sa null
+                    )
                     viewModel.updateIpAddress(updatedItem)
                 } else {
-                    viewModel.addIpAddress(name, ipAddress)
+                    // UPRAVENÉ: Pri pridaní posielame aj poznámky
+                    viewModel.addIpAddress(
+                        name = name,
+                        ipAddress = ipAddress,
+                        notes = notes.ifBlank { null } // Ak je pole prázdne, uloží sa null
+                    )
                 }
                 navController.popBackStack()
             },

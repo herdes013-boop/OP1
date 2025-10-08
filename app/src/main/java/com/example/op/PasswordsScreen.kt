@@ -94,7 +94,8 @@ fun PasswordsScreen(
                         val password = item as PasswordItem
                         PasswordListItem(
                             item = password,
-                            onClick = { navController.navigate(Routes.passwordDetail(password.id)) }
+                            // ✅ ZMENA: Navigujeme na novú spoločnú detailnú obrazovku
+                            onClick = { navController.navigate("item_detail/${password.id}") }
                         )
                     }
                 }
@@ -108,7 +109,8 @@ fun PasswordsScreen(
                         val ip = item as IpItem
                         IpListItem(
                             item = ip,
-                            onClick = { navController.navigate(Routes.editIpAddress(ip.id)) }
+                            // ✅ ZMENA: Navigujeme na novú spoločnú detailnú obrazovku
+                            onClick = { navController.navigate("item_detail/${ip.id}") }
                         )
                     }
                 }

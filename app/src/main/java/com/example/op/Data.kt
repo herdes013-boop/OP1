@@ -40,16 +40,19 @@ data class PasswordItem(
 data class IpItem(
     val id: String,
     val name: String,
-    val ipAddress: String
+    val ipAddress: String,
+    val notes: String? = null // <-- TOTO STE PRIDALI
 ) {
     /**
      * Kontroluje, či sa položka zhoduje s vyhľadávacím dopytom.
      * Prehľadáva názov a IP adresu.
      */
     fun doesMatchSearchQuery(query: String): Boolean {
-        val matchingCombinations = listOf(
+        // Použijeme listOfNotNull, aby to fungovalo aj keď sú poznámky prázdne (null)
+        val matchingCombinations = listOfNotNull(
             name,
-            ipAddress
+            ipAddress,
+            notes // <-- TOTO STE PRIDALI
         )
         return matchingCombinations.any {
             it.contains(query, ignoreCase = true)
