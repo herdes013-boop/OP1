@@ -31,14 +31,15 @@ fun ItemDetailScreen(
     onNavigateToEdit: (String) -> Unit,
     onBack: () -> Unit,
 ) {
-    val detailItem by remember(itemId, viewModel.passwordList, viewModel.ipList) {
-        derivedStateOf {
-            viewModel.passwordList.value.find { it.id == itemId }?.let {
-                DetailItem.Password(it)
-            } ?: viewModel.ipList.value.find { it.id == itemId }?.let {
-                DetailItem.IpAddress(it)
-            }
-        }
+    val passwords by viewModel.passwordList.collectAsState()
+    val ips by viewModel.ipList.collectAsState()
+
+// 2. Na základe aktuálnych zoznamov nájdeme našu položku.
+// `remember` tu zabezpečí, že hľadanie sa nespustí pri každej rekompozícii,
+// ale iba vtedy, ak sa zmení `itemId` alebo obsah jedného zo zoznamov.
+    val detailItem = remember(itemId, passwords, ips) {
+        passwords.find { it.id == itemId }?.let { DetailItem.Password(it) }
+            ?: ips.find { it.id == itemId }?.let { DetailItem.IpAddress(it) }
     }
 
     var showMenu by remember { mutableStateOf(false) }
@@ -119,9 +120,17 @@ fun ItemDetailScreen(
             }
             // ==============================================
 
-            when (val currentItem = detailItem) {
-                is DetailItem.Password -> PasswordDetailContent(item = currentItem.item, onCopy = onCopy)
-                is DetailItem.IpAddress -> IpDetailContent(item = currentItem.item, onCopy = onCopy)
+            when (val currentItemValue = detailItem) {
+                is DetailItem.Password -> {
+                    key(currentItemValue.item) {
+                        PasswordDetailContent(item = currentItemValue.item, onCopy = onCopy)
+                    }
+                }
+                is DetailItem.IpAddress -> {
+                    key(currentItemValue.item) {
+                        IpDetailContent(item = currentItemValue.item, onCopy = onCopy)
+                    }
+                }
                 null -> {
                     if (itemId != null) {
                         CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
