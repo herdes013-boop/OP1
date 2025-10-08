@@ -166,18 +166,39 @@ fun TextBlockView(block: TutorialContentBlock.TextBlock) {
 
 @Composable
 fun ImageBlockView(block: TutorialContentBlock.ImageBlock) {
-    // AsyncImage z knižnice Coil je dosť inteligentný na to, aby zobrazil
-    // obrázok priamo z jeho textovej URI adresy.
-    AsyncImage(
-        model = block.uriString, // Používame novú vlastnosť `uriString`
-        contentDescription = "Obrázok v návode",
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(200.dp) // Výšku si môžete prispôsobiť
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant), // Pridá pozadie počas načítavania
-        contentScale = ContentScale.Crop, // Oreže obrázok, aby vyplnil celý priestor
-        // Zobrazí sa, ak by sa obrázok z nejakého dôvodu nepodarilo načítať
-        error = painterResource(id = R.drawable.image_placeholder)
-    )
+    // Inteligentný výber modelu pre obrázok
+    val imageModel = block.uriString ?: block.imageRes
+
+    // ✅ FINÁLNA OPRAVA: Overíme, či je model platný.
+    if (imageModel != null) {
+        AsyncImage(
+            model = imageModel, // Coil si poradí s URI (String) aj s ID (Int)
+            contentDescription = "Obrázok v návode",
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentScale = ContentScale.Crop,
+            // Ako zálohu zobrazíme placeholder, ktorý je skutočný obrázok
+            error = painterResource(id = R.drawable.ic_launcher_background) // Použite ID skutočného obrázka, napr. ikonu launcheru
+        )
+    } else {
+        // Ak by náhodou nebol zadaný ani uriString, ani imageRes, zobrazíme bezpečný placeholder
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.BrokenImage,
+                contentDescription = "Obrázok sa nepodarilo načítať",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(48.dp)
+            )
+        }
+    }
 }

@@ -2,14 +2,14 @@ package com.example.op
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed // ✅ ZMENA: Potrebujeme index pre lepšiu stabilitu
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -24,18 +24,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale // ✅ ZMENA: Pre zobrazenie obrázku
-import androidx.compose.ui.platform.LocalContext // ✅ ZMENA: Potrebujeme context pre ViewModel
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri // ✅ ZMENA: Pre konverziu Stringu na Uri
+import androidx.core.net.toUri
 import androidx.navigation.NavController
-import coil.compose.AsyncImage // ✅ ZMENA: Kľúčový import pre obrázky
+import coil.compose.AsyncImage
 import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.detectReorderAfterLongPress
 import org.burnoutcrew.reorderable.rememberReorderableLazyListState
 import org.burnoutcrew.reorderable.reorderable
-import java.util.UUID // ✅ ZMENA: Import pre unikátny kľúč
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,26 +42,23 @@ fun AddTutorialScreen(
     navController: NavController,
     tutorialsViewModel: TutorialsViewModel,
     sharedViewModel: SharedViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val contentBlocks by tutorialsViewModel.contentBlocks.collectAsState()
     val isEditing = tutorialsViewModel.isEditing
 
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
 
-    // ✅ ZMENA: Launcher pre výber obrázkov z galérie
     val context = LocalContext.current
     val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent(),
+        contract = ActivityResultContracts.PickVisualMedia(),
         onResult = { uri: Uri? ->
             uri?.let {
-                // Po úspešnom výbere obrázku voláme novú funkciu vo ViewModele
                 tutorialsViewModel.addImageBlockFromUri(it, context)
             }
         }
     )
 
-    // Skryjeme hlavnú hornú lištu
     LaunchedEffect(Unit) {
         sharedViewModel.setTopBarState(TopBarState(isVisible = false))
     }
@@ -80,12 +76,14 @@ fun AddTutorialScreen(
 
     DisposableEffect(Unit) {
         onDispose {
-            // Pri odchode resetujeme formulár a hornú lištu
             tutorialsViewModel.resetForm()
             sharedViewModel.resetTopBarState()
         }
     }
 
+    // ==========================================================
+    // ===== TU BOLA CHYBA V ZÁTVORKÁCH, TOTO JE OPRAVENÁ VERZIA =====
+    // ==========================================================
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -115,16 +113,19 @@ fun AddTutorialScreen(
         bottomBar = {
             EditorControls(
                 onAddText = { tutorialsViewModel.addTextBlock() },
-                // ✅ ZMENA: Pri kliknutí na tlačidlo "Obrázok" spustíme image picker
-                onAddImage = { imagePickerLauncher.launch("image/*") }
+                onAddImage = {
+                    imagePickerLauncher.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                    )
+                }
             )
         }
-    ) { innerPadding ->
+    ) { innerPadding -> // Toto je content blok Scaffold-u
+
         val reorderableState = rememberReorderableLazyListState(onMove = { from, to ->
-            // Indexy sú posunuté o 1, pretože prvou položkou v LazyColumn je hlavička
             val fromIndex = from.index - 1
             val toIndex = to.index - 1
-            if (fromIndex >= 0 && toIndex >= 0) {
+            if (fromIndex >= 0 && toIndex >= 0 && fromIndex < contentBlocks.size && toIndex < contentBlocks.size) {
                 tutorialsViewModel.moveContentBlock(fromIndex, toIndex)
             }
         })
@@ -155,7 +156,6 @@ fun AddTutorialScreen(
                 }
             }
 
-            // ✅ ZMENA: Používame `itemsIndexed` pre stabilné indexy
             itemsIndexed(contentBlocks, key = { _, block -> block.id }) { index, block ->
                 ReorderableItem(reorderableState, key = block.id) { isDragging ->
                     val elevation by animateDpAsState(if (isDragging) 8.dp else 0.dp, label = "elevation_anim")
@@ -175,7 +175,6 @@ fun AddTutorialScreen(
                             )
                         }
                         is TutorialContentBlock.ImageBlock -> {
-                            // ✅ ZMENA: Voláme opravený ImageBlockEditor
                             ImageBlockEditor(
                                 block = block,
                                 onRemove = { tutorialsViewModel.removeContentBlock(index) },
@@ -186,7 +185,7 @@ fun AddTutorialScreen(
                 }
             }
         }
-    }
+    } // Tu správne končí Scaffold
 }
 
 
@@ -195,7 +194,7 @@ fun TextBlockEditor(
     block: TutorialContentBlock.TextBlock,
     onTextChange: (String) -> Unit,
     onRemove: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     var localText by remember(block.id) { mutableStateOf(block.text) }
 
@@ -241,13 +240,14 @@ fun TextBlockEditor(
     }
 }
 
-// ✅ ZMENA: Kompletne prepracovaný ImageBlockEditor
 @Composable
 fun ImageBlockEditor(
     block: TutorialContentBlock.ImageBlock,
-    onRemove: () -> Unit,
-    modifier: Modifier = Modifier
+    onRemove: () -> Unit,modifier: Modifier = Modifier,
 ) {
+    // Inteligentný výber modelu pre obrázok
+    val imageModel = block.uriString?.toUri() ?: block.imageRes
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -264,20 +264,39 @@ fun ImageBlockEditor(
             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        // Kontajner pre obrázok a tlačidlo na zmazanie
         Box(modifier = Modifier.weight(1f)) {
-            // Používame AsyncImage z knižnice Coil na bezpečné načítanie obrázku
-            AsyncImage(
-                model = block.uriString.toUri(), // Konvertujeme String na Uri
-                contentDescription = "Obrázok návodu",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.surface),
-                contentScale = ContentScale.Crop // Oreže obrázok, aby vyplnil priestor
-            )
-            // Tlačidlo na zmazanie v rohu
+            // ✅ FINÁLNA OPRAVA: Použijeme rovnakú logiku
+            if (imageModel != null) {
+                AsyncImage(
+                    model = imageModel, // Použijeme univerzálny model
+                    contentDescription = "Obrázok návodu",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surface),
+                    contentScale = ContentScale.Crop,
+                    error = painterResource(id = R.drawable.ic_launcher_background) // Záloha
+                )
+            } else {
+                // Bezpečný placeholder, ak by model nebol platný
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surface),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.BrokenImage,
+                        contentDescription = "Chyba obrázka",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+            }
+            // Tlačidlo na zmazanie zostáva
             IconButton(
                 onClick = onRemove,
                 modifier = Modifier
@@ -291,8 +310,6 @@ fun ImageBlockEditor(
     }
 }
 
-
-// Zvyšok súboru (dialogy, controls, selector) zostáva bez zmeny
 @Composable
 fun EditorControls(modifier: Modifier = Modifier, onAddText: () -> Unit, onAddImage: () -> Unit) {
     Surface(modifier = modifier.fillMaxWidth(), shadowElevation = 8.dp) {
@@ -336,10 +353,25 @@ fun DeleteConfirmDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
         }
     )
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CategorySelector(categories: List<String>, selectedCategory: String, onCategorySelected: (String) -> Unit) {
-    // ... (bez zmeny)
+fun CategorySelector(
+    categories: List<String>,
+    selectedCategory: String,
+    onCategorySelected: (String) -> Unit,
+) {
+    Column {
+        Text("Kategória", style = MaterialTheme.typography.labelLarge)
+        Spacer(Modifier.height(8.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            categories.forEach { category ->
+                FilterChip(
+                    selected = (category == selectedCategory),
+                    onClick = { onCategorySelected(category) },
+                    label = { Text(category) }
+                )
+            }
+        }
+    }
 }
-// ... (ostatné dialogy bez zmeny)
-

@@ -1,6 +1,6 @@
 package com.example.op
 
-
+import androidx.annotation.DrawableRes
 import java.util.UUID
 
 /**
@@ -18,10 +18,13 @@ sealed class TutorialContentBlock(val id: String = UUID.randomUUID().toString())
     ) : TutorialContentBlock()
 
     /**
-     * ✅ ZMENA: Blok teraz obsahuje URI adresu obrázku ako textový reťazec (String).
-     * @param uriString Textová reprezentácia URI adresy obrázku.
+     * ✅ OPRAVA: Univerzálny blok pre obrázky.
+     * Dokáže pracovať s obrázkami z galérie (uriString) aj z interných zdrojov (imageRes).
+     * @param uriString Textová reprezentácia URI adresy obrázku (pre obrázky z galérie).
+     * @param imageRes ID obrázku z 'drawable' zdrojov (pre predvolené návody).
      */
     data class ImageBlock(
-        val uriString: String
+        val uriString: String? = null,
+        @DrawableRes val imageRes: Int? = null
     ) : TutorialContentBlock()
 }
