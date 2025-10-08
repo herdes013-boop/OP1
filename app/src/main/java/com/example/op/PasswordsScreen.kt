@@ -72,6 +72,7 @@ fun PasswordsScreen(
                     )
                 }
             }
+            Spacer(modifier = Modifier.height(8.dp))
 
             when (selectedTabIndex) {
                 0 -> {
@@ -139,7 +140,7 @@ private fun SearchBar(
         onActiveChange = {},
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 0.dp),
         placeholder = { Text(placeholder) },
         leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Ikona vyhľadávania") },
         trailingIcon = {
