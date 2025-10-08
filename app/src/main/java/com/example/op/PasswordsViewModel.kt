@@ -245,14 +245,8 @@ class PasswordsViewModel : ViewModel() {
             initialValue = _ipList.value
         )
 
-    fun addIpAddress(name: String, ipAddress: String, notes: String?) {
-        val newItem = IpItem(
-            id = getNextId(),
-            name = name,
-            ipAddress = ipAddress,
-            notes = notes
-        )
-        _ipList.update { currentList -> currentList + newItem }
+    fun addIpAddress(ipItem: IpItem) {
+        _ipList.update { currentList -> currentList + ipItem }
     }
     fun updateIpAddress(updatedItem: IpItem) {
         _ipList.update { currentList ->
@@ -262,6 +256,14 @@ class PasswordsViewModel : ViewModel() {
 
     fun getIpAddressById(id: String): IpItem? {
         return _ipList.value.find { it.id == id }
+    }
+    fun createEmptyIpItem(): IpItem {
+        return IpItem(
+            id = getNextId(), // Použijeme vašu existujúcu funkciu na generovanie ID
+            name = "",       // Zalomenie riadku a správne priradenie
+            ipAddress = "",
+            notes = null
+        )
     }
 
     fun deleteIpAddress(ipId: String) {

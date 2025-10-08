@@ -48,14 +48,14 @@ data class IpItem(
      * Prehľadáva názov a IP adresu.
      */
     fun doesMatchSearchQuery(query: String): Boolean {
-        // Použijeme listOfNotNull, aby to fungovalo aj keď sú poznámky prázdne (null)
-        val matchingCombinations = listOfNotNull(
+        val matchingCombinations = listOf(
             name,
             ipAddress,
-            notes // <-- TOTO STE PRIDALI
+            notes
         )
         return matchingCombinations.any {
-            it.contains(query, ignoreCase = true)
+            // Použijeme bezpečné volanie `?.` ako pri heslách
+            it?.contains(query, ignoreCase = true) == true
         }
     }
 }

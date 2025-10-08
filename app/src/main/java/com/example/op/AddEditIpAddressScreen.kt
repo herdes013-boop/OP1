@@ -1,16 +1,24 @@
 package com.example.op
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditIpAddressScreen(
     modifier: Modifier = Modifier,
@@ -19,97 +27,183 @@ fun AddEditIpAddressScreen(
     sharedViewModel: SharedViewModel,
     ipId: String? = null
 ) {
-    val isEditing = ipId != null
-    val initialIpItem by remember(ipId) {
-        derivedStateOf {
-            if (isEditing) viewModel.getIpAddressById(ipId!!) else null
+    // 1. Príprava stavov a načítanie dát
+    val isNewItem = ipId == null
+
+    // Načítame položku alebo vytvoríme novú
+    val originalIpItem: IpItem = remember(ipId) {
+        if (isNewItem) {
+            viewModel.createEmptyIpItem()
+        } else {
+            viewModel.getIpAddressById(ipId!!) ?: viewModel.createEmptyIpItem()
         }
     }
 
-    var name by remember(initialIpItem) { mutableStateOf(initialIpItem?.name ?: "") }
-    var ipAddress by remember(initialIpItem) { mutableStateOf(initialIpItem?.ipAddress ?: "") }
-    // NOVÉ: Premenná pre uloženie stavu poľa pre poznámky
-    var notes by remember(initialIpItem) { mutableStateOf(initialIpItem?.notes ?: "") }
+    // Lokálny stav, ktorý používateľ upravuje vo formulári
+    var localIpItem by remember { mutableStateOf(originalIpItem) }
 
-    val isFormValid = name.isNotBlank() && ipAddress.isNotBlank()
+    // Stavy pre dialógy a menu
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var showUnsavedChangesDialog by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
 
-    LaunchedEffect(isEditing) {
-        val title = if (isEditing) "Upraviť IP adresu" else "Nová IP adresa"
+    // Vypočítaný stav, ktorý zisťuje, či sú zmeny
+    val hasUnsavedChanges by remember {
+        derivedStateOf { localIpItem != originalIpItem }
+    }
+
+    // Ak upravujeme neexistujúcu položku (napr. bola medzitým zmazaná), vrátime sa späť
+    if (!isNewItem && viewModel.getIpAddressById(ipId!!) == null) {
+        LaunchedEffect(Unit) { navController.popBackStack() }
+        return
+    }
+
+
+    // 2. Funkcie pre ukladanie, mazanie a navigáciu
+    fun saveItemAndGoBack() {
+        if (isNewItem) {
+            viewModel.addIpAddress(localIpItem)
+        } else {
+            viewModel.updateIpAddress(localIpItem)
+        }
+        navController.popBackStack()
+    }
+
+    fun handleBackNavigation() {
+        if (hasUnsavedChanges) {
+            showUnsavedChangesDialog = true
+        } else {
+            navController.popBackStack()
+        }
+    }
+
+
+    // 3. Nastavenie horného panela (TopAppBar) cez SharedViewModel
+    LaunchedEffect(isNewItem, hasUnsavedChanges) {
         sharedViewModel.setTopBarState(
             TopBarState(
-                title = title,
-                isVisible = true,
+                title = if (isNewItem) "Nová IP adresa" else "Upraviť IP adresu",
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = ::handleBackNavigation) {
                         Icon(Icons.Default.ArrowBack, "Naspäť")
+                    }
+                },
+                actions = {
+                    // Zobrazí tlačidlo ULOŽIŤ iba ak sú zmeny
+                    if (hasUnsavedChanges) {
+                        Button(
+                            onClick = ::saveItemAndGoBack,
+                            modifier = Modifier.padding(horizontal = 8.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF4CAF50) // Zelená farba
+                            )
+                        ) {
+                            Text("ULOŽIŤ")
+                        }
+                    }
+                    // Menu pre zmazanie sa zobrazí iba pri úprave existujúcej položky
+                    if (!isNewItem) {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Default.MoreVert, "Viac")
+                        }
                     }
                 }
             )
         )
     }
 
-    if (isEditing && initialIpItem == null) {
-        LaunchedEffect(Unit) { navController.popBackStack() }
-        return
+    // Zabezpečí správne fungovanie systémového tlačidla "späť"
+    BackHandler(onBack = ::handleBackNavigation)
+
+
+    // 4. Hlavný obsah obrazovky (formulár)
+    Box(
+        modifier = modifier.fillMaxSize()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            OutlinedTextField(
+                value = localIpItem.name,
+                onValueChange = { localIpItem = localIpItem.copy(name = it) },
+                label = { Text("Názov zariadenia") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            OutlinedTextField(
+                value = localIpItem.ipAddress,
+                onValueChange = { localIpItem = localIpItem.copy(ipAddress = it) },
+                label = { Text("IP Adresa") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            OutlinedTextField(
+                value = localIpItem.notes ?: "",
+                onValueChange = { localIpItem = localIpItem.copy(notes = it) },
+                label = { Text("Poznámky (voliteľné)") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            // TLAČIDLO "ULOŽIŤ" JE ODTIAĽTO ODSTRÁNENÉ!
+        }
+
+        // Dropdown menu je zarovnané vpravo hore
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false },
+            modifier = Modifier.align(Alignment.TopEnd).padding(end = 4.dp)
+        ) {
+            DropdownMenuItem(
+                text = { Text("Zmazať", color = MaterialTheme.colorScheme.error) },
+                onClick = {
+                    showMenu = false
+                    showDeleteDialog = true
+                },
+                leadingIcon = { Icon(Icons.Default.Delete, "Zmazať", tint = MaterialTheme.colorScheme.error) }
+            )
+        }
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text("Názov zariadenia") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
 
-        OutlinedTextField(
-            value = ipAddress,
-            onValueChange = { ipAddress = it },
-            label = { Text("IP Adresa") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        // NOVÉ: Textové pole pre poznámky
-        OutlinedTextField(
-            value = notes,
-            onValueChange = { notes = it },
-            label = { Text("Poznámky (voliteľné)") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        Button(
-            onClick = {
-                if (isEditing) {
-                    // UPRAVENÉ: Pri úprave posielame aj poznámky
-                    val updatedItem = initialIpItem!!.copy(
-                        name = name,
-                        ipAddress = ipAddress,
-                        notes = notes.ifBlank { null } // Ak je pole prázdne, uloží sa null
-                    )
-                    viewModel.updateIpAddress(updatedItem)
-                } else {
-                    // UPRAVENÉ: Pri pridaní posielame aj poznámky
-                    viewModel.addIpAddress(
-                        name = name,
-                        ipAddress = ipAddress,
-                        notes = notes.ifBlank { null } // Ak je pole prázdne, uloží sa null
-                    )
-                }
-                navController.popBackStack()
+    // 5. Dialógy pre potvrdenie
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Odstrániť položku?") },
+            text = { Text("Naozaj chcete natrvalo odstrániť položku '${originalIpItem.name}'?") },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) { Text("Zrušiť") }
             },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = isFormValid
-        ) {
-            Text("Uložiť")
-        }
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteIpAddress(originalIpItem.id)
+                        showDeleteDialog = false
+                        navController.popBackStack()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text("Odstrániť") }
+            }
+        )
+    }
+
+    if (showUnsavedChangesDialog) {
+        AlertDialog(
+            onDismissRequest = { showUnsavedChangesDialog = false },
+            title = { Text("Neuložené zmeny") },
+            text = { Text("Máte neuložené zmeny. Chcete ich zahodiť a odísť?") },
+            confirmButton = {
+                Button(onClick = {
+                    showUnsavedChangesDialog = false
+                    navController.popBackStack()
+                }) { Text("Zahodiť a odísť") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showUnsavedChangesDialog = false }) { Text("Zostať") }
+            }
+        )
     }
 }
