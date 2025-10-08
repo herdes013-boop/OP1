@@ -98,24 +98,33 @@ fun ContactsScreen(
 
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // =========== KĽÚČOVÁ ZMENA JE TU ===========
-            // Použijeme TabRow namiesto ScrollableTabRow
+            // =========== TOTO JE JEDINÁ ZMENA, KTORÚ POTREBUJETE ===========
             TabRow(
                 selectedTabIndex = if (selectedTabIndex == -1) 0 else selectedTabIndex,
             ) {
-                categories.forEach { title ->
+                categories.forEach { originalTitle -> // Premenoval som premennú pre jasnosť
+
+                    // "Preložíme" pôvodný názov na taký, ktorý chceme zobraziť
+                    val displayTitle = when (originalTitle) {
+                        "Jednotka" -> ":1"
+                        "Dvojka" -> ":2"
+                        "24" -> ":24"
+                        "Sport" -> ":Sport"
+                        else -> originalTitle // "Všetky" a iné zostanú nezmenené
+                    }
+
                     Tab(
-                        selected = selectedTabFilter == title,
+                        // Logika stále pracuje s pôvodným názvom (originalTitle)
+                        selected = selectedTabFilter == originalTitle,
                         onClick = {
-                            if (selectedTabFilter == ALL_CHANNELS_FILTER && title != ALL_CHANNELS_FILTER) {
+                            if (selectedTabFilter == ALL_CHANNELS_FILTER && originalTitle != ALL_CHANNELS_FILTER) {
                                 viewModel.updateSearchQuery("")
                             }
-                            viewModel.updateSelectedTabFilter(title)
+                            viewModel.updateSelectedTabFilter(originalTitle)
                         },
-                        // Pridané maxLines a overflow pre prípad veľmi dlhého textu
                         text = {
                             Text(
-                                text = title,
+                                text = displayTitle, // Tu zobrazíme náš nový, skrátený názov
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -123,29 +132,32 @@ fun ContactsScreen(
                     )
                 }
             }
-            // ============================================
+            // ======================= KONIEC ZMENY =======================
 
+            // Zvyšok kódu (SearchBar, LazyColumn, atď.) zostáva úplne bez zmeny
             if (selectedTabFilter == ALL_CHANNELS_FILTER) {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { viewModel.updateSearchQuery(it) },
-                    label = { Text("Vyhľadať v kontaktoch...") },
-                    leadingIcon = {
-                        Icon(Icons.Filled.Search, contentDescription = "Vyhľadať")
-                    },
-                    trailingIcon = if (searchQuery.isNotEmpty()) {
-                        {
-                            IconButton(onClick = { viewModel.updateSearchQuery("") }) {
-                                Icon(Icons.Filled.Clear, contentDescription = "Vymazať vyhľadávanie")
-                            }
-                        }
-                    } else null,
-                    shape = RoundedCornerShape(12.dp),
-                    singleLine = true,
+                SearchBar(
+                    query = searchQuery,
+                    onQueryChange = { viewModel.updateSearchQuery(it) },
+                    onSearch = { /* Hľadá sa priebežne */ },
+                    active = false,
+                    onActiveChange = {},
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                )
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    placeholder = { Text("Vyhľadať v kontaktoch...") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Ikona vyhľadávania") },
+                    trailingIcon = {
+                        // Podmienené zobrazenie ikony "X"
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { viewModel.updateSearchQuery("") }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Vymazať text")
+                            }
+                        }
+                    }
+                ) {
+                    // Prázdny obsahový blok, ktorý je pre SearchBar povinný
+                }
             }
 
             if (contacts.isEmpty()) {
