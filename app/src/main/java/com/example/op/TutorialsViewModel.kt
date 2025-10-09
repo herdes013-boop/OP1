@@ -44,7 +44,6 @@ class TutorialsViewModel : ViewModel() {
     var selectedCategory by mutableStateOf(categories.first())
         private set
 
-    // ✅ NOVÉ: Premenná pre text vo vyhľadávaní
     var searchQuery by mutableStateOf("")
         private set
 
@@ -86,12 +85,12 @@ class TutorialsViewModel : ViewModel() {
             }.collect {}
         }
 
-        // ✅ ZMENA: Reaktívne filtrovanie, ktoré kombinuje kategóriu a vyhľadávanie
+        // Reaktívne filtrovanie, ktoré kombinuje kategóriu a vyhľadávanie
         viewModelScope.launch {
             combine(
                 _tutorials,
                 snapshotFlow { selectedCategory },
-                snapshotFlow { searchQuery }.debounce(300L) // debounce znižuje frekvenciu hľadania počas písania
+                snapshotFlow { searchQuery }.debounce(300L)
             ) { tutorials, category, query ->
                 val tutorialsByCategory = if (category == "Všetky") {
                     tutorials
@@ -103,9 +102,7 @@ class TutorialsViewModel : ViewModel() {
                     tutorialsByCategory
                 } else {
                     tutorialsByCategory.filter { tutorial ->
-                        // Hľadáme v názve (ignorujeme veľkosť písmen)
                         tutorial.title.contains(query, ignoreCase = true) ||
-                                // Hľadáme aj v obsahu textových blokov
                                 tutorial.content.any { block ->
                                     block is TutorialContentBlock.TextBlock && block.text.contains(query, ignoreCase = true)
                                 }
@@ -136,10 +133,30 @@ class TutorialsViewModel : ViewModel() {
             )
         )
         _tutorials.value = initialData
-        // filterTutorials() sa už nevolá manuálne, deje sa to reaktívne v `init` bloku
     }
 
-    // --- FUNKCIE PRE PRIDÁVANIE OBRÁZKOV ---
+    // --- FUNKCIE PRE Ukladanie a Pridávanie obrázkov ---
+
+    suspend fun saveTutorial() {
+        if (tutorialTitle.isBlank()) return
+
+        val editedTutorial = Tutorial(
+            id = editingTutorialId ?: UUID.randomUUID().toString(),
+            title = tutorialTitle,
+            category = tutorialCategory,
+            content = _contentBlocks.value
+        )
+
+        if (editingTutorialId == null) {
+            _tutorials.update { it + editedTutorial }
+        } else {
+            _tutorials.update { list ->
+                list.map { if (it.id == editingTutorialId) editedTutorial else it }
+            }
+        }
+    }
+
+    // ✅ TÁTO FUNKCIA JE TERAZ PRIDANÁ SPÄŤ
     private suspend fun saveImageToInternalStorageAndGetUri(context: Context, sourceUri: Uri): Uri? {
         return withContext(Dispatchers.IO) {
             try {
@@ -174,20 +191,16 @@ class TutorialsViewModel : ViewModel() {
 
     // --- OSTATNÉ FUNKCIE ---
 
-    // ✅ NOVÉ: Funkcia na aktualizáciu textu vo vyhľadávaní
     fun onSearchQueryChange(newQuery: String) {
         searchQuery = newQuery
     }
 
     fun onCategorySelected(category: String) {
         selectedCategory = category
-        // ✅ Keď sa zmení kategória, resetujeme vyhľadávanie
         if (category != "Všetky") {
             searchQuery = ""
         }
     }
-
-    // ❌ STARÁ FUNKCIA filterTutorials() UŽ NIE JE POTREBNÁ, nahradil ju `combine` v `init`
 
     fun onTitleChange(newTitle: String) {
         tutorialTitle = newTitle
@@ -224,37 +237,13 @@ class TutorialsViewModel : ViewModel() {
         }
     }
 
-    fun saveTutorial() {
-        if (tutorialTitle.isBlank()) return
-
-        viewModelScope.launch {
-            val editedTutorial = Tutorial(
-                id = editingTutorialId ?: UUID.randomUUID().toString(),
-                title = tutorialTitle,
-                category = tutorialCategory,
-                content = _contentBlocks.value
-            )
-
-            if (editingTutorialId == null) {
-                _tutorials.update { it + editedTutorial }
-            } else {
-                _tutorials.update { list ->
-                    list.map { if (it.id == editingTutorialId) editedTutorial else it }
-                }
-            }
-            // Filtrovanie sa udeje automaticky
-            resetForm()
-        }
-    }
-
     fun loadTutorialForEditing(tutorialId: String) {
         _isLoading.value = true
         viewModelScope.launch {
             try {
                 val tutorial = _tutorials.value.firstOrNull { it.id == tutorialId }
                 if (tutorial != null) {
-                    originalTutorial = tutorial.copy() // Uložíme si kópiu
-
+                    originalTutorial = tutorial.copy()
                     editingTutorialId = tutorial.id
                     tutorialTitle = tutorial.title
                     tutorialCategory = tutorial.category
@@ -269,7 +258,6 @@ class TutorialsViewModel : ViewModel() {
     fun deleteTutorial(tutorialId: String) {
         viewModelScope.launch {
             _tutorials.update { list -> list.filterNot { it.id == tutorialId } }
-            // Filtrovanie sa udeje automaticky
         }
     }
 

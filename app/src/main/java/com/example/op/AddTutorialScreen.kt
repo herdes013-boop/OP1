@@ -34,6 +34,7 @@ import androidx.core.net.toUri
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.op.ui.theme.TelekomMagenta
+import kotlinx.coroutines.launch // ✅ NOVÝ IMPORT
 import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.detectReorderAfterLongPress
 import org.burnoutcrew.reorderable.rememberReorderableLazyListState
@@ -59,6 +60,9 @@ fun AddTutorialScreen(
         }
     )
 
+    // ✅ KROK 1: Vytvoríme si coroutine scope
+    val scope = rememberCoroutineScope()
+
     if (showDeleteConfirmDialog) {
         DeleteConfirmDialog(
             onDismiss = { showDeleteConfirmDialog = false },
@@ -72,6 +76,8 @@ fun AddTutorialScreen(
 
     DisposableEffect(Unit) {
         onDispose {
+            // Tento kód sa spustí, keď opustíme obrazovku
+            // Ak neukladáme, resetForm zabezpečí čistý stav pri ďalšom otvorení
             tutorialsViewModel.resetForm()
             sharedViewModel.resetTopBarState()
         }
@@ -88,12 +94,24 @@ fun AddTutorialScreen(
                     }
                 },
                 actions = {
-                    // Tlačidlo je naozaj viditeľné, len ak sú zmeny a je vyplnený názov
                     if (tutorialsViewModel.hasChanges && tutorialsViewModel.tutorialTitle.isNotBlank()) {
                         Button(
                             onClick = {
-                                tutorialsViewModel.saveTutorial()
-                                navController.popBackStack()
+                                // ✅ KROK 2: Spustíme coroutine pre uloženie a navigáciu
+                                scope.launch {
+                                    // 1. POČKÁME, kým sa dáta naozaj uložia
+                                    tutorialsViewModel.saveTutorial()
+
+                                    // 2. AŽ POTOM vykonáme navigáciu
+                                    navController.navigate(Routes.TUTORIALS_LIST) {
+                                        // Vyčistí navigačný zásobník až po hlavnú obrazovku, aby sme sa vyhli medzistavom
+                                        popUpTo(Routes.TUTORIALS_LIST) {
+                                            inclusive = true
+                                        }
+                                        // Zabraňuje vytvoreniu viacerých kópií obrazovky
+                                        launchSingleTop = true
+                                    }
+                                }
                             },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFF4CAF50), // Zelená
@@ -113,19 +131,17 @@ fun AddTutorialScreen(
             )
         }
     ) { innerPadding ->
-        // FINÁLNA ŠTRUKTÚRA: Statická horná časť a skrolovateľná dolná časť
+        // --- Zvyšok súboru je úplne bez zmeny ---
         Column(modifier = Modifier
             .padding(innerPadding)
             .fillMaxSize()) {
 
-            // --- STATICKÁ HORNÁ SEKCIA (nebude sa skrolovať) ---
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Názov a Kategória
                 OutlinedTextField(
                     value = tutorialsViewModel.tutorialTitle,
                     onValueChange = { tutorialsViewModel.onTitleChange(it) },
@@ -139,12 +155,11 @@ fun AddTutorialScreen(
                     onCategorySelected = { tutorialsViewModel.onCategoryChange(it) }
                 )
 
-                // Tlačidlá na pridávanie
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    val buttonColor = Color(0xFF4CAF50) // Zelená
+                    val buttonColor = Color(0xFF4CAF50)
                     Button(
                         onClick = { tutorialsViewModel.addTextBlock() },
                         modifier = Modifier.weight(1f),
@@ -168,27 +183,20 @@ fun AddTutorialScreen(
                 }
             }
 
-            // Oddeľovač
             Divider(modifier = Modifier.padding(horizontal = 16.dp))
 
-            // --- SKROLOVATEĽNÁ SEKCIA S OBSAHOM ---
             val reorderableState = rememberReorderableLazyListState(onMove = { from, to ->
-                // Indexy sú teraz jednoduché, lebo itemsIndexed začína od 0
                 tutorialsViewModel.moveContentBlock(from.index, to.index)
             })
-
-            // ✅ SPRÁVNE MIESTO PRE FOCUS MANAGER
             val focusManager = LocalFocusManager.current
-
             LazyColumn(
                 state = reorderableState.listState,
-                // ✅ SPRÁVNE PRIDANÝ MODIFIER PRE KLIKNUTIE
                 modifier = Modifier
                     .fillMaxSize()
                     .reorderable(reorderableState)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
-                        indication = null // Bez vizuálneho efektu pri kliknutí
+                        indication = null
                     ) {
                         focusManager.clearFocus()
                     },
@@ -197,7 +205,7 @@ fun AddTutorialScreen(
             ) {
                 itemsIndexed(contentBlocks, key = { _, block -> block.id }) { index, block ->
                     ReorderableItem(reorderableState, key = block.id) { isDragging ->
-                        val elevation by animateDpAsState(if (isDragging) 8.dp else 0.dp, label = "elevation_anim")
+                        val elevation by animateDpAsState(if (isDragging) 8.dp else 0.dp, label = "")
                         val reorderModifier = Modifier
                             .detectReorderAfterLongPress(reorderableState)
                             .shadow(elevation, RoundedCornerShape(8.dp))
@@ -223,7 +231,9 @@ fun AddTutorialScreen(
 }
 
 
-// --- POMOCNÉ KOMPONENTY (bezo zmeny) ---
+// --- POMOCNÉ KOMPONENTY (Zvyšok súboru odtiaľto dole je bez zmeny) ---
+// ... (CategoryDropDown, TextBlockEditor, ImageBlockEditor, DeleteConfirmDialog)
+// ... (Sem patrí zvyšok vášho súboru, ktorý sa nemení)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
