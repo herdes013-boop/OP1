@@ -3,7 +3,6 @@ package com.example.op
 import android.content.Context
 import android.net.Uri
 import android.util.Log
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -16,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -44,6 +44,10 @@ class TutorialsViewModel : ViewModel() {
     var selectedCategory by mutableStateOf(categories.first())
         private set
 
+    // ✅ NOVÉ: Premenná pre text vo vyhľadávaní
+    var searchQuery by mutableStateOf("")
+        private set
+
     // --- STAVY PRE OBRAZOVKU PRIDANIA/ÚPRAVY ---
     var tutorialTitle by mutableStateOf("")
         private set
@@ -59,42 +63,57 @@ class TutorialsViewModel : ViewModel() {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    // ==========================================================
-    // ===== KROK 1: NOVÉ PREMENNÉ PRE DETEKCIU ZMIEN =====
-    // ==========================================================
     private var originalTutorial: Tutorial? = null
-
-    /**
-     * Reaktivna premenná, ktorá je `true`, ak sa aktuálny stav líši od originálu.
-     * Pri vytváraní nového návodu je `true` vždy (okrem prázdneho stavu).
-     */
     var hasChanges by mutableStateOf(false)
         private set
-    // ==========================================================
 
     init {
         loadInitialTutorials()
 
-        // ==========================================================
-        // ===== KROK 2: SPUSTENIE SLEDOVANIA ZMIEN =====
-        // ==========================================================
+        // Sledovanie zmien pre formulár úprav/pridania
         viewModelScope.launch {
-            // Vytvoríme kombinovaný Flow, ktorý sa aktivuje pri zmene ktoréhokoľvek sledovaného stavu
             combine(
                 _contentBlocks,
                 snapshotFlow { tutorialTitle },
                 snapshotFlow { tutorialCategory }
             ) { blocks, title, category ->
-                // Porovnáme aktuálny stav s pôvodným
                 val currentTutorial = originalTutorial?.copy(
                     title = title,
                     category = category,
                     content = blocks
                 )
                 hasChanges = currentTutorial != originalTutorial
-            }.collect {} // .collect {} je nutný na spustenie Flow
+            }.collect {}
         }
-        // ==========================================================
+
+        // ✅ ZMENA: Reaktívne filtrovanie, ktoré kombinuje kategóriu a vyhľadávanie
+        viewModelScope.launch {
+            combine(
+                _tutorials,
+                snapshotFlow { selectedCategory },
+                snapshotFlow { searchQuery }.debounce(300L) // debounce znižuje frekvenciu hľadania počas písania
+            ) { tutorials, category, query ->
+                val tutorialsByCategory = if (category == "Všetky") {
+                    tutorials
+                } else {
+                    tutorials.filter { it.category == category }
+                }
+
+                val finalFilteredList = if (query.isBlank()) {
+                    tutorialsByCategory
+                } else {
+                    tutorialsByCategory.filter { tutorial ->
+                        // Hľadáme v názve (ignorujeme veľkosť písmen)
+                        tutorial.title.contains(query, ignoreCase = true) ||
+                                // Hľadáme aj v obsahu textových blokov
+                                tutorial.content.any { block ->
+                                    block is TutorialContentBlock.TextBlock && block.text.contains(query, ignoreCase = true)
+                                }
+                    }
+                }
+                _filteredTutorials.value = finalFilteredList
+            }.collect {}
+        }
     }
 
     private fun loadInitialTutorials() {
@@ -104,7 +123,6 @@ class TutorialsViewModel : ViewModel() {
                 category = "Prihlásenie",
                 content = listOf(
                     TutorialContentBlock.TextBlock(text = "Pre prihlásenie do systému použite vaše pridelené meno a heslo."),
-                    // Používame `imageRes` pre predvolené obrázky z drawable
                     TutorialContentBlock.ImageBlock(imageRes = R.drawable.ic_launcher_background),
                     TutorialContentBlock.TextBlock(text = "V prípade zabudnutého hesla kontaktujte administrátora.")
                 )
@@ -118,7 +136,7 @@ class TutorialsViewModel : ViewModel() {
             )
         )
         _tutorials.value = initialData
-        filterTutorials()
+        // filterTutorials() sa už nevolá manuálne, deje sa to reaktívne v `init` bloku
     }
 
     // --- FUNKCIE PRE PRIDÁVANIE OBRÁZKOV ---
@@ -156,18 +174,20 @@ class TutorialsViewModel : ViewModel() {
 
     // --- OSTATNÉ FUNKCIE ---
 
-    fun onCategorySelected(category: String) {
-        selectedCategory = category
-        filterTutorials()
+    // ✅ NOVÉ: Funkcia na aktualizáciu textu vo vyhľadávaní
+    fun onSearchQueryChange(newQuery: String) {
+        searchQuery = newQuery
     }
 
-    private fun filterTutorials() {
-        _filteredTutorials.value = if (selectedCategory == "Všetky") {
-            _tutorials.value
-        } else {
-            _tutorials.value.filter { it.category == selectedCategory }
+    fun onCategorySelected(category: String) {
+        selectedCategory = category
+        // ✅ Keď sa zmení kategória, resetujeme vyhľadávanie
+        if (category != "Všetky") {
+            searchQuery = ""
         }
     }
+
+    // ❌ STARÁ FUNKCIA filterTutorials() UŽ NIE JE POTREBNÁ, nahradil ju `combine` v `init`
 
     fun onTitleChange(newTitle: String) {
         tutorialTitle = newTitle
@@ -222,7 +242,7 @@ class TutorialsViewModel : ViewModel() {
                     list.map { if (it.id == editingTutorialId) editedTutorial else it }
                 }
             }
-            filterTutorials()
+            // Filtrovanie sa udeje automaticky
             resetForm()
         }
     }
@@ -233,11 +253,7 @@ class TutorialsViewModel : ViewModel() {
             try {
                 val tutorial = _tutorials.value.firstOrNull { it.id == tutorialId }
                 if (tutorial != null) {
-                    // ==========================================================
-                    // ===== KROK 3: ULOŽENIE PÔVODNÉHO STAVU =====
-                    // ==========================================================
                     originalTutorial = tutorial.copy() // Uložíme si kópiu
-                    // ==========================================================
 
                     editingTutorialId = tutorial.id
                     tutorialTitle = tutorial.title
@@ -253,7 +269,7 @@ class TutorialsViewModel : ViewModel() {
     fun deleteTutorial(tutorialId: String) {
         viewModelScope.launch {
             _tutorials.update { list -> list.filterNot { it.id == tutorialId } }
-            filterTutorials()
+            // Filtrovanie sa udeje automaticky
         }
     }
 
@@ -269,11 +285,7 @@ class TutorialsViewModel : ViewModel() {
         tutorialCategory = categories.drop(1).first()
         _contentBlocks.value = emptyList()
 
-        // ==========================================================
-        // ===== KROK 4: RESETOVANIE STAVU ZMIEN =====
-        // ==========================================================
         originalTutorial = Tutorial(id = "new", title = "", category = tutorialCategory, content = emptyList())
         hasChanges = false
-        // ==========================================================
     }
 }
