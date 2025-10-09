@@ -6,7 +6,8 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -26,6 +27,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
@@ -37,15 +39,6 @@ import org.burnoutcrew.reorderable.detectReorderAfterLongPress
 import org.burnoutcrew.reorderable.rememberReorderableLazyListState
 import org.burnoutcrew.reorderable.reorderable
 
-
-
-
-
-
-
-
-
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddTutorialScreen(
@@ -56,20 +49,15 @@ fun AddTutorialScreen(
 ) {
     val contentBlocks by tutorialsViewModel.contentBlocks.collectAsState()
     val isEditing = tutorialsViewModel.isEditing
-
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
         onResult = { uri: Uri? ->
-            uri?.let {
-                tutorialsViewModel.addImageBlockFromUri(it, context)
-            }
+            uri?.let { tutorialsViewModel.addImageBlockFromUri(it, context) }
         }
     )
-
-
 
     if (showDeleteConfirmDialog) {
         DeleteConfirmDialog(
@@ -90,7 +78,6 @@ fun AddTutorialScreen(
     }
 
     Scaffold(
-        // ✅ TOTO JE SPRÁVNA VERZIA PRE VÁŠ PROJEKT
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
@@ -101,16 +88,16 @@ fun AddTutorialScreen(
                     }
                 },
                 actions = {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    if (tutorialsViewModel.hasChanges) {
+                    // Tlačidlo je naozaj viditeľné, len ak sú zmeny a je vyplnený názov
+                    if (tutorialsViewModel.hasChanges && tutorialsViewModel.tutorialTitle.isNotBlank()) {
                         Button(
                             onClick = {
                                 tutorialsViewModel.saveTutorial()
                                 navController.popBackStack()
                             },
-                            enabled = tutorialsViewModel.tutorialTitle.isNotBlank(),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary
+                                containerColor = Color(0xFF4CAF50), // Zelená
+                                contentColor = Color.White
                             )
                         ) {
                             Text("Uložiť")
@@ -121,76 +108,108 @@ fun AddTutorialScreen(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = TelekomMagenta,
                     titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
+                    navigationIconContentColor = Color.White,
                 )
             )
-        },
-        bottomBar = {
-            EditorControls(
-                onAddText = { tutorialsViewModel.addTextBlock() },
-                onAddImage = {
-                    imagePickerLauncher.launch(
-                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                    )
-                }
-            )
         }
-    ) { innerPadding -> // Toto je content blok Scaffold-u
+    ) { innerPadding ->
+        // FINÁLNA ŠTRUKTÚRA: Statická horná časť a skrolovateľná dolná časť
+        Column(modifier = Modifier
+            .padding(innerPadding)
+            .fillMaxSize()) {
 
-        val reorderableState = rememberReorderableLazyListState(onMove = { from, to ->
-            val fromIndex = from.index - 1
-            val toIndex = to.index - 1
-            if (fromIndex >= 0 && toIndex >= 0 && fromIndex < contentBlocks.size && toIndex < contentBlocks.size) {
-                tutorialsViewModel.moveContentBlock(fromIndex, toIndex)
-            }
-        })
+            // --- STATICKÁ HORNÁ SEKCIA (nebude sa skrolovať) ---
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Názov a Kategória
+                OutlinedTextField(
+                    value = tutorialsViewModel.tutorialTitle,
+                    onValueChange = { tutorialsViewModel.onTitleChange(it) },
+                    label = { Text("Názov návodu") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                CategoryDropDown(
+                    categories = tutorialsViewModel.categories.filter { it != "Všetky" },
+                    selectedCategory = tutorialsViewModel.tutorialCategory,
+                    onCategorySelected = { tutorialsViewModel.onCategoryChange(it) }
+                )
 
-        LazyColumn(
-            state = reorderableState.listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .reorderable(reorderableState),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            item(key = "tutorial_meta") {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedTextField(
-                        value = tutorialsViewModel.tutorialTitle,
-                        onValueChange = { tutorialsViewModel.onTitleChange(it) },
-                        label = { Text("Názov návodu") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                    CategorySelector(
-                        categories = tutorialsViewModel.categories.filter { it != "Všetky" },
-                        selectedCategory = tutorialsViewModel.tutorialCategory,
-                        onCategorySelected = { tutorialsViewModel.onCategoryChange(it) }
-                    )
+                // Tlačidlá na pridávanie
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    val buttonColor = Color(0xFF4CAF50) // Zelená
+                    Button(
+                        onClick = { tutorialsViewModel.addTextBlock() },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = buttonColor)
+                    ) {
+                        Icon(Icons.Default.PostAdd, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Text")
+                    }
+                    Button(
+                        onClick = {
+                            imagePickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = buttonColor)
+                    ) {
+                        Icon(Icons.Default.AddPhotoAlternate, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Obrázok")
+                    }
                 }
             }
 
-            itemsIndexed(contentBlocks, key = { _, block -> block.id }) { index, block ->
-                ReorderableItem(reorderableState, key = block.id) { isDragging ->
-                    val elevation by animateDpAsState(if (isDragging) 8.dp else 0.dp, label = "elevation_anim")
-                    val reorderModifier = Modifier
-                        .detectReorderAfterLongPress(reorderableState)
-                        .shadow(elevation, RoundedCornerShape(8.dp))
+            // Oddeľovač
+            Divider(modifier = Modifier.padding(horizontal = 16.dp))
 
-                    when (block) {
-                        is TutorialContentBlock.TextBlock -> {
-                            TextBlockEditor(
+            // --- SKROLOVATEĽNÁ SEKCIA S OBSAHOM ---
+            val reorderableState = rememberReorderableLazyListState(onMove = { from, to ->
+                // Indexy sú teraz jednoduché, lebo itemsIndexed začína od 0
+                tutorialsViewModel.moveContentBlock(from.index, to.index)
+            })
+
+            // ✅ SPRÁVNE MIESTO PRE FOCUS MANAGER
+            val focusManager = LocalFocusManager.current
+
+            LazyColumn(
+                state = reorderableState.listState,
+                // ✅ SPRÁVNE PRIDANÝ MODIFIER PRE KLIKNUTIE
+                modifier = Modifier
+                    .fillMaxSize()
+                    .reorderable(reorderableState)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null // Bez vizuálneho efektu pri kliknutí
+                    ) {
+                        focusManager.clearFocus()
+                    },
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                itemsIndexed(contentBlocks, key = { _, block -> block.id }) { index, block ->
+                    ReorderableItem(reorderableState, key = block.id) { isDragging ->
+                        val elevation by animateDpAsState(if (isDragging) 8.dp else 0.dp, label = "elevation_anim")
+                        val reorderModifier = Modifier
+                            .detectReorderAfterLongPress(reorderableState)
+                            .shadow(elevation, RoundedCornerShape(8.dp))
+
+                        when (block) {
+                            is TutorialContentBlock.TextBlock -> TextBlockEditor(
                                 block = block,
-                                onTextChange = { newText ->
-                                    tutorialsViewModel.onContentBlockChange(index, block.copy(text = newText))
-                                },
+                                onTextChange = { newText -> tutorialsViewModel.onContentBlockChange(index, block.copy(text = newText)) },
                                 onRemove = { tutorialsViewModel.removeContentBlock(index) },
                                 modifier = reorderModifier
                             )
-                        }
-                        is TutorialContentBlock.ImageBlock -> {
-                            ImageBlockEditor(
+                            is TutorialContentBlock.ImageBlock -> ImageBlockEditor(
                                 block = block,
                                 onRemove = { tutorialsViewModel.removeContentBlock(index) },
                                 modifier = reorderModifier
@@ -200,9 +219,53 @@ fun AddTutorialScreen(
                 }
             }
         }
-    } // Tu správne končí Scaffold
+    }
 }
 
+
+// --- POMOCNÉ KOMPONENTY (bezo zmeny) ---
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CategoryDropDown(
+    categories: List<String>,
+    selectedCategory: String,
+    onCategorySelected: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded }
+    ) {
+        OutlinedTextField(
+            value = selectedCategory,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Kategória") },
+            trailingIcon = {
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+            },
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth()
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            categories.forEach { category ->
+                DropdownMenuItem(
+                    text = { Text(category) },
+                    onClick = {
+                        onCategorySelected(category)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
 
 @Composable
 fun TextBlockEditor(
@@ -218,7 +281,6 @@ fun TextBlockEditor(
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -261,7 +323,6 @@ fun ImageBlockEditor(
     onRemove: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Inteligentný výber modelu pre obrázok
     val imageModel = block.uriString?.toUri() ?: block.imageRes
 
     Row(
@@ -269,7 +330,6 @@ fun ImageBlockEditor(
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -281,10 +341,9 @@ fun ImageBlockEditor(
         )
 
         Box(modifier = Modifier.weight(1f)) {
-            // ✅ FINÁLNA OPRAVA: Použijeme rovnakú logiku
             if (imageModel != null) {
                 AsyncImage(
-                    model = imageModel, // Použijeme univerzálny model
+                    model = imageModel,
                     contentDescription = "Obrázok návodu",
                     modifier = Modifier
                         .fillMaxWidth()
@@ -292,10 +351,9 @@ fun ImageBlockEditor(
                         .clip(RoundedCornerShape(8.dp))
                         .background(MaterialTheme.colorScheme.surface),
                     contentScale = ContentScale.Crop,
-                    error = painterResource(id = R.drawable.ic_launcher_background) // Záloha
+                    error = painterResource(id = R.drawable.ic_launcher_background)
                 )
             } else {
-                // Bezpečný placeholder, ak by model nebol platný
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -312,7 +370,6 @@ fun ImageBlockEditor(
                     )
                 }
             }
-            // Tlačidlo na zmazanie zostáva
             IconButton(
                 onClick = onRemove,
                 modifier = Modifier
@@ -326,28 +383,6 @@ fun ImageBlockEditor(
     }
 }
 
-@Composable
-fun EditorControls(modifier: Modifier = Modifier, onAddText: () -> Unit, onAddImage: () -> Unit) {
-    Surface(modifier = modifier.fillMaxWidth(), shadowElevation = 8.dp) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            Button(onClick = onAddText) {
-                Icon(Icons.Default.TextFields, "Pridať text")
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Text")
-            }
-            Button(onClick = onAddImage) {
-                Icon(Icons.Default.AddAPhoto, "Pridať obrázok")
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Obrázok")
-            }
-        }
-    }
-}
 @Composable
 fun DeleteConfirmDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
     AlertDialog(
@@ -368,26 +403,4 @@ fun DeleteConfirmDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
             }
         }
     )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun CategorySelector(
-    categories: List<String>,
-    selectedCategory: String,
-    onCategorySelected: (String) -> Unit,
-) {
-    Column {
-        Text("Kategória", style = MaterialTheme.typography.labelLarge)
-        Spacer(Modifier.height(8.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            categories.forEach { category ->
-                FilterChip(
-                    selected = (category == selectedCategory),
-                    onClick = { onCategorySelected(category) },
-                    label = { Text(category) }
-                )
-            }
-        }
-    }
 }
