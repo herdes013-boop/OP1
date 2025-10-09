@@ -6,14 +6,17 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.op.ui.theme.TelekomMagenta // ✅ PRIDANÝ IMPORT
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -21,13 +24,10 @@ fun AddContactScreen(
     navController: NavController,
     viewModel: ContactsViewModel
 ) {
-    // 1. STAV PRE DIALÓGOVÉ OKNO
     var showDiscardDialog by remember { mutableStateOf(false) }
 
-    // Formulár je "špinavý" (dirty) ak má vyplnené aspoň Meno alebo Priezvisko.
-    // Používame rovnakú podmienku pre validitu Uložiť aj pre kontrolu pri Späť.
-    val isFormDirty = viewModel.formFirstName.isNotBlank() ||
-            viewModel.formLastName.isNotBlank()
+    // Formulár je "špinavý" (dirty) a zároveň platný, ak má vyplnené aspoň Meno alebo Priezvisko.
+    val isFormValidAndDirty = viewModel.formFirstName.isNotBlank() || viewModel.formLastName.isNotBlank()
 
     val saveContactAndGoBack: () -> Unit = {
         viewModel.saveNewContact()
@@ -35,17 +35,14 @@ fun AddContactScreen(
     }
 
     val performDiscardAndGoBack: () -> Unit = {
-        // Resetujeme stav formulára a ideme späť
         viewModel.resetForm()
         navController.popBackStack()
     }
 
     val onBackClicked: () -> Unit = {
-        if (isFormDirty) {
-            // Ak je formulár "špinavý", zobrazíme dialóg.
+        if (isFormValidAndDirty) {
             showDiscardDialog = true
         } else {
-            // Ak nie je špinavý, ideme rovno späť (žiadne zmeny na stratenie).
             performDiscardAndGoBack()
         }
     }
@@ -55,27 +52,37 @@ fun AddContactScreen(
             TopAppBar(
                 title = { Text("Pridať nový kontakt") },
                 navigationIcon = {
-                    // 2. SPÄŤ TLAČIDLO TERAZ VOLÁ NOVÚ LOGIKU
                     IconButton(onClick = onBackClicked) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Späť")
                     }
-                }
+                },
+                // ✅ KROK 1: PRIDANIE TLAČIDLA "ULOŽIŤ" DO HORNEJ LIŠTY
+                actions = {
+                    // Tlačidlo "Uložiť" sa zobrazí, len ak je formulár platný
+                    if (isFormValidAndDirty) {
+                        Button(
+                            onClick = saveContactAndGoBack,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF4CAF50), // Zelená farba
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Text("Uložiť")
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(8.dp)) // Malý odstup od okraja
+                },
+                // ✅ KROK 2: NASTAVENIE SPRÁVNYCH FARIEB
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = TelekomMagenta,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White,
+                    actionIconContentColor = Color.White
+                )
             )
         },
-        floatingActionButton = {
-            // Formulár je platný, ak má vyplnené aspoň Meno alebo Priezvisko
-            val isFormValid = isFormDirty
-
-            FloatingActionButton(
-                // Ak je formulár neplatný, kliknutie nerobí nič ({})
-                onClick = if (isFormValid) saveContactAndGoBack else ({}),
-                // Zakázanie tlačidla (zmena farby a elevácie), ak formulár nie je platný
-                containerColor = if (isFormValid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                elevation = if (isFormValid) FloatingActionButtonDefaults.elevation() else FloatingActionButtonDefaults.loweredElevation()
-            ) {
-                Icon(Icons.Default.Check, contentDescription = "Uložiť kontakt")
-            }
-        }
+        // ✅ KROK 3: ODSTRÁNENIE floatingActionButton
+        // floatingActionButton = { ... } // Táto celá sekcia je preč
     ) { paddingValues ->
         val scrollState = rememberScrollState()
 
@@ -87,29 +94,21 @@ fun AddContactScreen(
                 .verticalScroll(scrollState),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Formulár pre pridanie/editáciu kontaktu
+            // Formulár zostáva bez zmeny
             ContactForm(viewModel = viewModel)
         }
     }
 
-    // 3. DIALÓGOVÉ OKNO PRE POTVRDENIE ZAHODENIA ZMIEN
     if (showDiscardDialog) {
         AlertDialog(
-            onDismissRequest = {
-                // Zrušíme dialóg, zostaneme na obrazovke
-                showDiscardDialog = false
-            },
-            title = {
-                Text("Zahodiť zmeny?")
-            },
-            text = {
-                Text("Máte neuložené zmeny. Naozaj ich chcete zahodiť a vrátiť sa späť?")
-            },
+            onDismissRequest = { showDiscardDialog = false },
+            title = { Text("Zahodiť zmeny?") },
+            text = { Text("Máte neuložené zmeny. Naozaj ich chcete zahodiť a vrátiť sa späť?") },
             confirmButton = {
                 TextButton(
                     onClick = {
                         showDiscardDialog = false
-                        performDiscardAndGoBack() // Zahodíme a ideme späť
+                        performDiscardAndGoBack()
                     }
                 ) {
                     Text("Zahodiť")
@@ -117,9 +116,7 @@ fun AddContactScreen(
             },
             dismissButton = {
                 TextButton(
-                    onClick = {
-                        showDiscardDialog = false // Zrušíme, zostaneme
-                    }
+                    onClick = { showDiscardDialog = false }
                 ) {
                     Text("Zrušiť")
                 }
@@ -128,6 +125,12 @@ fun AddContactScreen(
     }
 }
 
+
+// =========================================================================
+// Zvyšok súboru (ContactForm, ChannelDropdownField) je úplne bez zmeny.
+// Môžete si ho nechať tak, ako je.
+// =========================================================================
+
 @Composable
 fun ContactForm(viewModel: ContactsViewModel) {
 
@@ -135,7 +138,6 @@ fun ContactForm(viewModel: ContactsViewModel) {
 
     // Meno
     OutlinedTextField(
-        // OPRAVENÉ
         value = viewModel.formFirstName,
         onValueChange = viewModel::updateFirstName,
         label = { Text("Meno") },
@@ -146,7 +148,6 @@ fun ContactForm(viewModel: ContactsViewModel) {
 
     // Priezvisko
     OutlinedTextField(
-        // OPRAVENÉ
         value = viewModel.formLastName,
         onValueChange = viewModel::updateLastName,
         label = { Text("Priezvisko") },
@@ -157,7 +158,6 @@ fun ContactForm(viewModel: ContactsViewModel) {
 
     // Funkcia/Pozícia
     OutlinedTextField(
-        // OPRAVENÉ
         value = viewModel.formFunction,
         onValueChange = viewModel::updateFunction,
         label = { Text("Funkcia") },
@@ -168,7 +168,6 @@ fun ContactForm(viewModel: ContactsViewModel) {
 
     // Telefónne číslo
     OutlinedTextField(
-        // OPRAVENÉ
         value = viewModel.formPhone,
         onValueChange = viewModel::updatePhone,
         label = { Text("Telefónne číslo") },
@@ -180,7 +179,6 @@ fun ContactForm(viewModel: ContactsViewModel) {
 
     // E-mail
     OutlinedTextField(
-        // OPRAVENÉ
         value = viewModel.formEmail,
         onValueChange = viewModel::updateEmail,
         label = { Text("E-mail") },
@@ -197,7 +195,6 @@ fun ContactForm(viewModel: ContactsViewModel) {
 
     // Poznámky
     OutlinedTextField(
-        // OPRAVENÉ
         value = viewModel.formNotes,
         onValueChange = viewModel::updateNotes,
         label = { Text("Poznámky") },
@@ -213,7 +210,6 @@ fun ContactForm(viewModel: ContactsViewModel) {
 fun ChannelDropdownField(viewModel: ContactsViewModel) {
     var isExpanded by remember { mutableStateOf(false) }
 
-    // Získame možnosti pre formulár (vylúčime "Všetky", ktoré je len pre filtrovanie)
     val dropdownOptions = remember {
         viewModel.channelOptions.drop(1)
     }
@@ -224,9 +220,8 @@ fun ChannelDropdownField(viewModel: ContactsViewModel) {
         modifier = Modifier.fillMaxWidth()
     ) {
         OutlinedTextField(
-            // OPRAVENÉ
             value = viewModel.formChannel,
-            onValueChange = {}, // Hodnota sa mení len výberom z menu
+            onValueChange = {},
             readOnly = true,
             label = { Text("Kanál") },
             trailingIcon = {
