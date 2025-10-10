@@ -29,6 +29,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.op.ui.theme.AppNavigationBar
 import com.example.op.ui.theme.OPTheme
 import com.example.op.ui.theme.TelekomMagenta
 import kotlinx.coroutines.launch
@@ -207,7 +208,8 @@ fun MainScreen() {
             },
             bottomBar = {
                 if (showBottomBar) {
-                    NavigationBar {
+                    // ✅ KROK 2: ZMEŇ "NavigationBar" NA "AppNavigationBar"
+                    AppNavigationBar { // <-- TENTO NÁZOV SA ZMENIL
                         val currentDestination = navBackStackEntry?.destination
                         bottomNavItems.forEach { screen ->
                             NavigationBarItem(
