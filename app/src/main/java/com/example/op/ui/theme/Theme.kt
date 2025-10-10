@@ -41,8 +41,9 @@ private val LightColorScheme = lightColorScheme(
     tertiary = Pink40,
 
     // ✅ DOPLNENÉ: Zmeň tieto hodnoty podľa seba
-    background = Color(0xFFF6F5F1), // Príklad: veľmi svetlá fialová/šedá
+    background = Color(0xFFEAEAEA), // Príklad: veľmi svetlá fialová/šedá
     surface = Color.White,          // Príklad: čisto biela pre spodnú lištu a karty
+
 
 
     /*

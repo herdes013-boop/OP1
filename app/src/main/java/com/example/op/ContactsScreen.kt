@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.CardDefaults
+
 
 // Správne importy pre Material 3 komponenty
 import androidx.compose.material.icons.Icons
@@ -47,6 +49,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.SearchBarDefaults
 
 // Správne importy pre ViewModel a Navigáciu
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -54,6 +57,8 @@ import androidx.navigation.NavController
 import android.util.Log
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.graphics.Color
+
 
 // (Zvyšok vášho kódu zostáva nezmenený)
 
@@ -76,7 +81,10 @@ fun ContactListItem(contact: ContactItem, onItemClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
-        onClick = onItemClick
+        onClick = onItemClick,
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        )
     ) {
         Row(
             modifier = Modifier
@@ -169,8 +177,8 @@ fun ContactsScreen(
                     verticalAlignment = Alignment.CenterVertically
 
                 ) {
-                    SearchBar(
-                        query = searchQuery,
+
+                    SearchBar(query = searchQuery,
                         onQueryChange = { viewModel.updateSearchQuery(it) },
                         onSearch = { /* Hľadá sa priebežne */ },
                         active = false,
@@ -179,12 +187,19 @@ fun ContactsScreen(
                         placeholder = { Text("Vyhľadať...") },
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                         trailingIcon = {
+                            // Zobrazíme ikonu iba vtedy, ak text na vyhľadávanie nie je prázdny
                             if (searchQuery.isNotEmpty()) {
                                 IconButton(onClick = { viewModel.updateSearchQuery("") }) {
                                     Icon(Icons.Default.Clear, contentDescription = "Vymazať text")
                                 }
                             }
-                        }
+                        },
+
+                        // ✅ TENTO KÓD UŽ KONEČNE BUDE FUNGOVAŤ ✅
+                        colors = SearchBarDefaults.colors(
+                            containerColor = Color.White
+                        ),
+                        tonalElevation = 0.dp // Pre istotu vynulujeme aj tieňovanie
                     ) {}
 
                     Spacer(Modifier.width(8.dp))
@@ -213,7 +228,9 @@ fun ContactsScreen(
                     "Zatiaľ nemáte žiadne kontakty."
                 }
                 Box(
-                    modifier = Modifier.weight(1f).fillMaxWidth(), // Použijeme weight, aby vyplnil zvyšný priestor
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(), // Použijeme weight, aby vyplnil zvyšný priestor
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
