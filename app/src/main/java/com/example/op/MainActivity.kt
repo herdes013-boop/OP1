@@ -156,6 +156,7 @@ fun MainScreen() {
 
     ModalNavigationDrawer(
         drawerState = drawerState,
+        gesturesEnabled = currentRoute == Routes.HOME_ROOT,
         drawerContent = {
             // Pridajte modifier priamo sem, do zátvoriek ModalDrawerSheet
             ModalDrawerSheet(modifier = Modifier.width(280.dp)) {
