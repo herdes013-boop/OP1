@@ -52,6 +52,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import android.util.Log
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material3.TextButton
 
 // (Zvyšok vášho kódu zostáva nezmenený)
 
@@ -175,26 +177,46 @@ fun ContactsScreen(
 
                 // SearchBar
                 if (selectedTabFilter == ALL_CHANNELS_FILTER) {
-                    SearchBar(
-                        query = searchQuery,
-                        onQueryChange = { viewModel.updateSearchQuery(it) },
-                        // ✅ DOPLNENÝ RIADOK
-                        onSearch = { /* Hľadá sa priebežne, tento blok môže ostať prázdny */ },
-                        active = false,
-                        onActiveChange = {},
+                    // Riadok, ktorý bude držať SearchBar aj tlačidlo Filter
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp),
-                        placeholder = { Text("Vyhľadať v kontaktoch...") },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Ikona vyhľadávania") },
-                        trailingIcon = {
-                            if (searchQuery.isNotEmpty()) {
-                                IconButton(onClick = { viewModel.updateSearchQuery("") }) {
-                                    Icon(Icons.Default.Clear, contentDescription = "Vymazať text")
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // SearchBar zaberie väčšinu miesta
+                        SearchBar(
+                            query = searchQuery,
+                            onQueryChange = { viewModel.updateSearchQuery(it) },
+                            onSearch = { /* Hľadá sa priebežne */ },
+                            active = false,
+                            onActiveChange = {},
+                            modifier = Modifier.weight(1f), // <-- Dôležité: zaberie všetok dostupný priestor
+                            placeholder = { Text("Vyhľadať...") }, // Skrátený text pre viac miesta
+                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { viewModel.updateSearchQuery("") }) {
+                                        Icon(Icons.Default.Clear, contentDescription = "Vymazať text")
+                                    }
                                 }
                             }
+                        ) {}
+
+                        // Medzera medzi SearchBar a tlačidlom
+                        Spacer(Modifier.width(8.dp))
+
+                        // Naše nové tlačidlo "Filter"
+                        TextButton(onClick = { /* Zatiaľ nerobí nič */ }) {
+                            Icon(
+                                imageVector = Icons.Default.FilterList,
+                                contentDescription = null, // Popis bude v texte
+                                modifier = Modifier.size(18.dp) // Menšia ikona, aby sa zmestila
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text("Filter")
                         }
-                    ) {}
+                    }
                 }
 
                 // Zoznam alebo správa o prázdnom stave
