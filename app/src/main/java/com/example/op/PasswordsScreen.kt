@@ -42,81 +42,85 @@ fun PasswordsScreen(
         sharedViewModel.setShowBottomBar(true)
     }
 
-    // ✅ ZMENA č. 1: Použijeme Scaffold namiesto Box
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    when (selectedTabIndex) {
-                        0 -> navController.navigate(Routes.ADD_PASSWORD)
-                        1 -> navController.navigate(Routes.ADD_IP_ADDRESS)
-                    }
-                }
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = "Pridať")
+    // --- ŠTRUKTÚRA PODĽA VZORU Z CONTACTSSCREEN ---
+    Column(modifier = modifier.fillMaxSize()) {
+
+        // 1. ZÁLOŽKY SÚ ÚPLNE NAVRCHU, MIMO SCAFFOLDU (prilepia sa na hornú lištu)
+        TabRow(selectedTabIndex = selectedTabIndex) {
+            tabs.forEachIndexed { index, title ->
+                Tab(
+                    selected = selectedTabIndex == index,
+                    onClick = { viewModel.onTabSelected(index) },
+                    text = { Text(title) }
+                )
             }
         }
-    ) { innerPadding -> // ✅ ZMENA č. 2: Získame automatický padding
 
-        Column(
-            // Aplikujeme padding od Scaffold-u
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            // Zvyšok kódu je identický, len je vložený sem
-            when (selectedTabIndex) {
-                0 -> SearchBar(
-                    query = passwordSearchText,
-                    onQueryChange = viewModel::onPasswordSearchTextChange,
-                    placeholder = "Vyhľadať v heslách..."
-                )
-                1 -> SearchBar(
-                    query = ipSearchText,
-                    onQueryChange = viewModel::onIpSearchTextChange,
-                    placeholder = "Vyhľadať v IP adresách..."
-                )
+        // 2. AŽ POTOM NASLEDUJE SCAFFOLD PRE ZVYŠOK OBSAHU
+        Scaffold(
+            modifier = Modifier.fillMaxSize(), // Zaberie zvyšný priestor
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = {
+                        when (selectedTabIndex) {
+                            0 -> navController.navigate(Routes.ADD_PASSWORD)
+                            1 -> navController.navigate(Routes.ADD_IP_ADDRESS)
+                        }
+                    }
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = "Pridať")
+                }
             }
+        ) { innerPadding -> // Tento padding sa už týka len obsahu pod záložkami
 
-            TabRow(selectedTabIndex = selectedTabIndex) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTabIndex == index,
-                        onClick = { viewModel.onTabSelected(index) },
-                        text = { Text(title) }
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding) // Aplikujeme ho tu, na obsah Scaffoldu
+            ) {
+                // SearchBar
+                when (selectedTabIndex) {
+                    0 -> SearchBar(
+                        query = passwordSearchText,
+                        onQueryChange = viewModel::onPasswordSearchTextChange,
+                        placeholder = "Vyhľadať v heslách..."
+                    )
+                    1 -> SearchBar(
+                        query = ipSearchText,
+                        onQueryChange = viewModel::onIpSearchTextChange,
+                        placeholder = "Vyhľadať v IP adresách..."
                     )
                 }
-            }
-            Spacer(modifier = Modifier.height(8.dp))
 
-            when (selectedTabIndex) {
-                0 -> {
-                    TabContent(
-                        searchText = passwordSearchText,
-                        data = passwords,
-                        emptyListText = "Zatiaľ žiadne heslá.",
-                        noResultsText = "Žiadne výsledky pre '${passwordSearchText}'"
-                    ) { item ->
-                        val password = item as PasswordItem
-                        PasswordListItem(
-                            item = password,
-                            onClick = { navController.navigate("item_detail/${password.id}") }
-                        )
+                // Obsah kariet (zoznam)
+                when (selectedTabIndex) {
+                    0 -> {
+                        TabContent(
+                            searchText = passwordSearchText,
+                            data = passwords,
+                            emptyListText = "Zatiaľ žiadne heslá.",
+                            noResultsText = "Žiadne výsledky pre '${passwordSearchText}'"
+                        ) { item ->
+                            val password = item as PasswordItem
+                            PasswordListItem(
+                                item = password,
+                                onClick = { navController.navigate("item_detail/${password.id}") }
+                            )
+                        }
                     }
-                }
-                1 -> {
-                    TabContent(
-                        searchText = ipSearchText,
-                        data = ipAddresses,
-                        emptyListText = "Zatiaľ žiadne IP adresy.",
-                        noResultsText = "Žiadne výsledky pre '${ipSearchText}'"
-                    ) { item ->
-                        val ip = item as IpItem
-                        IpListItem(
-                            item = ip,
-                            onClick = { navController.navigate("item_detail/${ip.id}") }
-                        )
+                    1 -> {
+                        TabContent(
+                            searchText = ipSearchText,
+                            data = ipAddresses,
+                            emptyListText = "Zatiaľ žiadne IP adresy.",
+                            noResultsText = "Žiadne výsledky pre '${ipSearchText}'"
+                        ) { item ->
+                            val ip = item as IpItem
+                            IpListItem(
+                                item = ip,
+                                onClick = { navController.navigate("item_detail/${ip.id}") }
+                            )
+                        }
                     }
                 }
             }
@@ -140,7 +144,7 @@ private fun SearchBar(
         onActiveChange = {},
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 0.dp),
+            .padding(horizontal = 16.dp, vertical = 0.dp), // Zabezpečíme, aby nemal vertikálny padding
         placeholder = { Text(placeholder) },
         leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Ikona vyhľadávania") },
         trailingIcon = {
@@ -181,8 +185,8 @@ private fun <T> TabContent(
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
-            // ✅ ZMENA č. 3: Odstránili sme manuálny `bottom` padding
-            contentPadding = PaddingValues(bottom = 0.dp) // Priestor už rieši `innerPadding` od Scaffold-u
+            // Zmena: Použijeme vertikálny padding priamo tu, aby bol priestor nad prvou položkou
+            contentPadding = PaddingValues(top = 8.dp, bottom = 0.dp)
         ) {
             items(data) { item ->
                 itemContent(item)
@@ -300,3 +304,4 @@ fun IpListItem(item: IpItem, onClick: () -> Unit) {
         }
     }
 }
+
