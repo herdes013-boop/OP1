@@ -303,7 +303,7 @@ private fun ChannelDetailView(
                     else -> channelName
                 },
                 style = MaterialTheme.typography.displaySmall,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Black,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 24.dp),
