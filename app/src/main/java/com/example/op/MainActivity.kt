@@ -342,25 +342,24 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
             )
         }
         composable(
-            route = "item_detail/{itemId}",
-            arguments = listOf(navArgument("itemId") { type = NavType.StringType })
+            route = Routes.PASSWORD_DETAIL, // Použijeme správnu cestu z Routes
+            arguments = listOf(navArgument("passwordId") { type = NavType.StringType })
         ) { backStackEntry ->
-            val itemId = backStackEntry.arguments?.getString("itemId")
-            ItemDetailScreen(
-                modifier = Modifier.padding(paddingValues),
-                itemId = itemId,
-                viewModel = viewModel,
-                sharedViewModel = sharedViewModel,
-                onNavigateToEdit = { id ->
-                    val isPassword = viewModel.passwordList.value.any { it.id == id }
-                    if (isPassword) {
+            val passwordId = backStackEntry.arguments?.getString("passwordId")
+            if (passwordId != null) {
+                // Voláme KONEČNE tú správnu obrazovku!
+                PasswordDetailScreen(
+                    // A odovzdáme jej padding zo Scaffold ako modifier
+                    modifier = Modifier.padding(paddingValues),
+                    passwordId = passwordId,
+                    viewModel = viewModel,
+                    sharedViewModel = sharedViewModel,
+                    onNavigateToEdit = { id ->
                         nestedNavController.navigate(Routes.editPassword(id))
-                    } else {
-                        nestedNavController.navigate(Routes.editIpAddress(id))
-                    }
-                },
-                onBack = { nestedNavController.popBackStack() }
-            )
+                    },
+                    onBack = { nestedNavController.popBackStack() }
+                )
+            }
         }
         composable(Routes.ADD_PASSWORD) {
             AddEditPasswordScreen(

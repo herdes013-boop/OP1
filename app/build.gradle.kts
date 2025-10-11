@@ -1,10 +1,6 @@
-// TENTO SÚBOR BOL UPRAVENÝ tak, aby obsahoval všetky potrebné pluginy a nastavenia JVM Target.
-
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    // ✅ 1. PRIDANÝ PLUGIN: Potrebný pre podporu Compose
-    // ID pluginu pre compose compiler je zabezpečený v buildFeatures { compose = true } a nemusí byť explicitne uvedený v tomto bloku
 }
 
 android {
@@ -17,7 +13,11 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        vectorDrawables {
+            useSupportLibrary = true
+        }
     }
 
     buildTypes {
@@ -29,26 +29,20 @@ android {
             )
         }
     }
-
-    // ✅ 2. PRIDANÉ NASTAVENIA: Kompatibilita Javy
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
     }
-
-    // ✅ 3. PRIDANÉ NASTAVENIA: Kotlin JVM Target (oprava chyby 21)
     kotlinOptions {
-        jvmTarget = "17"
+        jvmTarget = "1.8"
     }
-
     buildFeatures {
         compose = true
     }
-
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.3"
+        // Táto verzia je presne zosúladená s verziou Kotlinu 1.9.22 a Compose BOM 2024.02.02
+        kotlinCompilerExtensionVersion = "1.5.10"
     }
-
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -57,34 +51,38 @@ android {
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2") // Novšia verzia
-    implementation("androidx.activity:activity-compose:1.8.2")
-    implementation("org.burnoutcrew.composereorderable:reorderable:0.9.6")
-    implementation("io.coil-kt:coil-compose:2.5.0")
-    testImplementation("junit:junit:4.13.2")
-    androidTestImplementation("androidx.test.ext:junit:1.1.5")
-    implementation("androidx.compose.foundation:foundation-layout:1.6.5")
 
+    // Základné Android knižnice
+    implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.0")
+    implementation("androidx.activity:activity-compose:1.9.0")
+    implementation("androidx.compose.material3:material3:1.3.0")
 
-
-    // Compose BOM na zjednodušenie verzií
-    implementation(platform("androidx.compose:compose-bom:2023.10.00")) // Novšia BOM
+    // Jetpack Compose - BOM riadi všetky ostatné Compose verzie. Používame overenú, stabilnú verziu.
+    implementation(platform("androidx.compose:compose-bom:2024.02.02"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.compose.material3:material3:1.2.1")
+    implementation("androidx.compose.material3:material3") // Verzia sa načíta z BOM
+    implementation("androidx.compose.foundation:foundation-layout") // Pridané pre istotu
 
+    // Ikony (Visibility, atď.) - verzia sa načíta z BOM
+    implementation("androidx.compose.material:material-icons-extended")
 
-    // Kľúčové dependency pre Navigáciu a ViewModel
-    implementation("androidx.navigation:navigation-compose:2.7.5")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2") // Pre ViewModely
+    // Navigácia a ViewModel
+    implementation("androidx.navigation:navigation-compose:2.7.7")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
 
-    // 🌟🌟🌟 CHÝBAJÚCE DEPENDENCIES PRE IKONY (OPRAVA "Unresolved reference: Visibility") 🌟🌟🌟
-    // Ikony Visibility/VisibilityOff sú v material-icons-extended, nie v základnom material3 balíku.
-    implementation("androidx.compose.material:material-icons-core:1.6.5")
-    implementation("androidx.compose.material:material-icons-extended:1.6.5")
+    // Knižnice tretích strán
+    implementation("org.burnoutcrew.composereorderable:reorderable:0.9.6")
+    implementation("io.coil-kt:coil-compose:2.6.0")
 
+    // Testovanie
+    testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2024.02.02"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

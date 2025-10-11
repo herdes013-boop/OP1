@@ -1,6 +1,6 @@
 package com.example.op
 
-// Správne importy pre layout
+// ... (všetky importy zostávajú nezmenené) ...
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -13,13 +13,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.CardDefaults
-
-
-// Správne importy pre Material 3 komponenty
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.LooksOne
 import androidx.compose.material.icons.filled.LooksTwo
 import androidx.compose.material.icons.filled.Newspaper
@@ -27,43 +24,33 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SearchBar
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-
-// Správne importy pre stav a kompozíciu
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.material3.SearchBarDefaults
-
-// Správne importy pre ViewModel a Navigáciu
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import android.util.Log
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material3.TextButton
-import androidx.compose.ui.graphics.Color
+// Importy, ktoré boli vrátené
+import androidx.compose.material3.SearchBar
+import androidx.compose.material3.SearchBarDefaults
 
 
-// (Zvyšok vášho kódu zostáva nezmenený)
-
-
-// Funkcie getChannelIcon a ContactListItem zostávajú úplne bez zmeny
+// ... (Funkcie getChannelIcon a ContactListItem zostávajú úplne nezmenené) ...
 fun getChannelIcon(channel: String?): ImageVector {
     return when (channel) {
         "Jednotka" -> Icons.Filled.LooksOne
@@ -119,9 +106,8 @@ fun ContactListItem(contact: ContactItem, onItemClick: () -> Unit) {
     }
 }
 
-
 // --------------------------------------------------
-// Hlavná obrazovka pre kontakty - S POUŽITÍM SCAFFOLD
+// Hlavná obrazovka pre kontakty
 // --------------------------------------------------
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -139,10 +125,8 @@ fun ContactsScreen(
     val ALL_CHANNELS_FILTER = "Všetky"
     val selectedTabIndex = categories.indexOf(selectedTabFilter)
 
-    // ✅ ZMENA: Celý obsah je v Box-e, aby sme mohli umiestniť FAB
     Box(modifier = modifier.fillMaxSize()) {
 
-        // Hlavný stĺpec pre všetok obsah
         Column(modifier = Modifier.fillMaxSize()) {
 
             // 1. ZÁLOŽKY
@@ -168,17 +152,17 @@ fun ContactsScreen(
                 }
             }
 
-            // 2. RIADOK S VYHĽADÁVANÍM A FILTROM
+            // 2. RIADOK S VYHĽADÁVANÍM A FILTROM - KÓD VRÁTENÝ DO PÔVODNÉHO STAVU
             if (selectedTabFilter == ALL_CHANNELS_FILTER) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
-
                 ) {
-
-                    SearchBar(query = searchQuery,
+                    // ✅✅✅ PÔVODNÝ SEARCHBAR JE SPÄŤ ✅✅✅
+                    SearchBar(
+                        query = searchQuery,
                         onQueryChange = { viewModel.updateSearchQuery(it) },
                         onSearch = { /* Hľadá sa priebežne */ },
                         active = false,
@@ -187,7 +171,6 @@ fun ContactsScreen(
                         placeholder = { Text("Vyhľadať...") },
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                         trailingIcon = {
-                            // Zobrazíme ikonu iba vtedy, ak text na vyhľadávanie nie je prázdny
                             if (searchQuery.isNotEmpty()) {
                                 IconButton(onClick = { viewModel.updateSearchQuery("") }) {
                                     Icon(Icons.Default.Clear, contentDescription = "Vymazať text")
@@ -195,27 +178,21 @@ fun ContactsScreen(
                             }
                         },
 
-                        // ✅ TENTO KÓD UŽ KONEČNE BUDE FUNGOVAŤ ✅
+                        // ✅✅✅ KÓD PODĽA VÁŠHO VZORU Z PASSWORDS_SCREEN.KT ✅✅✅
                         colors = SearchBarDefaults.colors(
-                            containerColor = Color.White
-                        ),
-                        tonalElevation = 0.dp // Pre istotu vynulujeme aj tieňovanie
+                            containerColor = Color.White,
+                            dividerColor = Color.Transparent
+                        )
+
                     ) {}
 
                     Spacer(Modifier.width(8.dp))
 
-                    TextButton(onClick = { /* Zatiaľ nerobí nič */ }) {
-                        Icon(
-                            imageVector = Icons.Default.FilterList,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Text("Filter")
+                    // ✅✅✅ PÔVODNÝ FILTER JE SPÄŤ ✅✅✅
+                    TextButton(onClick = { /* TODO: Implement filter logic */ }) {
+                        Icon(Icons.Default.FilterList, contentDescription = "Filter")
                     }
-
                 }
-                Spacer(modifier = Modifier.size(24.dp))
             }
 
             // 3. ZOZNAM KONTAKTOV ALEBO SPRÁVA O PRÁZDNOM STAVE
@@ -230,7 +207,7 @@ fun ContactsScreen(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxWidth(), // Použijeme weight, aby vyplnil zvyšný priestor
+                        .fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -242,8 +219,8 @@ fun ContactsScreen(
                 }
             } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(), // Vyplní zvyšok miesta
-                    contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 80.dp) // Pridaný spodný padding pre FAB
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 80.dp)
                 ) {
                     items(contacts, key = { it.id }) { contact ->
                         ContactListItem(
@@ -255,14 +232,13 @@ fun ContactsScreen(
             }
         }
 
-        // ✅ FloatingActionButton je teraz v Box-e, aby bol nad všetkým ostatným
         FloatingActionButton(
             onClick = {
                 viewModel.resetForm()
                 navController.navigate(Routes.ADD_CONTACT)
             },
             modifier = Modifier
-                .align(Alignment.BottomEnd) // Zarovnanie vpravo dole
+                .align(Alignment.BottomEnd)
                 .padding(16.dp)
         ) {
             Icon(Icons.Default.Add, contentDescription = "Pridať kontakt")

@@ -1,11 +1,6 @@
 package com.example.op.ui.theme
 
-import com.example.op.ui.theme.Green_OP
-import com.example.op.ui.theme.Green_OP_light
-import com.example.op.ui.theme.Pink40
-import com.example.op.ui.theme.Pink80
-import com.example.op.ui.theme.PurpleGrey40
-import com.example.op.ui.theme.PurpleGrey80
+// ... importy vašich farieb (Green_OP, Pink40, atď.) ...
 import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -21,6 +16,19 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SearchBarDefaults
+import androidx.compose.runtime.CompositionLocalProvider
+
+
+
+
+
+
+
+
+
+
 
 // ✅ Správne: Farebné schémy teraz používajú naše nové farby z externého súboru Color.kt
 private val DarkColorScheme = darkColorScheme(
@@ -39,39 +47,20 @@ private val LightColorScheme = lightColorScheme(
     primary = TelekomMagenta,
     secondary = PurpleGrey40,
     tertiary = Pink40,
+    background = Color(0xFFEAEAEA),
+    surface = Color.White,
 
-    // ✅ DOPLNENÉ: Zmeň tieto hodnoty podľa seba
-    background = Color(0xFFEAEAEA), // Príklad: veľmi svetlá fialová/šedá
-    surface = Color.White,          // Príklad: čisto biela pre spodnú lištu a karty
-
-
-
-    /*
-     Ďalšie užitočné farby na definovanie:
-     onPrimary = Color.White, // Farba textu na primárnom tlačidle
-     onSecondary = Color.White,
-     onTertiary = Color.White,
-     onBackground = Color(0xFF1C1B1F), // Farba textu na pozadí
-     onSurface = Color(0xFF1C1B1F), // Farba textu na spodnej lište, kartách, atď.
-    */
+    // 🔥 kľúčové: nastav surfaceVariant na bielu
+    surfaceVariant = Color.White,
 )
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun OPTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    // ... (zvyšok funkcie zostáva bez zmeny) ...
-
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
+    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
 
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -86,6 +75,23 @@ fun OPTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
-        content = content
-    )
+    ) {
+        // 🔴🔴🔴 VYMAŽTE VŠETKO ODTIETO AŽ POTIAĽTO 🔴🔴🔴
+        /*
+        val searchBarColors = SearchBarDefaults.colors(
+            containerColor = Color.White,
+            dividerColor = MaterialTheme.colorScheme.outlineVariant,
+            inputFieldColors = SearchBarDefaults.inputFieldColors()
+        )
+
+        CompositionLocalProvider(
+            SearchBarDefaults.LocalSearchBarColors provides searchBarColors
+        ) {
+            content()
+        }
+        */
+
+        // ✅✅✅ NAHRADTE TO JEDINÝM RIADKOM ✅✅✅
+        content()
+    }
 }

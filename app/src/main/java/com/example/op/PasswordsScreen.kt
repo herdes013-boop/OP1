@@ -21,6 +21,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PasswordsScreen(
@@ -104,7 +105,7 @@ fun PasswordsScreen(
                             val password = item as PasswordItem
                             PasswordListItem(
                                 item = password,
-                                onClick = { navController.navigate("item_detail/${password.id}") }
+                                onClick = { navController.navigate(Routes.passwordDetail(password.id)) }
                             )
                         }
                     }
@@ -139,21 +140,28 @@ private fun SearchBar(
     SearchBar(
         query = query,
         onQueryChange = onQueryChange,
-        onSearch = { /* Hľadá sa priebežne */ },
+        onSearch = { },
         active = false,
         onActiveChange = {},
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 0.dp), // Zabezpečíme, aby nemal vertikálny padding
-        placeholder = { Text(placeholder) },
-        leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Ikona vyhľadávania") },
+            .padding(horizontal = 16.dp),
+        placeholder = { Text("Vyhľadať v heslách...", color = Color.Gray) },
+        leadingIcon = {
+            Icon(Icons.Default.Search, contentDescription = null, tint = Color.Black)
+        },
         trailingIcon = {
             if (query.isNotEmpty()) {
                 IconButton(onClick = { onQueryChange("") }) {
-                    Icon(Icons.Default.Clear, contentDescription = "Vymazať text")
+                    Icon(Icons.Default.Clear, contentDescription = null, tint = Color.Black)
                 }
             }
-        }
+        },
+        // 💡 iba tieto dve farby
+        colors = SearchBarDefaults.colors(
+            containerColor = Color.White,       // biele pozadie
+            dividerColor = Color.Transparent    // odstráni spodnú čiaru
+        )
     ) {
         // Prázdny, ale povinný blok
     }
