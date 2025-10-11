@@ -1,6 +1,6 @@
 package com.example.op
 
-// ... (všetky existujúce importy zostávajú) ...
+// ... (všetky importy zostávajú) ...
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -34,7 +34,9 @@ import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,8 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 
-
-// ... (Funkcie getChannelIcon a ContactListItem zostávajú úplne nezmenené) ...
+// --- Tieto funkcie zostávajú bez zmeny ---
 fun getChannelIcon(channel: String?): ImageVector {
     return when (channel) {
         "Jednotka" -> Icons.Filled.LooksOne
@@ -66,9 +67,7 @@ fun ContactListItem(contact: ContactItem, onItemClick: () -> Unit) {
             .fillMaxWidth()
             .padding(vertical = 4.dp),
         onClick = onItemClick,
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        )
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Row(
             modifier = Modifier
@@ -103,9 +102,8 @@ fun ContactListItem(contact: ContactItem, onItemClick: () -> Unit) {
     }
 }
 
-
 // =========================================================================
-// ✅ HLAVNÁ OBRAZOVKA KONTAKTOV - PREPRACOVANÁ A ZJEDNODUŠENÁ
+// ✅ HLAVNÁ OBRAZOVKA KONTAKTOV - OPRAVENÁ
 // =========================================================================
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -113,18 +111,47 @@ fun ContactListItem(contact: ContactItem, onItemClick: () -> Unit) {
 fun ContactsScreen(
     navController: NavController,
     viewModel: ContactsViewModel = viewModel(),
+    sharedViewModel: SharedViewModel, // <-- OPRAVENÉ
     modifier: Modifier = Modifier,
 ) {
     val selectedTabFilter = viewModel.selectedTabFilter
     val categories = viewModel.channelOptions.toList()
-
     val ALL_CHANNELS_FILTER = "Všetky"
     val selectedTabIndex = categories.indexOf(selectedTabFilter)
+    val isEditMode = viewModel.isEditMode
 
-    // Hlavný stĺpec, ktorý drží záložky a obsah pod nimi
+    LaunchedEffect(selectedTabFilter, isEditMode) {
+        if (selectedTabFilter == ALL_CHANNELS_FILTER) {
+            // Pre záložku "Všetky" skryjeme akcie a nastavíme titulok
+            sharedViewModel.setTopBarState(
+                TopBarState(
+                    title = "Kontakty", // Nastavíme titulok
+                    actions = {}        // A žiadne akcie
+                )
+            )
+        } else {
+            // Pre ostatné záložky pridáme tlačidlo na úpravu a iný titulok
+            val channelDisplayName = when (selectedTabFilter) {
+                "Jednotka" -> ":1"
+                "Dvojka" -> ":2"
+                "24" -> ":24"
+                "Sport" -> ":Sport"
+                else -> selectedTabFilter
+            }
+            sharedViewModel.setTopBarState(
+                TopBarState(
+                    title = channelDisplayName, // Titulok bude názov kanála
+                    actions = {
+                        TextButton(onClick = { viewModel.toggleEditMode() }) {
+                            Text(if (isEditMode) "Hotovo" else "Upraviť")
+                        }
+                    }
+                )
+            )
+        }
+    }
+
     Column(modifier = modifier.fillMaxSize()) {
-
-        // 1. ZÁLOŽKY (TabRow)
         TabRow(selectedTabIndex = if (selectedTabIndex == -1) 0 else selectedTabIndex) {
             categories.forEach { originalTitle ->
                 val displayTitle = when (originalTitle) {
@@ -142,30 +169,24 @@ fun ContactsScreen(
             }
         }
 
-        // Box, ktorý obsahuje zvyšok obrazovky a FloatingActionButton
         Box(modifier = Modifier.weight(1f)) {
-
-            // 2. OBSAH POD ZÁLOŽKAMI - tu sa prepína zobrazenie
             if (selectedTabFilter == ALL_CHANNELS_FILTER) {
-                // Zobrazenie pre záložku "Všetky"
                 AllContactsView(
                     viewModel = viewModel,
                     navController = navController,
                     modifier = Modifier.fillMaxSize()
                 )
             } else {
-                // Zobrazenie pre konkrétny kanál (napr. ":1")
                 ChannelDetailView(
                     channelName = selectedTabFilter,
                     functions = viewModel.channelFunctions,
+                    isEditMode = isEditMode,
                     modifier = Modifier.fillMaxSize()
                 )
             }
 
-            // 3. FloatingActionButton
             FloatingActionButton(
                 onClick = {
-                    // TODO: Upraviť logiku - ak sme na kanáli, FAB by mal robiť niečo iné
                     viewModel.resetForm()
                     navController.navigate(Routes.ADD_CONTACT)
                 },
@@ -179,14 +200,10 @@ fun ContactsScreen(
     }
 }
 
-
 // =========================================================================
-// ✅ POMOCNÉ FUNKCIE PRE JEDNOTLIVÉ ZOBRAZENIA
+// ✅ POMOCNÉ FUNKCIE - OPRAVENÉ (VYBRATÉ VON Z VNÚTRA INÝCH FUNKCIÍ)
 // =========================================================================
 
-/**
- * Zobrazí obsah pre záložku "Všetky" (vyhľadávanie a zoznam kontaktov).
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AllContactsView(
@@ -198,7 +215,6 @@ private fun AllContactsView(
     val contacts = viewModel.displayedContacts
 
     Column(modifier = modifier) {
-        // Riadok s vyhľadávaním
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -228,7 +244,6 @@ private fun AllContactsView(
             ) {}
         }
 
-        // Zoznam kontaktov alebo správa o prázdnom stave
         if (contacts.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -259,17 +274,14 @@ private fun AllContactsView(
     }
 }
 
-/**
- * Zobrazí obsah pre záložku konkrétneho kanála (napr. ":1").
- */
 @Composable
 private fun ChannelDetailView(
     channelName: String,
     functions: List<ChannelFunction>,
+    isEditMode: Boolean,
     modifier: Modifier = Modifier
 ) {
-    LazyColumn(modifier = modifier.padding(bottom = 80.dp)) { // Padding pre FAB
-        // 1. Hlavička s názvom kanála
+    LazyColumn(modifier = modifier.padding(bottom = 80.dp)) {
         item {
             Text(
                 text = when (channelName) {
@@ -288,8 +300,7 @@ private fun ChannelDetailView(
             )
         }
 
-        // 2. Zoznam funkcií a priradených osôb
-        if (functions.isEmpty()) {
+        if (functions.isEmpty() && !isEditMode) {
             item {
                 Box(
                     modifier = Modifier
@@ -305,53 +316,86 @@ private fun ChannelDetailView(
             }
         } else {
             items(functions, key = { it.id }) { function ->
-                ChannelFunctionSection(function = function)
+                ChannelFunctionSection(
+                    function = function,
+                    isEditMode = isEditMode
+                )
+            }
+
+            if (isEditMode) {
+                item {
+                    TextButton(
+                        onClick = { /* TODO: Pridať funkciu */ },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Pridať novú funkciu")
+                    }
+                }
             }
         }
     }
 }
 
-/**
- * Zobrazí jednu sekciu funkcie (napr. "Kameramani") a zoznam jej ľudí.
- */
 @Composable
-private fun ChannelFunctionSection(function: ChannelFunction) {
+private fun ChannelFunctionSection(
+    function: ChannelFunction,
+    isEditMode: Boolean
+) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        // Názov funkcie
-        Text(
-            text = function.title,
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
-            fontWeight = FontWeight.Bold
-        )
-        // Zoznam priradených ľudí
-        if (function.assignedPeople.isEmpty()) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(end = 4.dp)
+        ) {
             Text(
-                text = "Nikto nie je priradený",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.Gray,
-                modifier = Modifier.padding(start = 16.dp, bottom = 8.dp, end = 16.dp)
+                text = function.title,
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
+                fontWeight = FontWeight.Bold
             )
-        } else {
-            function.assignedPeople.forEach { person ->
-                AssignedPersonRow(person = person)
+            if (isEditMode) {
+                IconButton(onClick = { /* TODO: Zmazať funkciu */ }) {
+                    Icon(Icons.Default.Clear, contentDescription = "Zmazať funkciu", tint = Color.Gray)
+                }
+            }
+        }
+
+        function.assignedPeople.forEach { person ->
+            AssignedPersonRow(
+                person = person,
+                isEditMode = isEditMode
+            )
+        }
+
+        if (isEditMode) {
+            TextButton(
+                onClick = { /* TODO: Pridať osobu */ },
+                modifier = Modifier.padding(start = 8.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Pridať osobu")
             }
         }
     }
 }
 
-/**
- * Zobrazí jednu osobu priradenú k funkcii.
- */
 @Composable
-private fun AssignedPersonRow(person: AssignedPerson) {
+private fun AssignedPersonRow(
+    person: AssignedPerson,
+    isEditMode: Boolean
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Stĺpec pre Meno a Telefón
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = person.name,
@@ -366,8 +410,12 @@ private fun AssignedPersonRow(person: AssignedPerson) {
                 )
             }
         }
-        // Poznámky napravo
-        if (person.notes.isNotBlank()) {
+
+        if (isEditMode) {
+            IconButton(onClick = { /* TODO: Zmazať osobu */ }) {
+                Icon(Icons.Default.Clear, contentDescription = "Zmazať osobu", tint = Color.LightGray)
+            }
+        } else if (person.notes.isNotBlank()) {
             Spacer(Modifier.width(16.dp))
             Text(
                 text = person.notes,

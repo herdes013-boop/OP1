@@ -447,11 +447,10 @@ fun ContactsNavHost(
         popExitTransition = { ExitTransition.None }
     ) {
         composable(Routes.CONTACTS_LIST) {
-            sharedViewModel.setTopBarState(TopBarState(title = "Kontakty", isVisible = true))
             ContactsScreen(
-                modifier = Modifier.padding(paddingValues),
                 navController = nestedNavController,
-                viewModel = viewModel
+                sharedViewModel = sharedViewModel, // <-- ✅ TENTO RIADOK STE PRIDALI
+                modifier = Modifier.padding(paddingValues)
             )
         }
         composable(

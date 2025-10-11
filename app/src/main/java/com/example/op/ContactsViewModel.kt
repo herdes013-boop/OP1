@@ -91,6 +91,13 @@ class ContactsViewModel : ViewModel() {
     var channelFunctions by mutableStateOf<List<ChannelFunction>>(emptyList())
         private set
 
+    var isEditMode by mutableStateOf(false)
+        private set
+
+    fun toggleEditMode() {
+        isEditMode = !isEditMode
+    }
+
     // Načítanie dát pre zvolený kanál
     private fun loadChannelFunctions(channelName: String) {
         // Z našej mapy ukážkových dát vyberieme tie správne
