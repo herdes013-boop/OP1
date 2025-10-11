@@ -286,6 +286,14 @@ private fun ChannelDetailView(
 ) {
     LazyColumn(modifier = modifier.padding(bottom = 80.dp)) {
         item {
+            // --- ✅ ÚPRAVA PREBIEHA TU ✅ ---
+            val titleColor = when (channelName) {
+                "Jednotka" -> com.example.op.ui.theme.TelekomMagenta // Použijeme našu existujúcu farbu z témy
+                "Sport" -> Color(0xFFE64A19) // Pekná oranžovo-červená (Deep Orange)
+                "24" -> Color(0xFF1976D2)    // Pekná modrá (Blue 700)
+                else -> Color.Unspecified     // Pre :2 a ostatné použije predvolenú farbu témy
+            }
+
             Text(
                 text = when (channelName) {
                     "Jednotka" -> ":1"
@@ -299,7 +307,8 @@ private fun ChannelDetailView(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 24.dp),
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                color = titleColor // A tu nastavíme výslednú farbu
             )
         }
 
