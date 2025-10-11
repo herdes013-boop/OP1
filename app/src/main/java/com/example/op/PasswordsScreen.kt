@@ -43,134 +43,139 @@ fun PasswordsScreen(
         sharedViewModel.setShowBottomBar(true)
     }
 
-    // --- ŠTRUKTÚRA PODĽA VZORU Z CONTACTSSCREEN ---
-    Column(modifier = modifier.fillMaxSize()) {
-
-        // 1. ZÁLOŽKY SÚ ÚPLNE NAVRCHU, MIMO SCAFFOLDU (prilepia sa na hornú lištu)
-        TabRow(selectedTabIndex = selectedTabIndex) {
-            tabs.forEachIndexed { index, title ->
-                Tab(
-                    selected = selectedTabIndex == index,
-                    onClick = { viewModel.onTabSelected(index) },
-                    text = { Text(title) }
-                )
-            }
-        }
-
-        // 2. AŽ POTOM NASLEDUJE SCAFFOLD PRE ZVYŠOK OBSAHU
-        Scaffold(
-            modifier = Modifier.fillMaxSize(), // Zaberie zvyšný priestor
-            floatingActionButton = {
-                FloatingActionButton(
-                    onClick = {
-                        when (selectedTabIndex) {
-                            0 -> navController.navigate(Routes.ADD_PASSWORD)
-                            1 -> navController.navigate(Routes.ADD_IP_ADDRESS)
-                        }
-                    }
-                ) {
-                    Icon(Icons.Filled.Add, contentDescription = "Pridať")
-                }
-            }
-        ) { innerPadding -> // Tento padding sa už týka len obsahu pod záložkami
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding) // Aplikujeme ho tu, na obsah Scaffoldu
-            ) {
-                // SearchBar
-                when (selectedTabIndex) {
-                    0 -> SearchBar(
-                        query = passwordSearchText,
-                        onQueryChange = viewModel::onPasswordSearchTextChange,
-                        placeholder = "Vyhľadať v heslách..."
-                    )
-                    1 -> SearchBar(
-                        query = ipSearchText,
-                        onQueryChange = viewModel::onIpSearchTextChange,
-                        placeholder = "Vyhľadať v IP adresách..."
-                    )
-                }
-
-                // Obsah kariet (zoznam)
-                when (selectedTabIndex) {
-                    0 -> {
-                        TabContent(
-                            searchText = passwordSearchText,
-                            data = passwords,
-                            emptyListText = "Zatiaľ žiadne heslá.",
-                            noResultsText = "Žiadne výsledky pre '${passwordSearchText}'"
-                        ) { item ->
-                            val password = item as PasswordItem
-                            PasswordListItem(
-                                item = password,
-                                onClick = { navController.navigate(Routes.passwordDetail(password.id)) }
-                            )
-                        }
-                    }
-                    1 -> {
-                        TabContent(
-                            searchText = ipSearchText,
-                            data = ipAddresses,
-                            emptyListText = "Zatiaľ žiadne IP adresy.",
-                            noResultsText = "Žiadne výsledky pre '${ipSearchText}'"
-                        ) { item ->
-                            val ip = item as IpItem
-                            IpListItem(
-                                item = ip,
-                                onClick = { navController.navigate("ip_detail/${ip.id}") }
-                                // ===============================================
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SearchBar(
-    query: String,
-    onQueryChange: (String) -> Unit,
-    placeholder: String,
-) {
-    SearchBar(
-        query = query,
-        onQueryChange = onQueryChange,
-        onSearch = { },
-        active = false,
-        onActiveChange = {},
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        placeholder = { Text("Vyhľadať v heslách...", color = Color.Gray) },
-        leadingIcon = {
-            Icon(Icons.Default.Search, contentDescription = null, tint = Color.Black)
-        },
-        trailingIcon = {
-            if (query.isNotEmpty()) {
-                IconButton(onClick = { onQueryChange("") }) {
-                    Icon(Icons.Default.Clear, contentDescription = null, tint = Color.Black)
-                }
-            }
-        },
-        // 💡 iba tieto dve farby
-        colors = SearchBarDefaults.colors(
-            containerColor = Color.White,       // biele pozadie
-            dividerColor = Color.Transparent    // odstráni spodnú čiaru
-        )
+    // ==================================================================
+    //                         KĽÚČOVÁ ZMENA
+    // Použijeme Box namiesto Column + Scaffold, aby sme mohli umiestniť FAB
+    // ==================================================================
+    Box(
+        // Tento modifier bol predtým na hlavnom Columne
+        modifier = modifier.fillMaxSize()
     ) {
-        // Prázdny, ale povinný blok
+        // Vnútorný Column pre obsah (záložky, search, zoznam)
+        Column(modifier = Modifier.fillMaxSize()) {
+            // 1. ZÁLOŽKY - zostávajú ako boli
+            TabRow(selectedTabIndex = selectedTabIndex) {
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onClick = { viewModel.onTabSelected(index) },
+                        text = { Text(title) }
+                    )
+                }
+            }
+
+            // 2. SEARCHBAR - presunutý sem, už nie je vnútri Scaffoldu
+            when (selectedTabIndex) {
+                0 -> androidx.compose.material3.SearchBar(
+                    query = passwordSearchText,
+                    onQueryChange = viewModel::onPasswordSearchTextChange,
+                    onSearch = { },
+                    active = false,
+                    onActiveChange = {},
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp, bottom = 0.dp, start = 16.dp, end = 16.dp)
+                        .offset(y = (-18).dp),
+
+                    placeholder = { Text("Vyhľadať v heslách...", color = Color.Gray) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Black) },
+                    trailingIcon = {
+                        if (passwordSearchText.isNotEmpty()) {
+                            IconButton(onClick = { viewModel.onPasswordSearchTextChange("") }) {
+                                Icon(Icons.Default.Clear, contentDescription = null, tint = Color.Black)
+                            }
+                        }
+                    },
+                    colors = SearchBarDefaults.colors(
+                        containerColor = Color.White,
+                        dividerColor = Color.Transparent
+                    )
+                ) { }
+
+                1 -> androidx.compose.material3.SearchBar(
+                    query = ipSearchText,
+                    onQueryChange = viewModel::onIpSearchTextChange,
+                    onSearch = { },
+                    active = false,
+                    onActiveChange = {},
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp, bottom = 0.dp, start = 16.dp, end = 16.dp)
+                        .offset(y = (-18).dp),
+                    placeholder = { Text("Vyhľadať v IP adresách...", color = Color.Gray) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Black) },
+                    trailingIcon = {
+                        if (ipSearchText.isNotEmpty()) {
+                            IconButton(onClick = { viewModel.onIpSearchTextChange("") }) {
+                                Icon(Icons.Default.Clear, contentDescription = null, tint = Color.Black)
+                            }
+                        }
+                    },
+                    colors = SearchBarDefaults.colors(
+                        containerColor = Color.White,
+                        dividerColor = Color.Transparent
+                    )
+                ) { }
+            }
+
+            // 3. OBSAH KARIET (ZOZNAM)
+            when (selectedTabIndex) {
+                0 -> {
+                    TabContent(
+                        // Modifier.weight(1f) už nie je potrebný, lebo LazyColumn je v Columne
+                        searchText = passwordSearchText,
+                        data = passwords,
+                        emptyListText = "Zatiaľ žiadne heslá.",
+                        noResultsText = "Žiadne výsledky pre '${passwordSearchText}'"
+                    ) { item ->
+                        val password = item as PasswordItem
+                        PasswordListItem(
+                            item = password,
+                            onClick = { navController.navigate(Routes.passwordDetail(password.id)) }
+                        )
+                    }
+                }
+                1 -> {
+                    TabContent(
+                        searchText = ipSearchText,
+                        data = ipAddresses,
+                        emptyListText = "Zatiaľ žiadne IP adresy.",
+                        noResultsText = "Žiadne výsledky pre '${ipSearchText}'"
+                    ) { item ->
+                        val ip = item as IpItem
+                        IpListItem(
+                            item = ip,
+                            onClick = { navController.navigate("ip_detail/${ip.id}") }
+                        )
+                    }
+                }
+            }
+        }
+
+        // FloatingActionButton je teraz v Boxe a zarovnaný doprava dole
+        FloatingActionButton(
+            onClick = {
+                when (selectedTabIndex) {
+                    0 -> navController.navigate(Routes.ADD_PASSWORD)
+                    1 -> navController.navigate(Routes.ADD_IP_ADDRESS)
+                }
+            },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp) // Štandardný padding pre FAB
+        ) {
+            Icon(Icons.Filled.Add, contentDescription = "Pridať")
+        }
     }
 }
+
+
+
 
 
 @Composable
 private fun <T> TabContent(
+    modifier: Modifier = Modifier,
     searchText: String,
     data: List<T>,
     emptyListText: String,
