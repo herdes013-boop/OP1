@@ -361,6 +361,26 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
                 )
             }
         }
+        composable(
+            // Použijeme cestu, ktorú už máte definovanú v Routes
+            route = "ip_detail/{ipId}",
+            arguments = listOf(navArgument("ipId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val ipId = backStackEntry.arguments?.getString("ipId")
+            if (ipId != null) {
+                // Voláme našu novú obrazovku!
+                IpDetailScreen(
+                    modifier = Modifier.padding(paddingValues),
+                    ipId = ipId,
+                    viewModel = viewModel,
+                    sharedViewModel = sharedViewModel,
+                    onNavigateToEdit = { id ->
+                        nestedNavController.navigate(Routes.editIpAddress(id))
+                    },
+                    onBack = { nestedNavController.popBackStack() }
+                )
+            }
+        }
         composable(Routes.ADD_PASSWORD) {
             AddEditPasswordScreen(
                 modifier = Modifier.padding(paddingValues),

@@ -119,7 +119,8 @@ fun PasswordsScreen(
                             val ip = item as IpItem
                             IpListItem(
                                 item = ip,
-                                onClick = { navController.navigate("item_detail/${ip.id}") }
+                                onClick = { navController.navigate("ip_detail/${ip.id}") }
+                                // ===============================================
                             )
                         }
                     }
