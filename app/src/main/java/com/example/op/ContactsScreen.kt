@@ -124,8 +124,10 @@ fun ContactsScreen(
     // Tento blok sa stará o správne zobrazenie hornej lišty
     LaunchedEffect(selectedTabFilter, isEditMode) {
         if (selectedTabFilter == ALL_CHANNELS_FILTER) {
+            // Pre záložku "Všetky"
             sharedViewModel.setTopBarState(TopBarState(title = "Kontakty", actions = {}))
         } else {
+            // Pre ostatné záložky
             val channelDisplayName = when (selectedTabFilter) {
                 "Jednotka" -> ":1"
                 "Dvojka" -> ":2"
@@ -138,7 +140,10 @@ fun ContactsScreen(
                     title = channelDisplayName,
                     actions = {
                         TextButton(onClick = { viewModel.toggleEditMode() }) {
-                            Text(if (isEditMode) "Hotovo" else "Upraviť")
+                            Text(
+                                text = if (isEditMode) "Hotovo" else "Upraviť",
+                                color = Color.White // Týmto povieme, že text má byť biely
+                            )
                         }
                     }
                 )

@@ -142,14 +142,11 @@ fun MainScreen() {
                 )
             }
             Routes.PASSWORDS_ROOT, Routes.CONTACTS_ROOT, Routes.TUTORIALS_ROOT -> {
+                // Pre hlavné sekcie s vnorenou navigáciou iba zaistíme,
+                // že spodná lišta je viditeľná.
+                // O hornú lištu (titulok a akcie) sa postarajú
+                // samotné NavHosty (PasswordsNavHost, ContactsNavHost, atď.).
                 sharedViewModel.setShowBottomBar(true)
-                val title = when (currentRoute) {
-                    Routes.PASSWORDS_ROOT -> "Heslá"
-                    Routes.CONTACTS_ROOT -> "Kontakty"
-                    else -> "Návody"
-                }
-                // Na ostatných hlavných obrazovkách ikona nie je
-                sharedViewModel.setTopBarState(TopBarState(title = title, isVisible = true, navigationIcon = null))
             }
         }
     }
@@ -430,53 +427,26 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
 fun ContactsNavHost(
     viewModel: ContactsViewModel,
     paddingValues: PaddingValues,
-    sharedViewModel: SharedViewModel,) {
-    // ==========================================================
-    //          ✅ PRIDAJTE TIETO DVA RIADKY ✅
-    // ==========================================================
+    sharedViewModel: SharedViewModel,
+) {
     val nestedNavController = rememberNavController()
     val navBackStackEntry by nestedNavController.currentBackStackEntryAsState()
-    // ==========================================================
 
-    // Tento LaunchedEffect teraz bude fungovať správne
+    // --- Toto je nová, zjednodušená verzia ---
     LaunchedEffect(navBackStackEntry) {
         val currentRoute = navBackStackEntry?.destination?.route
 
         // Spodnú lištu zobrazíme LEN na hlavnej obrazovke so zoznamom
         sharedViewModel.setShowBottomBar(currentRoute == Routes.CONTACTS_LIST)
 
-        // Ak sa práve nachádzame na hlavnej obrazovke (zozname),
-        // aktívne nastavíme jej hornú lištu. Tým "prebijeme" akékoľvek
-        // nastavenie z predchádzajúcej obrazovky (napr. z detailu).
+        // Ak sa vraciame na obrazovku so zoznamom,
+        // musíme "prebiť" nastavenie z predchádzajúcej obrazovky.
+        // ALE už tu neriešime konkrétne záložky. Iba resetujeme titulok.
+        // O zvyšok sa postará ContactsScreen sama.
         if (currentRoute == Routes.CONTACTS_LIST) {
-            // Toto je kľúčový riadok, ktorý opravuje prebliknutie.
-            // Keď sa vrátime z detailu, tento kód sa spustí a nastaví
-            // správnu lištu pre zoznam.
-            val isEditMode = viewModel.isEditMode
-            val selectedTabFilter = viewModel.selectedTabFilter
-            val ALL_CHANNELS_FILTER = "Všetky"
-
-            if (selectedTabFilter == ALL_CHANNELS_FILTER) {
-                sharedViewModel.setTopBarState(TopBarState(title = "Kontakty", actions = {}))
-            } else {
-                val channelDisplayName = when (selectedTabFilter) {
-                    "Jednotka" -> ":1"
-                    "Dvojka" -> ":2"
-                    "24" -> ":24"
-                    "Sport" -> ":Sport"
-                    else -> selectedTabFilter
-                }
-                sharedViewModel.setTopBarState(
-                    TopBarState(
-                        title = channelDisplayName,
-                        actions = {
-                            TextButton(onClick = { viewModel.toggleEditMode() }) {
-                                Text(if (isEditMode) "Hotovo" else "Upraviť")
-                            }
-                        }
-                    )
-                )
-            }
+            // Jednoducho nastavíme všeobecný titulok.
+            // Správny titulok pre záložku si hneď potom nastaví ContactsScreen.
+            sharedViewModel.setTopBarState(TopBarState(title = "Kontakty"))
         }
     }
 
@@ -491,6 +461,7 @@ fun ContactsNavHost(
             ContactsScreen(
                 navController = nestedNavController,
                 sharedViewModel = sharedViewModel, // <-- ✅ TENTO RIADOK STE PRIDALI
+                viewModel = viewModel,
                 modifier = Modifier.padding(paddingValues)
             )
         }
