@@ -45,11 +45,7 @@ class ContactsViewModel : ViewModel() {
         )
     )
 
-    // ✅✅✅ ZAČIATOK NOVEJ SEKCIE ✅✅✅
-    // --------------------------------------------------
     // STAV PRE DETAIL OBRAZOVKU
-    // --------------------------------------------------
-
     private val _selectedContact = MutableStateFlow<ContactItem?>(null)
     val selectedContact = _selectedContact.asStateFlow()
 
@@ -63,16 +59,8 @@ class ContactsViewModel : ViewModel() {
         _selectedContact.value = null
     }
 
-    // --------------------------------------------------
-    // ✅✅✅ KONIEC NOVEJ SEKCIE ✅✅✅
-
-
     // 2. FILTRE A STAVY
-
-    // Zoznam dostupných kanálov okrem fixného "Všetky"
     private val availableChannels = mutableStateListOf("Jednotka", "Dvojka", "Sport", DEFAULT_CHANNEL)
-
-    // DerivedState pre všetky možnosti (vrátane filtračnej "Všetky")
     val channelOptions: List<String> by derivedStateOf {
         listOf(ALL_CHANNELS_FILTER) + availableChannels
     }
@@ -84,24 +72,76 @@ class ContactsViewModel : ViewModel() {
     val displayedContacts: List<ContactItem> by derivedStateOf {
         val currentFilter = selectedTabFilter
         val currentQuery = searchQuery.trim().lowercase()
-
-        val matchesTab = currentFilter == ALL_CHANNELS_FILTER
-
-        if (!matchesTab) {
+        if (currentFilter != ALL_CHANNELS_FILTER) {
             return@derivedStateOf emptyList()
         }
-
         contacts.filter { contact ->
             val matchesQuery = if (currentQuery.isBlank()) true else
                 contact.getFullName().lowercase().contains(currentQuery) ||
                         contact.function.orEmpty().lowercase().contains(currentQuery)
-
             matchesQuery
         }
     }
 
-    // 3. AKCIE PRE FORMULÁR (Stavové premenné pre AddContactScreen/EditContactScreen)
+    // =====================================================================
+    //          ✅ ZAČIATOK SEKCIE PRE DÁTA KANÁLOV ✅
+    // =====================================================================
 
+    // Nový stav pre dáta kanála
+    var channelFunctions by mutableStateOf<List<ChannelFunction>>(emptyList())
+        private set
+
+    // Načítanie dát pre zvolený kanál
+    private fun loadChannelFunctions(channelName: String) {
+        // Z našej mapy ukážkových dát vyberieme tie správne
+        // Ak pre daný kanál dáta nemáme, výsledok bude prázdny zoznam
+        val sampleData = createSampleChannelData(contacts)
+        channelFunctions = sampleData[channelName] ?: emptyList()
+    }
+
+    // Funkcia na vytvorenie dočasných dát. Používa reálne kontakty zo zoznamu.
+    private fun createSampleChannelData(allContacts: List<ContactItem>): Map<String, List<ChannelFunction>> {
+        val contact1 = allContacts.getOrNull(0)
+        val contact2 = allContacts.getOrNull(1)
+        val contact3 = allContacts.getOrNull(2)
+
+        if (contact1 == null || contact2 == null || contact3 == null) return emptyMap()
+
+        return mapOf(
+            "Jednotka" to listOf(
+                ChannelFunction(
+                    title = "Kameramani",
+                    assignedPeople = listOf(
+                        AssignedPerson(contactId = contact1.id.toString(), name = contact1.getFullName(), phone = contact1.phone, notes = "Hlavná kamera"),
+                        AssignedPerson(contactId = contact2.id.toString(), name = contact2.getFullName(), phone = contact2.phone, notes = "Ručná kamera")
+                    )
+                ),
+                ChannelFunction(
+                    title = "Zvukári",
+                    assignedPeople = listOf(
+                        AssignedPerson(contactId = contact3.id.toString(), name = contact3.getFullName(), phone = contact3.phone, notes = "")
+                    )
+                ),
+                ChannelFunction(title = "Strihači", assignedPeople = emptyList())
+            ),
+            "24" to listOf(
+                ChannelFunction(
+                    title = "Redaktori",
+                    assignedPeople = listOf(
+                        AssignedPerson(contactId = contact2.id.toString(), name = contact2.getFullName(), phone = contact2.phone, notes = "Ranná zmena")
+                    )
+                ),
+                ChannelFunction(title = "Vydavatelia", assignedPeople = emptyList())
+            )
+        )
+    }
+
+    // =====================================================================
+    //          ✅ KONIEC SEKCIE PRE DÁTA KANÁLOV ✅
+    // =====================================================================
+
+
+    // 3. AKCIE PRE FORMULÁR
     var formId by mutableStateOf(0)
     var formFirstName by mutableStateOf("")
     var formLastName by mutableStateOf("")
@@ -111,8 +151,7 @@ class ContactsViewModel : ViewModel() {
     var formEmail by mutableStateOf("")
     var formNotes by mutableStateOf("")
 
-    // 4. FUNKCIE NA AKTUALIZÁCIU STAVU (Settery)
-
+    // 4. FUNKCIE NA AKTUALIZÁCIU STAVU
     fun updateFirstName(newValue: String) { formFirstName = newValue }
     fun updateLastName(newValue: String) { formLastName = newValue }
     fun updateFunction(newValue: String) { formFunction = newValue }
@@ -122,7 +161,6 @@ class ContactsViewModel : ViewModel() {
     fun updateChannel(newValue: String) { formChannel = newValue }
 
     // 5. OBSLUHA ULOŽENIA KONTAKTOV
-
     fun resetForm() {
         formId = 0
         formFirstName = ""
@@ -163,7 +201,6 @@ class ContactsViewModel : ViewModel() {
 
     fun removeContact(contact: ContactItem) {
         contacts.remove(contact)
-        // Ak bol zmazaný kontakt zobrazený v detaile, vyčistíme ho
         if (_selectedContact.value?.id == contact.id) {
             clearSelectedContact()
         }
@@ -172,6 +209,9 @@ class ContactsViewModel : ViewModel() {
     // Funkcie pre aktualizáciu filtrov z ContactsScreen
     fun updateSelectedTabFilter(newFilter: String) {
         selectedTabFilter = newFilter
+        // ✅ TOTO JE KĽÚČOVÁ ZMENA ✅
+        // Načítame dáta pre práve zvolený kanál
+        loadChannelFunctions(newFilter)
     }
 
     fun updateSearchQuery(newQuery: String) {
@@ -179,7 +219,6 @@ class ContactsViewModel : ViewModel() {
     }
 
     // Metódy pre správu kanálov
-
     fun addChannel(channel: String) {
         val trimmedChannel = channel.trim()
         if (trimmedChannel.isNotBlank() && !availableChannels.contains(trimmedChannel)) {
@@ -188,20 +227,15 @@ class ContactsViewModel : ViewModel() {
     }
 
     fun removeChannel(channel: String) {
-        if (channel == ALL_CHANNELS_FILTER || channel == DEFAULT_CHANNEL) {
-            return
-        }
-
+        if (channel == ALL_CHANNELS_FILTER || channel == DEFAULT_CHANNEL) return
         availableChannels.remove(channel)
-
         val contactsToUpdate = contacts.filter { it.channel == channel }
         contactsToUpdate.forEach { contact ->
             val index = contacts.indexOf(contact)
             contacts[index] = contact.copy(channel = DEFAULT_CHANNEL)
         }
-
         if (selectedTabFilter == channel) {
-            selectedTabFilter = ALL_CHANNELS_FILTER
+            updateSelectedTabFilter(ALL_CHANNELS_FILTER) // Použijeme našu upravenú funkciu
         }
     }
 }
