@@ -30,10 +30,15 @@ fun ContactDetailScreen(
     var showMenu by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
+    // Načítanie detailu, zostáva rovnaké
     LaunchedEffect(contactId) {
         viewModel.loadContactDetail(contactId)
     }
 
+    // ================================================================
+    // ✅ KROK 1: UPRAVENÝ EFEKT NA NASTAVENIE HORNEJ LIŠTY
+    // Používame `contact` ako kľúč, aby sa lišta aktualizovala.
+    // ================================================================
     LaunchedEffect(contact) {
         contact?.let {
             sharedViewModel.setTopBarState(
@@ -44,13 +49,10 @@ fun ContactDetailScreen(
                             Icon(Icons.Default.ArrowBack, contentDescription = "Naspäť")
                         }
                     },
-                    // ✅✅✅ ZAČIATOK OPRAVY ✅✅✅
                     actions = {
-                        // Ikona aj menu sú teraz spolu v jednom bloku
                         IconButton(onClick = { showMenu = true }) {
                             Icon(Icons.Default.MoreVert, contentDescription = "Viac")
                         }
-
                         DropdownMenu(
                             expanded = showMenu,
                             onDismissRequest = { showMenu = false }
@@ -73,23 +75,27 @@ fun ContactDetailScreen(
                             )
                         }
                     }
-                    // ✅✅✅ KONIEC OPRAVY ✅✅✅
                 )
             )
         }
     }
 
-    // Obsah obrazovky je teraz jednoduchší
-    // Vonkajší Box už nie je potrebný
+    // ================================================================
+    // ✅ KROK 2: ODSTRÁNENIE STARÉHO "UPRATOVACIEHO" EFEKTU
+    // Pôvodný DisposableEffect tu už nepotrebujeme, pretože upratovanie
+    // bude riadiť hlavná obrazovka (MainActivity).
+    // Odstráňte celý blok DisposableEffect(Unit) { ... }
+    // ================================================================
+
+    // Zvyšok súboru (Column, DetailItem, AlertDialog) zostáva úplne bez zmeny...
     contact?.let { c ->
         Column(
-            modifier = modifier // Použijeme modifier z parametra, ktorý obsahuje padding
+            modifier = modifier
                 .fillMaxSize()
-                .padding(16.dp) // Pridáme náš vlastný vnútorný padding
+                .padding(16.dp)
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Zobrazovacie polia
             DetailItem(label = "Meno a Priezvisko", value = c.getFullName())
             c.function?.let { DetailItem(label = "Funkcia", value = it) }
             c.phone?.let { DetailItem(label = "Telefón", value = it, isClickable = true) }
@@ -99,15 +105,12 @@ fun ContactDetailScreen(
         }
     }
 
-    // Dialóg pre potvrdenie zmazania zostáva
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             title = { Text("Odstrániť kontakt?") },
             text = { Text("Naozaj chcete natrvalo odstrániť kontakt \"${contact?.getFullName()}\"?") },
-            dismissButton = {
-                OutlinedButton(onClick = { showDeleteDialog = false }) { Text("Zrušiť") }
-            },
+            dismissButton = { OutlinedButton(onClick = { showDeleteDialog = false }) { Text("Zrušiť") } },
             confirmButton = {
                 Button(
                     onClick = {

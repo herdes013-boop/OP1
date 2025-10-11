@@ -36,6 +36,7 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -111,7 +112,7 @@ fun ContactListItem(contact: ContactItem, onItemClick: () -> Unit) {
 fun ContactsScreen(
     navController: NavController,
     viewModel: ContactsViewModel = viewModel(),
-    sharedViewModel: SharedViewModel, // <-- OPRAVENÉ
+    sharedViewModel: SharedViewModel,
     modifier: Modifier = Modifier,
 ) {
     val selectedTabFilter = viewModel.selectedTabFilter
@@ -120,17 +121,11 @@ fun ContactsScreen(
     val selectedTabIndex = categories.indexOf(selectedTabFilter)
     val isEditMode = viewModel.isEditMode
 
+    // Tento blok sa stará o správne zobrazenie hornej lišty
     LaunchedEffect(selectedTabFilter, isEditMode) {
         if (selectedTabFilter == ALL_CHANNELS_FILTER) {
-            // Pre záložku "Všetky" skryjeme akcie a nastavíme titulok
-            sharedViewModel.setTopBarState(
-                TopBarState(
-                    title = "Kontakty", // Nastavíme titulok
-                    actions = {}        // A žiadne akcie
-                )
-            )
+            sharedViewModel.setTopBarState(TopBarState(title = "Kontakty", actions = {}))
         } else {
-            // Pre ostatné záložky pridáme tlačidlo na úpravu a iný titulok
             val channelDisplayName = when (selectedTabFilter) {
                 "Jednotka" -> ":1"
                 "Dvojka" -> ":2"
@@ -140,7 +135,7 @@ fun ContactsScreen(
             }
             sharedViewModel.setTopBarState(
                 TopBarState(
-                    title = channelDisplayName, // Titulok bude názov kanála
+                    title = channelDisplayName,
                     actions = {
                         TextButton(onClick = { viewModel.toggleEditMode() }) {
                             Text(if (isEditMode) "Hotovo" else "Upraviť")
@@ -150,6 +145,8 @@ fun ContactsScreen(
             )
         }
     }
+
+
 
     Column(modifier = modifier.fillMaxSize()) {
         TabRow(selectedTabIndex = if (selectedTabIndex == -1) 0 else selectedTabIndex) {
@@ -200,8 +197,9 @@ fun ContactsScreen(
     }
 }
 
+
 // =========================================================================
-// ✅ POMOCNÉ FUNKCIE - OPRAVENÉ (VYBRATÉ VON Z VNÚTRA INÝCH FUNKCIÍ)
+// ✅ POMOCNÉ FUNKCIE - KOMPLETNÉ A OPRAVENÉ
 // =========================================================================
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -209,7 +207,7 @@ fun ContactsScreen(
 private fun AllContactsView(
     viewModel: ContactsViewModel,
     navController: NavController,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val searchQuery = viewModel.searchQuery
     val contacts = viewModel.displayedContacts
@@ -279,7 +277,7 @@ private fun ChannelDetailView(
     channelName: String,
     functions: List<ChannelFunction>,
     isEditMode: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     LazyColumn(modifier = modifier.padding(bottom = 80.dp)) {
         item {
@@ -343,7 +341,7 @@ private fun ChannelDetailView(
 @Composable
 private fun ChannelFunctionSection(
     function: ChannelFunction,
-    isEditMode: Boolean
+    isEditMode: Boolean,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -365,17 +363,28 @@ private fun ChannelFunctionSection(
             }
         }
 
-        function.assignedPeople.forEach { person ->
-            AssignedPersonRow(
-                person = person,
-                isEditMode = isEditMode
-            )
+        if (function.assignedPeople.isEmpty()) {
+            if (!isEditMode) {
+                Text(
+                    text = "Nikto nie je priradený",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
+                )
+            }
+        } else {
+            function.assignedPeople.forEach { person ->
+                AssignedPersonRow(
+                    person = person,
+                    isEditMode = isEditMode
+                )
+            }
         }
 
         if (isEditMode) {
             TextButton(
                 onClick = { /* TODO: Pridať osobu */ },
-                modifier = Modifier.padding(start = 8.dp)
+                modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
             ) {
                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
@@ -388,7 +397,7 @@ private fun ChannelFunctionSection(
 @Composable
 private fun AssignedPersonRow(
     person: AssignedPerson,
-    isEditMode: Boolean
+    isEditMode: Boolean,
 ) {
     Row(
         modifier = Modifier

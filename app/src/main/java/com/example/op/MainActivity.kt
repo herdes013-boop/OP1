@@ -430,13 +430,54 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
 fun ContactsNavHost(
     viewModel: ContactsViewModel,
     paddingValues: PaddingValues,
-    sharedViewModel: SharedViewModel,
-) {
+    sharedViewModel: SharedViewModel,) {
+    // ==========================================================
+    //          ✅ PRIDAJTE TIETO DVA RIADKY ✅
+    // ==========================================================
     val nestedNavController = rememberNavController()
     val navBackStackEntry by nestedNavController.currentBackStackEntryAsState()
+    // ==========================================================
+
+    // Tento LaunchedEffect teraz bude fungovať správne
     LaunchedEffect(navBackStackEntry) {
         val currentRoute = navBackStackEntry?.destination?.route
+
+        // Spodnú lištu zobrazíme LEN na hlavnej obrazovke so zoznamom
         sharedViewModel.setShowBottomBar(currentRoute == Routes.CONTACTS_LIST)
+
+        // Ak sa práve nachádzame na hlavnej obrazovke (zozname),
+        // aktívne nastavíme jej hornú lištu. Tým "prebijeme" akékoľvek
+        // nastavenie z predchádzajúcej obrazovky (napr. z detailu).
+        if (currentRoute == Routes.CONTACTS_LIST) {
+            // Toto je kľúčový riadok, ktorý opravuje prebliknutie.
+            // Keď sa vrátime z detailu, tento kód sa spustí a nastaví
+            // správnu lištu pre zoznam.
+            val isEditMode = viewModel.isEditMode
+            val selectedTabFilter = viewModel.selectedTabFilter
+            val ALL_CHANNELS_FILTER = "Všetky"
+
+            if (selectedTabFilter == ALL_CHANNELS_FILTER) {
+                sharedViewModel.setTopBarState(TopBarState(title = "Kontakty", actions = {}))
+            } else {
+                val channelDisplayName = when (selectedTabFilter) {
+                    "Jednotka" -> ":1"
+                    "Dvojka" -> ":2"
+                    "24" -> ":24"
+                    "Sport" -> ":Sport"
+                    else -> selectedTabFilter
+                }
+                sharedViewModel.setTopBarState(
+                    TopBarState(
+                        title = channelDisplayName,
+                        actions = {
+                            TextButton(onClick = { viewModel.toggleEditMode() }) {
+                                Text(if (isEditMode) "Hotovo" else "Upraviť")
+                            }
+                        }
+                    )
+                )
+            }
+        }
     }
 
     NavHost(
