@@ -1,6 +1,7 @@
 package com.example.op
 
 // ... (všetky importy zostávajú) ...
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -279,21 +280,25 @@ private fun AllContactsView(
 
 @Composable
 private fun ChannelDetailView(
-    channelName: String,
-    functions: List<ChannelFunction>,
+    channelName: String,    functions: List<ChannelFunction>,
     isEditMode: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    LazyColumn(modifier = modifier.padding(bottom = 80.dp)) {
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 8.dp), // Padding pre celý zoznam
+        contentPadding = PaddingValues(top = 8.dp, bottom = 80.dp), // Priestor hore a dole
+        verticalArrangement = Arrangement.spacedBy(8.dp) // Medzera medzi bublinami
+    ) {
+        // Farebný nadpis kanála zostáva
         item {
-            // --- ✅ ÚPRAVA PREBIEHA TU ✅ ---
             val titleColor = when (channelName) {
-                "Jednotka" -> com.example.op.ui.theme.TelekomMagenta // Použijeme našu existujúcu farbu z témy
-                "Sport" -> Color(0xFFE64A19) // Pekná oranžovo-červená (Deep Orange)
-                "24" -> Color(0xFF1976D2)    // Pekná modrá (Blue 700)
-                else -> Color.Unspecified     // Pre :2 a ostatné použije predvolenú farbu témy
+                "Jednotka" -> com.example.op.ui.theme.TelekomMagenta
+                "Sport" -> Color(0xFFE64A19)
+                "24" -> Color(0xFF1976D2)
+                else -> Color.Unspecified
             }
-
             Text(
                 text = when (channelName) {
                     "Jednotka" -> ":1"
@@ -306,103 +311,43 @@ private fun ChannelDetailView(
                 fontWeight = FontWeight.Black,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 24.dp),
+                    .padding(vertical = 16.dp), // Zmenšený padding
                 textAlign = TextAlign.Center,
-                color = titleColor // A tu nastavíme výslednú farbu
+                color = titleColor
             )
         }
 
+        // Zobrazenie bublín alebo prázdnej správy
         if (functions.isEmpty() && !isEditMode) {
             item {
                 Box(
-                    modifier = Modifier
-                        .fillParentMaxSize()
-                        .padding(horizontal = 16.dp),
+                    modifier = Modifier.fillParentMaxSize().padding(horizontal = 16.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        "Pre tento kanál zatiaľ nie sú definované žiadne funkcie.",
-                        textAlign = TextAlign.Center
-                    )
+                    Text("Pre tento kanál zatiaľ nie sú definované žiadne funkcie.", textAlign = TextAlign.Center)
                 }
             }
         } else {
+            // Pre každú funkciu zobrazíme našu novú bublinu
             items(functions, key = { it.id }) { function ->
-                ChannelFunctionSection(
+                ChannelFunctionCard(
                     function = function,
                     isEditMode = isEditMode
                 )
             }
-
-            if (isEditMode) {
-                item {
-                    TextButton(
-                        onClick = { /* TODO: Pridať funkciu */ },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Pridať novú funkciu")
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ChannelFunctionSection(
-    function: ChannelFunction,
-    isEditMode: Boolean,
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(end = 4.dp)
-        ) {
-            Text(
-                text = function.title,
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
-                fontWeight = FontWeight.Bold
-            )
-            if (isEditMode) {
-                IconButton(onClick = { /* TODO: Zmazať funkciu */ }) {
-                    Icon(Icons.Default.Clear, contentDescription = "Zmazať funkciu", tint = Color.Gray)
-                }
-            }
         }
 
-        if (function.assignedPeople.isEmpty()) {
-            if (!isEditMode) {
-                Text(
-                    text = "Nikto nie je priradený",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
-                )
-            }
-        } else {
-            function.assignedPeople.forEach { person ->
-                AssignedPersonRow(
-                    person = person,
-                    isEditMode = isEditMode
-                )
-            }
-        }
-
+        // Tlačidlo "Pridať novú funkciu" na konci
         if (isEditMode) {
-            TextButton(
-                onClick = { /* TODO: Pridať osobu */ },
-                modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Pridať osobu")
+            item {
+                TextButton(
+                    onClick = { /* TODO: Pridať funkciu */ },
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                ) {
+                    Icon(Icons.Default.Add, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Pridať novú funkciu")
+                }
             }
         }
     }
@@ -446,6 +391,76 @@ private fun AssignedPersonRow(
                 color = MaterialTheme.colorScheme.secondary,
                 textAlign = TextAlign.End
             )
+        }
+    }
+}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ChannelFunctionCard(
+    function: ChannelFunction,
+    isEditMode: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp), // Zvislý padding pre celú kartu
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            // --- Názov funkcie (napr. "Kameraman") ---
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(end = 4.dp)
+            ) {
+                Text(
+                    text = function.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 16.dp) // Vodorovný padding pre text
+                )
+                if (isEditMode) {
+                    IconButton(onClick = { /* TODO: Zmazať funkciu */ }) {
+                        Icon(Icons.Default.Clear, "Zmazať funkciu", tint = Color.Gray)
+                    }
+                }
+            }
+
+            // --- Zoznam priradených osôb ---
+            if (function.assignedPeople.isEmpty() && !isEditMode) {
+                Text(
+                    text = "Nikto nie je priradený",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                )
+            } else {
+                function.assignedPeople.forEach { person ->
+                    // Použijeme existujúcu AssignedPersonRow
+                    AssignedPersonRow(
+                        person = person,
+                        isEditMode = isEditMode
+                    )
+                }
+            }
+
+            // --- Tlačidlo "Pridať osobu" v editačnom móde ---
+            if (isEditMode) {
+                TextButton(
+                    onClick = { /* TODO: Pridať osobu */ },
+                    modifier = Modifier.padding(start = 8.dp)
+                ) {
+                    Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Pridať osobu")
+                }
+            }
         }
     }
 }
