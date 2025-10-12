@@ -188,9 +188,12 @@ fun ContactsScreen(
             } else {
                 ChannelDetailView(
                     channelName = selectedTabFilter,
-                    functions = channelFunctions, // Teraz už premennú pozná
+                    functions = channelFunctions,
                     isEditMode = isEditMode,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    // ✅ FINÁLNE PREPOJENIE S VIEWMODELOM
+                    onAddFunction = { nazov -> viewModel.addChannelFunction(nazov) },
+                    onDeleteFunction = { idFunkcie -> viewModel.removeChannelFunction(idFunkcie) }
                 )
             }
 
@@ -286,9 +289,12 @@ private fun AllContactsView(
 
 @Composable
 private fun ChannelDetailView(
-    channelName: String,    functions: List<ChannelFunction>,
+    channelName: String,        functions: List<ChannelFunction>,
     isEditMode: Boolean,
     modifier: Modifier = Modifier,
+    // Tieto parametre chýbali, teraz ich pridávame:
+    onAddFunction: (String) -> Unit,
+    onDeleteFunction: (String) -> Unit
 ) {
     LazyColumn(
         modifier = modifier
@@ -297,7 +303,7 @@ private fun ChannelDetailView(
         contentPadding = PaddingValues(top = 8.dp, bottom = 80.dp), // Priestor hore a dole
         verticalArrangement = Arrangement.spacedBy(8.dp) // Medzera medzi bublinami
     ) {
-        // Farebný nadpis kanála zostáva
+        // Farebný nadpis kanála
         item {
             val titleColor = when (channelName) {
                 "Jednotka" -> com.example.op.ui.theme.TelekomMagenta
@@ -317,7 +323,7 @@ private fun ChannelDetailView(
                 fontWeight = FontWeight.Black,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 16.dp), // Zmenšený padding
+                    .padding(vertical = 16.dp),
                 textAlign = TextAlign.Center,
                 color = titleColor
             )
@@ -338,7 +344,9 @@ private fun ChannelDetailView(
             items(functions, key = { it.id }) { function ->
                 ChannelFunctionCard(
                     function = function,
-                    isEditMode = isEditMode
+                    isEditMode = isEditMode,
+                    // Teraz voláme onDelete, ktoré sme dostali ako parameter
+                    onDelete = { onDeleteFunction(function.id) }
                 )
             }
         }
@@ -347,7 +355,8 @@ private fun ChannelDetailView(
         if (isEditMode) {
             item {
                 TextButton(
-                    onClick = { /* TODO: Pridať funkciu */ },
+                    // Teraz voláme onAddFunction, ktoré sme dostali ako parameter
+                    onClick = { onAddFunction("Nová funkcia") },
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
                 ) {
                     Icon(Icons.Default.Add, null)
@@ -417,7 +426,9 @@ private fun AssignedPersonRow(
 private fun ChannelFunctionCard(
     function: ChannelFunction,
     isEditMode: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // Pridávame tento parameter:
+    onDelete: () -> Unit
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -427,10 +438,9 @@ private fun ChannelFunctionCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp), // Zvislý padding pre celú kartu
+                .padding(vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            // --- Názov funkcie (napr. "Kameraman") ---
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(end = 4.dp)
@@ -441,16 +451,16 @@ private fun ChannelFunctionCard(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier
                         .weight(1f)
-                        .padding(horizontal = 16.dp) // Vodorovný padding pre text
+                        .padding(horizontal = 16.dp)
                 )
                 if (isEditMode) {
-                    IconButton(onClick = { /* TODO: Zmazať funkciu */ }) {
+                    // Upravujeme onClick, aby volalo parameter
+                    IconButton(onClick = onDelete) {
                         Icon(Icons.Default.Clear, "Zmazať funkciu", tint = Color.Gray)
                     }
                 }
             }
 
-            // --- Zoznam priradených osôb ---
             if (function.assignedPeople.isEmpty() && !isEditMode) {
                 Text(
                     text = "Nikto nie je priradený",
@@ -460,7 +470,6 @@ private fun ChannelFunctionCard(
                 )
             } else {
                 function.assignedPeople.forEach { person ->
-                    // Použijeme existujúcu AssignedPersonRow
                     AssignedPersonRow(
                         person = person,
                         isEditMode = isEditMode
@@ -468,7 +477,6 @@ private fun ChannelFunctionCard(
                 }
             }
 
-            // --- Tlačidlo "Pridať osobu" v editačnom móde ---
             if (isEditMode) {
                 TextButton(
                     onClick = { /* TODO: Pridať osobu */ },

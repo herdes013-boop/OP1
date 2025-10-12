@@ -99,6 +99,30 @@ class ContactsViewModel : ViewModel() {
         isEditMode = !isEditMode
     }
 
+    /**
+     * Pridá novú funkciu do zoznamu.
+     * Ako názov použije dodaný text.
+     */
+    fun addChannelFunction(title: String) {
+        // Vytvoríme novú funkciu s unikátnym ID a zadaným názvom
+        val newFunction = ChannelFunction(
+            id = "func_${System.currentTimeMillis()}", // ID zaručí, že každá funkcia je jedinečná
+            title = title,
+            assignedPeople = emptyList() // Začína bez priradených osôb
+        )
+
+        // K existujúcemu zoznamu funkcií pridáme túto novú
+        _channelFunctions.value = _channelFunctions.value + newFunction
+    }
+
+    /**
+     * Zmaže funkciu zo zoznamu podľa jej ID.
+     */
+    fun removeChannelFunction(functionId: String) {
+        // Vytvoríme nový zoznam, v ktorom budú všetky funkcie OKREM tej, ktorú chceme zmazať
+        _channelFunctions.value = _channelFunctions.value.filterNot { it.id == functionId }
+    }
+
     // Načítanie dát pre zvolený kanál
     private fun loadChannelFunctions(channelName: String) {
         // Z našej mapy ukážkových dát vyberieme tie správne
