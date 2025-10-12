@@ -39,6 +39,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -49,6 +50,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.compose.runtime.getValue
 
 // --- Tieto funkcie zostávajú bez zmeny ---
 fun getChannelIcon(channel: String?): ImageVector {
@@ -116,7 +118,7 @@ fun ContactsScreen(
     sharedViewModel: SharedViewModel,
     modifier: Modifier = Modifier,
 ) {
-    val selectedTabFilter = viewModel.selectedTabFilter
+    val selectedTabFilter by viewModel.selectedTabFilter.collectAsState()
     val categories = viewModel.channelOptions.toList()
     val ALL_CHANNELS_FILTER = "Všetky"
     val selectedTabIndex = categories.indexOf(selectedTabFilter)
@@ -173,6 +175,10 @@ fun ContactsScreen(
         }
 
         Box(modifier = Modifier.weight(1f)) {
+
+            // Tento riadok musí byť TU, vo vnútri Box-u
+            val channelFunctions by viewModel.channelFunctions.collectAsState()
+
             if (selectedTabFilter == ALL_CHANNELS_FILTER) {
                 AllContactsView(
                     viewModel = viewModel,
@@ -182,7 +188,7 @@ fun ContactsScreen(
             } else {
                 ChannelDetailView(
                     channelName = selectedTabFilter,
-                    functions = viewModel.channelFunctions,
+                    functions = channelFunctions, // Teraz už premennú pozná
                     isEditMode = isEditMode,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -353,6 +359,7 @@ private fun ChannelDetailView(
     }
 }
 
+
 @Composable
 private fun AssignedPersonRow(
     person: AssignedPerson,
@@ -361,16 +368,22 @@ private fun AssignedPersonRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+            // Zmenšíme padding, aby sa poznámka lepšie zmestila a nebola ďaleko
+            .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        // Stĺpec s menom a telefónom
+        Column(
+            // Dáme mu váhu, aby sa roztiahol, ale nechal miesto pre poznámku/tlačidlo
+            modifier = Modifier.weight(1f)
+        ) {
             Text(
                 text = person.name,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium
             )
-            person.phone?.let {
+            // Telefónne číslo zobrazíme, len ak existuje
+            person.phone?.takeIf { it.isNotBlank() }?.let {
                 Text(
                     text = it,
                     style = MaterialTheme.typography.bodyMedium,
@@ -379,17 +392,22 @@ private fun AssignedPersonRow(
             }
         }
 
+        // Zobrazenie buď poznámky alebo tlačidla na zmazanie
         if (isEditMode) {
+            // V editačnom móde ukážeme tlačidlo na zmazanie
             IconButton(onClick = { /* TODO: Zmazať osobu */ }) {
                 Icon(Icons.Default.Clear, contentDescription = "Zmazať osobu", tint = Color.LightGray)
             }
         } else if (person.notes.isNotBlank()) {
-            Spacer(Modifier.width(16.dp))
+            // Mimo editačného módu, ak existuje poznámka, ukážeme ju
+            Spacer(Modifier.width(16.dp)) // Medzera medzi menom a poznámkou
             Text(
                 text = person.notes,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.secondary,
-                textAlign = TextAlign.End
+                style = MaterialTheme.typography.bodyMedium, // Trochu zväčšíme text pre lepšiu čitateľnosť
+                color = MaterialTheme.colorScheme.primary, // Zvýrazníme farbu
+                textAlign = TextAlign.End,
+                maxLines = 2, // Povolíme maximálne 2 riadky
+                overflow = TextOverflow.Ellipsis // Ak je text dlhší, zobrazia sa ...
             )
         }
     }

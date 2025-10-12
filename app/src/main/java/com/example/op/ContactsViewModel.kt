@@ -64,15 +64,16 @@ class ContactsViewModel : ViewModel() {
     val channelOptions: List<String> by derivedStateOf {
         listOf(ALL_CHANNELS_FILTER) + availableChannels
     }
-    var selectedTabFilter by mutableStateOf(ALL_CHANNELS_FILTER)
-        private set
+    private val _selectedTabFilter = MutableStateFlow(ALL_CHANNELS_FILTER)
+    val selectedTabFilter = _selectedTabFilter.asStateFlow()
+
     var searchQuery by mutableStateOf("")
         private set
 
     val displayedContacts: List<ContactItem> by derivedStateOf {
-        val currentFilter = selectedTabFilter
+        val currentFilter = selectedTabFilter.value // ✅ PRIDALI SME .value
         val currentQuery = searchQuery.trim().lowercase()
-        if (currentFilter != ALL_CHANNELS_FILTER) {
+        if (currentFilter != ALL_CHANNELS_FILTER) { // Teraz už porovnávame String so Stringom
             return@derivedStateOf emptyList()
         }
         contacts.filter { contact ->
@@ -88,8 +89,8 @@ class ContactsViewModel : ViewModel() {
     // =====================================================================
 
     // Nový stav pre dáta kanála
-    var channelFunctions by mutableStateOf<List<ChannelFunction>>(emptyList())
-        private set
+    private val _channelFunctions = MutableStateFlow<List<ChannelFunction>>(emptyList())
+    val channelFunctions = _channelFunctions.asStateFlow()
 
     var isEditMode by mutableStateOf(false)
         private set
@@ -103,7 +104,7 @@ class ContactsViewModel : ViewModel() {
         // Z našej mapy ukážkových dát vyberieme tie správne
         // Ak pre daný kanál dáta nemáme, výsledok bude prázdny zoznam
         val sampleData = createSampleChannelData(contacts)
-        channelFunctions = sampleData[channelName] ?: emptyList()
+        _channelFunctions.value = sampleData[channelName] ?: emptyList()
     }
 
     // Funkcia na vytvorenie dočasných dát. Používa reálne kontakty zo zoznamu.
@@ -215,10 +216,22 @@ class ContactsViewModel : ViewModel() {
 
     // Funkcie pre aktualizáciu filtrov z ContactsScreen
     fun updateSelectedTabFilter(newFilter: String) {
-        selectedTabFilter = newFilter
-        // ✅ TOTO JE KĽÚČOVÁ ZMENA ✅
-        // Načítame dáta pre práve zvolený kanál
-        loadChannelFunctions(newFilter)
+        _selectedTabFilter.value = newFilter // Použijeme privátnu premennú s podčiarkovníkom
+
+        // Logika pre načítanie dát pre záložku "Jednotka"
+        if (newFilter == "Jednotka") {
+            val stv1Functions = listOf(
+                ChannelFunction(id = "func1", title = "Intendant", assignedPeople = emptyList()),
+                ChannelFunction(id = "func2", title = "Programové zmeny v PROVYSe", assignedPeople = emptyList()),
+                ChannelFunction(id = "func3", title = "Denné vysielacie plány 1", assignedPeople = emptyList()),
+                ChannelFunction(id = "func4", title = "Denné vysielacie plány 2", assignedPeople = emptyList())
+            )
+            // Aktualizujeme stav, ktorý sa zobrazuje na obrazovke
+            _channelFunctions.value = stv1Functions // Použijeme privátnu premennú s podčiarkovníkom
+        } else {
+            // Pre ostatné záložky zatiaľ necháme zoznam prázdny
+            _channelFunctions.value = emptyList() // Použijeme privátnu premennú s podčiarkovníkom
+        }
     }
 
     fun updateSearchQuery(newQuery: String) {
@@ -241,7 +254,7 @@ class ContactsViewModel : ViewModel() {
             val index = contacts.indexOf(contact)
             contacts[index] = contact.copy(channel = DEFAULT_CHANNEL)
         }
-        if (selectedTabFilter == channel) {
+        if (selectedTabFilter.value == channel) {
             updateSelectedTabFilter(ALL_CHANNELS_FILTER) // Použijeme našu upravenú funkciu
         }
     }
