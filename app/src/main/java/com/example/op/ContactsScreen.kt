@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -228,25 +229,23 @@ private fun AllContactsView(
     val contacts = viewModel.displayedContacts
 
     Column(modifier = modifier) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            SearchBar(
+        SearchBar(
                 query = searchQuery,
                 onQueryChange = { viewModel.updateSearchQuery(it) },
                 onSearch = {},
                 active = false,
                 onActiveChange = {},
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Vyhľadať...") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    // Aplikujeme padding a offset priamo na SearchBar
+                    .padding(top = 4.dp, bottom = 0.dp, start = 16.dp, end = 16.dp)
+                    .offset(y = (-18).dp),
+                placeholder = { Text("Vyhľadať v kontaktoch...", color = Color.Gray) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Black) },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
                         IconButton(onClick = { viewModel.updateSearchQuery("") }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Vymazať text")
+                            Icon(Icons.Default.Clear, contentDescription = "Vymazať text", tint = Color.Black)
                         }
                     }
                 },
@@ -255,7 +254,7 @@ private fun AllContactsView(
                     dividerColor = Color.Transparent
                 )
             ) {}
-        }
+
 
         if (contacts.isEmpty()) {
             Box(
@@ -274,7 +273,7 @@ private fun AllContactsView(
         } else {
             LazyColumn(
                 modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 80.dp)
+                contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 80.dp)
             ) {
                 items(contacts, key = { it.id }) { contact ->
                     ContactListItem(
