@@ -23,6 +23,8 @@ import kotlinx.coroutines.launch
 class ContactsViewModel : ViewModel() {
 
     // Predvolená hodnota pre kanál, ak sa kanál odstráni
+
+
     private val DEFAULT_CHANNEL = "24"
     private val ALL_CHANNELS_FILTER = "Všetky"
 
@@ -93,12 +95,21 @@ class ContactsViewModel : ViewModel() {
     //          ✅ ZAČIATOK SEKCIE PRE DÁTA KANÁLOV ✅
     // =====================================================================
 
-    // Nový stav pre dáta kanála
+    private var allChannelData: MutableMap<String, List<ChannelFunction>> = mutableMapOf()
     private val _channelFunctions = MutableStateFlow<List<ChannelFunction>>(emptyList())
     val channelFunctions = _channelFunctions.asStateFlow()
 
     var isEditMode by mutableStateOf(false)
         private set
+    init {
+        // Načítame počiatočné dáta pre všetky kanály iba raz
+        allChannelData = createSampleChannelData(contacts).toMutableMap()
+        // Načítame dáta pre predvolene zvolenú kartu
+        loadChannelFunctions(selectedTabFilter.value)
+    }
+
+
+
 
     fun toggleEditMode() {
         isEditMode = !isEditMode
@@ -118,6 +129,7 @@ class ContactsViewModel : ViewModel() {
         )
         // K existujúcemu zoznamu funkcií pridáme túto novú
         _channelFunctions.value = _channelFunctions.value + newFunction
+        allChannelData[selectedTabFilter.value] = _channelFunctions.value
     }
 
     /**
@@ -126,6 +138,7 @@ class ContactsViewModel : ViewModel() {
     fun removeChannelFunction(functionId: String) {
         // Vytvoríme nový zoznam, v ktorom budú všetky funkcie OKREM tej, ktorú chceme zmazať
         _channelFunctions.value = _channelFunctions.value.filterNot { it.id == functionId }
+        allChannelData[selectedTabFilter.value] = _channelFunctions.value
     }
     fun moveChannelFunction(from: Int, to: Int) {
         // Kontrola, či sú indexy platné pre aktuálny zoznam
@@ -140,7 +153,8 @@ class ContactsViewModel : ViewModel() {
                 add(to, item)
             }
         }
-        // Poznámka: Toto zatiaľ mení poradie iba v pamäti.
+        // ✅ TENTO RIADOK PRIDAJTE NA KONIEC KAŽDEJ MODIFIKUJÚCEJ FUNKCIE
+        allChannelData[selectedTabFilter.value] = _channelFunctions.value
     }
 
     /**
@@ -162,6 +176,8 @@ class ContactsViewModel : ViewModel() {
                 }
             }
         }
+        // ✅ TENTO RIADOK PRIDAJTE NA KONIEC KAŽDEJ MODIFIKUJÚCEJ FUNKCIE
+        allChannelData[selectedTabFilter.value] = _channelFunctions.value
     }
 
     /**
@@ -197,6 +213,8 @@ class ContactsViewModel : ViewModel() {
                 }
             }
         }
+        // ✅ TENTO RIADOK PRIDAJTE NA KONIEC KAŽDEJ MODIFIKUJÚCEJ FUNKCIE
+        allChannelData[selectedTabFilter.value] = _channelFunctions.value
     }
 
     /**
@@ -219,6 +237,8 @@ class ContactsViewModel : ViewModel() {
                 }
             }
         }
+        // ✅ TENTO RIADOK PRIDAJTE NA KONIEC KAŽDEJ MODIFIKUJÚCEJ FUNKCIE
+        allChannelData[selectedTabFilter.value] = _channelFunctions.value
     }
 
     /**
@@ -248,14 +268,14 @@ class ContactsViewModel : ViewModel() {
                 }
             }
         }
+        // ✅ TENTO RIADOK PRIDAJTE NA KONIEC KAŽDEJ MODIFIKUJÚCEJ FUNKCIE
+        allChannelData[selectedTabFilter.value] = _channelFunctions.value
     }
 
     // Načítanie dát pre zvolený kanál
     private fun loadChannelFunctions(channelName: String) {
-        // Z našej mapy ukážkových dát vyberieme tie správne
-        // Ak pre daný kanál dáta nemáme, výsledok bude prázdny zoznam
-        val sampleData = createSampleChannelData(contacts)
-        _channelFunctions.value = sampleData[channelName] ?: emptyList()
+        // Už nič nevytvárame, len vyberáme z mapy, ktorú držíme v pamäti
+        _channelFunctions.value = allChannelData[channelName] ?: emptyList()
     }
 
     // Funkcia na vytvorenie dočasných dát. Používa reálne kontakty zo zoznamu.
@@ -371,40 +391,8 @@ class ContactsViewModel : ViewModel() {
     // Funkcie pre aktualizáciu filtrov z ContactsScreen
     fun updateSelectedTabFilter(newFilter: String) {
         _selectedTabFilter.value = newFilter
-
-        if (newFilter == "Jednotka") {
-            val stv1Functions = listOf(
-                ChannelFunction(
-                    id = "func1",
-                    title = "Intendant",
-                    notes = "Zodpovedá za schválenie finálneho plánu.", // ✅ Pridané
-                    assignedPeople = emptyList()
-                ),
-                ChannelFunction(
-                    id = "func2",
-                    title = "Programové zmeny v PROVYSe",
-                    notes = null, // Bez poznámky
-                    assignedPeople = emptyList()
-                ),
-                ChannelFunction(
-                    id = "func3",
-                    title = "Denné vysielacie plány 1",
-                    notes = "Spracúva prvú polovicu dňa (06:00 - 18:00).", // ✅ Pridané
-                    assignedPeople = emptyList()
-                ),
-                ChannelFunction(
-                    id = "func4",
-                    title = "Denné vysielacie plány 2",
-                    notes = null, // Bez poznámky
-                    assignedPeople = emptyList()
-                )
-            )
-            _channelFunctions.value = stv1Functions
-        } else {
-            // Pre ostatné záložky načítame dáta z našej sample funkcie
-            val sampleData = createSampleChannelData(contacts)
-            _channelFunctions.value = sampleData[newFilter] ?: emptyList()
-        }
+        // Po zmene filtra iba znovu načítame dáta pre daný kanál z našej pamäte
+        loadChannelFunctions(newFilter)
     }
 
     fun updateSearchQuery(newQuery: String) {
