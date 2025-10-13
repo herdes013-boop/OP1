@@ -223,6 +223,10 @@ fun ContactsScreen(
                     // ✅ TENTO RIADOK SEM PRIDAJTE
                     onRemovePersonClick = { functionId, personId ->
                         viewModel.removePersonFromFunction(functionId, personId)
+                    },
+                    // ✅ TENTO RIADOK SEM PRIDAJTE
+                    onUpdatePersonNote = { functionId, personId, newNote ->
+                        viewModel.updatePersonNoteInFunction(functionId, personId, newNote)
                     }
                 )
             }
@@ -350,7 +354,8 @@ private fun ChannelDetailView(
     onMoveFunction: (Int, Int) -> Unit,
     onAddPersonClick: (ChannelFunction) -> Unit,
     // ✅ TENTO RIADOK SEM PRIDAJTE
-    onRemovePersonClick: (functionId: String, personId: String) -> Unit
+    onRemovePersonClick: (functionId: String, personId: String) -> Unit,
+    onUpdatePersonNote: (functionId: String, personId: String, newNote: String) -> Unit
 ) {
     val reorderState = rememberReorderableLazyListState(
         onMove = { from, to ->
@@ -430,6 +435,10 @@ private fun ChannelDetailView(
                         onRemovePerson = { personId ->
                             onRemovePersonClick(function.id, personId)
                         },
+                        // ✅ TENTO RIADOK SEM PRIDAJTE
+                        onUpdatePersonNote = { personId, newNote ->
+                            onUpdatePersonNote(function.id, personId, newNote)
+                        },
                         modifier = if (isEditMode) {
                             Modifier
                                 .detectReorderAfterLongPress(reorderState)
@@ -471,7 +480,9 @@ private fun ChannelFunctionCard(
     onUpdate: (title: String, notes: String?) -> Unit,
     onAddPersonClick: () -> Unit,
     // ✅ TENTO RIADOK SEM PRIDAJTE
-    onRemovePerson: (personId: String) -> Unit
+    onRemovePerson: (personId: String) -> Unit,
+    // ✅ TENTO RIADOK SEM PRIDAJTE
+    onUpdatePersonNote: (personId: String, newNote: String) -> Unit
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -573,7 +584,11 @@ private fun ChannelFunctionCard(
                         person = person,
                         isEditMode = isEditMode,
                         // ✅ TENTO RIADOK SEM PRIDAJTE
-                        onRemoveClick = { onRemovePerson(person.id) }
+                        onRemoveClick = { onRemovePerson(person.id) },
+                        // ✅ TENTO RIADOK SEM PRIDAJTE
+                        onNoteChange = { newNote ->
+                            onUpdatePersonNote(person.id, newNote)
+                        }
                     )
                 }
             }
@@ -597,17 +612,19 @@ private fun ChannelFunctionCard(
 private fun AssignedPersonRow(
     person: AssignedPerson,
     isEditMode: Boolean,
-    // ✅ PRIDAJTE TENTO RIADOK
-    onRemoveClick: () -> Unit
+    onRemoveClick: () -> Unit,onNoteChange: (String) -> Unit // Nový parameter
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp), // Jednotný padding
+            .padding(horizontal = 16.dp, vertical = 4.dp), // Zmenšený vertikálny padding
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Stĺpec s menom a telefónom
-        Column(modifier = Modifier.weight(1f)) {
+        // Stĺpec s menom a telefónom (zostáva bez zmeny)
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
             Text(
                 text = person.name,
                 style = MaterialTheme.typography.bodyLarge,
@@ -622,18 +639,43 @@ private fun AssignedPersonRow(
             }
         }
 
-        Spacer(Modifier.width(16.dp)) // Medzera medzi menom a poznámkou/tlačidlom
+        Spacer(Modifier.width(16.dp))
 
-        // Zobrazenie buď poznámky alebo tlačidla na zmazanie
+        // ✅ ZAČIATOK ÚPRAV: Logika pre poznámku alebo tlačidlo
         if (isEditMode) {
-            IconButton(
-                // ✅ UPRAVTE TENTO RIADOK
-                onClick = onRemoveClick,
-                modifier = Modifier.size(40.dp)
-            ) {
-                Icon(Icons.Default.RemoveCircleOutline, contentDescription = "Zmazať osobu", tint = Color.LightGray)
+            // V editačnom móde je tu TextField a vedľa neho tlačidlo na mazanie
+            BasicTextField(
+                value = person.notes,
+                onValueChange = onNoteChange,
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.End
+                ),
+                modifier = Modifier.weight(1f),
+                maxLines = 2,
+                decorationBox = { innerTextField ->
+                    Box(contentAlignment = Alignment.CenterEnd) {
+                        if (person.notes.isBlank()) {
+                            Text(
+                                "Poznámka...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.Gray,
+                                textAlign = TextAlign.End
+                            )
+                        }
+                        innerTextField()
+                    }
+                }
+            )
+            IconButton(onClick = onRemoveClick, modifier = Modifier.size(40.dp)) {
+                Icon(
+                    Icons.Default.RemoveCircleOutline,
+                    contentDescription = "Zmazať osobu",
+                    tint = Color.LightGray
+                )
             }
         } else {
+            // V normálnom móde je tu len text poznámky (ak existuje)
             person.notes.takeIf { it.isNotBlank() }?.let { notes ->
                 Text(
                     text = notes,
@@ -641,10 +683,12 @@ private fun AssignedPersonRow(
                     color = MaterialTheme.colorScheme.primary,
                     textAlign = TextAlign.End,
                     maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
                 )
             }
         }
+        // ✅ KONIEC ÚPRAV
     }
 }
 

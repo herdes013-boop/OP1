@@ -221,6 +221,35 @@ class ContactsViewModel : ViewModel() {
         }
     }
 
+    /**
+     * Aktualizuje poznámku konkrétnej priradenej osoby v rámci funkcie.
+     * @param functionId ID funkcie, kde sa osoba nachádza.
+     * @param personId ID priradenej osoby (AssignedPerson.id).
+     * @param newNote Nový text poznámky.
+     */
+    fun updatePersonNoteInFunction(functionId: String, personId: String, newNote: String) {
+        _channelFunctions.update { currentFunctions ->
+            currentFunctions.map { function ->
+                // Nájdi správnu funkciu
+                if (function.id == functionId) {
+                    // Vnútri funkcie nájdi a aktualizuj správnu osobu
+                    val updatedPeople = function.assignedPeople.map { person ->
+                        if (person.id == personId) {
+                            // Vráť kópiu osoby s novou poznámkou
+                            person.copy(notes = newNote)
+                        } else {
+                            person // Ostatné osoby vráť bez zmeny
+                        }
+                    }
+                    // Vráť kópiu funkcie s aktualizovaným zoznamom ľudí
+                    function.copy(assignedPeople = updatedPeople)
+                } else {
+                    function // Ostatné funkcie vráť bez zmeny
+                }
+            }
+        }
+    }
+
     // Načítanie dát pre zvolený kanál
     private fun loadChannelFunctions(channelName: String) {
         // Z našej mapy ukážkových dát vyberieme tie správne
