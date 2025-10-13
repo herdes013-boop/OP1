@@ -24,10 +24,12 @@ import androidx.compose.material.icons.filled.LooksOne
 import androidx.compose.material.icons.filled.LooksTwo
 import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -54,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.text.font.FontStyle
 import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.detectReorderAfterLongPress
 import org.burnoutcrew.reorderable.rememberReorderableLazyListState
@@ -368,7 +371,9 @@ private fun ChannelDetailView(
                 Card(
                     // ... kód pre prázdnu kartu zostáva rovnaký ...
                 ) {
-                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
                         Text("Pre tento kanál zatiaľ nie sú definované žiadne funkcie.", textAlign = TextAlign.Center, color = Color.Gray)
                     }
                 }
@@ -385,7 +390,8 @@ private fun ChannelDetailView(
                         isEditMode = isEditMode,
                         onDelete = { onDeleteFunction(function.id) },
                         modifier = if (isEditMode) {
-                            Modifier.detectReorderAfterLongPress(reorderState)
+                            Modifier
+                                .detectReorderAfterLongPress(reorderState)
                                 .animateItemPlacement() // <-- Krásna animácia presunu
                         } else {
                             Modifier.animateItemPlacement()
@@ -400,7 +406,9 @@ private fun ChannelDetailView(
             item {
                 TextButton(
                     onClick = { onAddFunction("Nová funkcia") },
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
                 ) {
                     Icon(Icons.Default.Add, null)
                     Spacer(Modifier.width(8.dp))
@@ -412,65 +420,11 @@ private fun ChannelDetailView(
 }
 
 
-@Composable
-private fun AssignedPersonRow(
-    person: AssignedPerson,
-    isEditMode: Boolean,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            // Zmenšíme padding, aby sa poznámka lepšie zmestila a nebola ďaleko
-            .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Stĺpec s menom a telefónom
-        Column(
-            // Dáme mu váhu, aby sa roztiahol, ale nechal miesto pre poznámku/tlačidlo
-            modifier = Modifier.weight(1f)
-        ) {
-            Text(
-                text = person.name,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium
-            )
-            // Telefónne číslo zobrazíme, len ak existuje
-            person.phone?.takeIf { it.isNotBlank() }?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray
-                )
-            }
-        }
-
-        // Zobrazenie buď poznámky alebo tlačidla na zmazanie
-        if (isEditMode) {
-            // V editačnom móde ukážeme tlačidlo na zmazanie
-            IconButton(onClick = { /* TODO: Zmazať osobu */ }) {
-                Icon(Icons.Default.Clear, contentDescription = "Zmazať osobu", tint = Color.LightGray)
-            }
-        } else if (person.notes.isNotBlank()) {
-            // Mimo editačného módu, ak existuje poznámka, ukážeme ju
-            Spacer(Modifier.width(16.dp)) // Medzera medzi menom a poznámkou
-            Text(
-                text = person.notes,
-                style = MaterialTheme.typography.bodyMedium, // Trochu zväčšíme text pre lepšiu čitateľnosť
-                color = MaterialTheme.colorScheme.primary, // Zvýrazníme farbu
-                textAlign = TextAlign.End,
-                maxLines = 2, // Povolíme maximálne 2 riadky
-                overflow = TextOverflow.Ellipsis // Ak je text dlhší, zobrazia sa ...
-            )
-        }
-    }
-}
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ChannelFunctionCard(
-    function: ChannelFunction,
-    isEditMode: Boolean,
+    function: ChannelFunction, isEditMode: Boolean,
     modifier: Modifier = Modifier,
-    // Pridávame tento parameter:
     onDelete: () -> Unit,
 ) {
     Card(
@@ -481,35 +435,49 @@ private fun ChannelFunctionCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+                .padding(bottom = 8.dp) // Spodný padding pre tlačidlá
         ) {
+            // --- HORNÁ ČASŤ S NÁZVOM A TLAČIDLOM ZMAZAŤ ---
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(end = 4.dp)
+                modifier = Modifier.padding(start = 16.dp, end = 4.dp, top = 12.dp)
             ) {
                 Text(
                     text = function.title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 16.dp)
+                    modifier = Modifier.weight(1f)
                 )
                 if (isEditMode) {
-                    // Upravujeme onClick, aby volalo parameter
                     IconButton(onClick = onDelete) {
                         Icon(Icons.Default.Clear, "Zmazať funkciu", tint = Color.Gray)
                     }
                 }
             }
 
+            // --- POZNÁMKY K FUNKCII ---
+            function.notes?.takeIf { it.isNotBlank() }?.let { notes ->
+                Text(
+                    text = notes,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontStyle = FontStyle.Italic,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 12.dp)
+                )
+            }
+
+            // --- SEPARATOR (ČIARA) ---
+            if (function.assignedPeople.isNotEmpty()) {
+                Divider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            }
+
+            // --- ZOZNAM PRIRADENÝCH OSÔB ---
             if (function.assignedPeople.isEmpty() && !isEditMode) {
                 Text(
                     text = "Nikto nie je priradený",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color.Gray,
-                    modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                    modifier = Modifier.padding(start = 16.dp, top = 4.dp, bottom = 12.dp)
                 )
             } else {
                 function.assignedPeople.forEach { person ->
@@ -520,15 +488,65 @@ private fun ChannelFunctionCard(
                 }
             }
 
+            // --- TLAČIDLO "PRIDAŤ OSOBU" V EDITAČNOM MÓDE ---
             if (isEditMode) {
                 TextButton(
                     onClick = { /* TODO: Pridať osobu */ },
-                    modifier = Modifier.padding(start = 8.dp)
+                    modifier = Modifier.padding(start = 8.dp, top = 4.dp)
                 ) {
                     Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("Pridať osobu")
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AssignedPersonRow(
+    person: AssignedPerson,
+    isEditMode: Boolean,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp), // Jednotný padding
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Stĺpec s menom a telefónom
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = person.name,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium
+            )
+            person.phone?.takeIf { it.isNotBlank() }?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray
+                )
+            }
+        }
+
+        Spacer(Modifier.width(16.dp)) // Medzera medzi menom a poznámkou/tlačidlom
+
+        // Zobrazenie buď poznámky alebo tlačidla na zmazanie
+        if (isEditMode) {
+            IconButton(onClick = { /* TODO: Zmazať osobu */ }, modifier = Modifier.size(40.dp)) {
+                Icon(Icons.Default.RemoveCircleOutline, contentDescription = "Zmazať osobu", tint = Color.LightGray)
+            }
+        } else {
+            person.notes.takeIf { it.isNotBlank() }?.let { notes ->
+                Text(
+                    text = notes,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.End,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }

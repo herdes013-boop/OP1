@@ -12,6 +12,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+
+
+// =====================================================================
+
 // --------------------------------------------------
 // VIEW MODEL PRE KONTAKTY
 // --------------------------------------------------
@@ -107,11 +111,11 @@ class ContactsViewModel : ViewModel() {
     fun addChannelFunction(title: String) {
         // Vytvoríme novú funkciu s unikátnym ID a zadaným názvom
         val newFunction = ChannelFunction(
-            id = "func_${System.currentTimeMillis()}", // ID zaručí, že každá funkcia je jedinečná
+            id = "func_${System.currentTimeMillis()}",
             title = title,
-            assignedPeople = emptyList() // Začína bez priradených osôb
+            notes = null, // ✅ DOPLNENÉ
+            assignedPeople = emptyList()
         )
-
         // K existujúcemu zoznamu funkcií pridáme túto novú
         _channelFunctions.value = _channelFunctions.value + newFunction
     }
@@ -159,6 +163,7 @@ class ContactsViewModel : ViewModel() {
             "Jednotka" to listOf(
                 ChannelFunction(
                     title = "Kameramani",
+                    notes = "Všetci kameramani musia byť dostupní 2 hodiny pred začiatkom vysielania.", // ✅ Pridaná poznámka
                     assignedPeople = listOf(
                         AssignedPerson(contactId = contact1.id.toString(), name = contact1.getFullName(), phone = contact1.phone, notes = "Hlavná kamera"),
                         AssignedPerson(contactId = contact2.id.toString(), name = contact2.getFullName(), phone = contact2.phone, notes = "Ručná kamera")
@@ -166,20 +171,22 @@ class ContactsViewModel : ViewModel() {
                 ),
                 ChannelFunction(
                     title = "Zvukári",
+                    notes = "Skontrolovať mikrofóny pred každým vstupom.", // ✅ Pridaná poznámka
                     assignedPeople = listOf(
                         AssignedPerson(contactId = contact3.id.toString(), name = contact3.getFullName(), phone = contact3.phone, notes = "")
                     )
                 ),
-                ChannelFunction(title = "Strihači", assignedPeople = emptyList())
+                ChannelFunction(title = "Strihači", notes = null, assignedPeople = emptyList()) // Bez poznámky
             ),
             "24" to listOf(
                 ChannelFunction(
                     title = "Redaktori",
+                    notes = "Zodpovední za overovanie faktov.", // ✅ Pridaná poznámka
                     assignedPeople = listOf(
                         AssignedPerson(contactId = contact2.id.toString(), name = contact2.getFullName(), phone = contact2.phone, notes = "Ranná zmena")
                     )
                 ),
-                ChannelFunction(title = "Vydavatelia", assignedPeople = emptyList())
+                ChannelFunction(title = "Vydavatelia", notes = null, assignedPeople = emptyList())
             )
         )
     }
@@ -256,21 +263,40 @@ class ContactsViewModel : ViewModel() {
 
     // Funkcie pre aktualizáciu filtrov z ContactsScreen
     fun updateSelectedTabFilter(newFilter: String) {
-        _selectedTabFilter.value = newFilter // Použijeme privátnu premennú s podčiarkovníkom
+        _selectedTabFilter.value = newFilter
 
-        // Logika pre načítanie dát pre záložku "Jednotka"
         if (newFilter == "Jednotka") {
             val stv1Functions = listOf(
-                ChannelFunction(id = "func1", title = "Intendant", assignedPeople = emptyList()),
-                ChannelFunction(id = "func2", title = "Programové zmeny v PROVYSe", assignedPeople = emptyList()),
-                ChannelFunction(id = "func3", title = "Denné vysielacie plány 1", assignedPeople = emptyList()),
-                ChannelFunction(id = "func4", title = "Denné vysielacie plány 2", assignedPeople = emptyList())
+                ChannelFunction(
+                    id = "func1",
+                    title = "Intendant",
+                    notes = "Zodpovedá za schválenie finálneho plánu.", // ✅ Pridané
+                    assignedPeople = emptyList()
+                ),
+                ChannelFunction(
+                    id = "func2",
+                    title = "Programové zmeny v PROVYSe",
+                    notes = null, // Bez poznámky
+                    assignedPeople = emptyList()
+                ),
+                ChannelFunction(
+                    id = "func3",
+                    title = "Denné vysielacie plány 1",
+                    notes = "Spracúva prvú polovicu dňa (06:00 - 18:00).", // ✅ Pridané
+                    assignedPeople = emptyList()
+                ),
+                ChannelFunction(
+                    id = "func4",
+                    title = "Denné vysielacie plány 2",
+                    notes = null, // Bez poznámky
+                    assignedPeople = emptyList()
+                )
             )
-            // Aktualizujeme stav, ktorý sa zobrazuje na obrazovke
-            _channelFunctions.value = stv1Functions // Použijeme privátnu premennú s podčiarkovníkom
+            _channelFunctions.value = stv1Functions
         } else {
-            // Pre ostatné záložky zatiaľ necháme zoznam prázdny
-            _channelFunctions.value = emptyList() // Použijeme privátnu premennú s podčiarkovníkom
+            // Pre ostatné záložky načítame dáta z našej sample funkcie
+            val sampleData = createSampleChannelData(contacts)
+            _channelFunctions.value = sampleData[newFilter] ?: emptyList()
         }
     }
 

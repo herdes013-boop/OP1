@@ -16,7 +16,7 @@ data class AssignedPerson(
     val contactId: String,
     val name: String,
     val phone: String?,
-    var notes: String = ""
+    var notes: String = "" // Toto je správne
 )
 
 /**
@@ -29,5 +29,6 @@ data class AssignedPerson(
 data class ChannelFunction(
     val id: String = UUID.randomUUID().toString(),
     val title: String,
+    val notes: String? = null, // ✅ PRIDAJTE IBA TENTO RIADOK
     val assignedPeople: List<AssignedPerson>
 )
