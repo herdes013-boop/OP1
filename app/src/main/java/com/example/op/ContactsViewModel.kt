@@ -1,5 +1,6 @@
 package com.example.op
 
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -112,27 +113,17 @@ class ContactsViewModel : ViewModel() {
 
 
     val displayedContacts: List<ContactItem> by derivedStateOf {
-        val currentFilter = selectedTabFilter.value
         val currentQuery = searchQuery.trim().lowercase()
-        val activeFilters = activeChannelFilters.value // ✅ Načítame aktívne filtre
 
-        if (currentFilter != ALL_CHANNELS_FILTER) {
-            return@derivedStateOf emptyList()
-        }
-
-        contacts.filter { contact ->
-            // Podmienka pre vyhľadávací dotaz (zostáva rovnaká)
-            val matchesQuery = if (currentQuery.isBlank()) true else
+        // Ak je vyhľadávanie prázdne, vrátime všetky kontakty
+        if (currentQuery.isBlank()) {
+            contacts
+        } else {
+            // Inak filtrujeme podľa textu
+            contacts.filter { contact ->
                 contact.getFullName().lowercase().contains(currentQuery) ||
                         contact.function.orEmpty().lowercase().contains(currentQuery)
-
-            // ✅ Podmienka pre filter kanálov
-            // Kontakt musí patriť do jedného z vybraných kanálov.
-            // Ak je zoznam filtrov prázdny, táto podmienka platí pre všetky kontakty.
-            val matchesFilter = activeFilters.isEmpty() || contact.channel in activeFilters
-
-            // Kontakt sa zobrazí, iba ak spĺňa obe podmienky
-            matchesQuery && matchesFilter
+            }
         }
     }
 

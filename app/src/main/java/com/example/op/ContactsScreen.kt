@@ -279,12 +279,15 @@ private fun AllContactsView(
     modifier: Modifier = Modifier,
 ) {
     val searchQuery = viewModel.searchQuery
-    val contacts = viewModel.displayedContacts
-    val isFilterDialogVisible = viewModel.isFilterDialogVisible
-    val activeFilters by viewModel.activeChannelFilters.collectAsState()
-    val allChannels = viewModel.channelOptions.filter { it != "Všetky" } // Odstránime "Všetky" z možností
+    // Získame zoznam kontaktov, ktorý je už prípadne filtrovaný SearchBar-om
+    val contactsFromViewModel = viewModel.displayedContacts
 
-    // ✅ c) Podmienené zobrazenie dialógu
+    val isFilterDialogVisible = viewModel.isFilterDialogVisible
+    // Tu bezpečne voláme collectAsState, lebo sme v @Composable funkcii
+    val activeFilters by viewModel.activeChannelFilters.collectAsState()
+    val allChannels = viewModel.channelOptions.filter { it != "Všetky" }
+
+    // Podmienené zobrazenie dialógu (toto zostáva bez zmeny)
     if (isFilterDialogVisible) {
         FilterContactsDialog(
             allChannels = allChannels,
@@ -297,47 +300,50 @@ private fun AllContactsView(
         )
     }
 
+    // ✅ FINÁLNE FILTROVANIE PRIAMO V UI
+    // Na zoznam z ViewModelu aplikujeme druhý filter podľa zaškrtnutých kanálov
+    val contacts = if (activeFilters.isEmpty()) {
+        contactsFromViewModel
+    } else {
+        contactsFromViewModel.filter { contact -> contact.channel in activeFilters }
+    }
 
     Column(modifier = modifier) {
         SearchBar(
-                query = searchQuery,
-                onQueryChange = { viewModel.updateSearchQuery(it) },
-                onSearch = {},
-                active = false,
-                onActiveChange = {},
-                modifier = Modifier
-                    .fillMaxWidth()
-                    // Aplikujeme padding a offset priamo na SearchBar
-                    .padding(top = 4.dp, bottom = 0.dp, start = 16.dp, end = 16.dp)
-                    .offset(y = (-18).dp),
-                placeholder = { Text("Vyhľadať v kontaktoch...", color = Color.Gray) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Black) },
+            query = searchQuery,
+            onQueryChange = { viewModel.updateSearchQuery(it) },
+            onSearch = {},
+            active = false,
+            onActiveChange = {},
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp, bottom = 0.dp, start = 16.dp, end = 16.dp)
+                .offset(y = (-18).dp),
+            placeholder = { Text("Vyhľadať v kontaktoch...", color = Color.Gray) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Black) },
             trailingIcon = {
-                // ✅ ÚPRAVA: Pridaná logika pre zobrazenie ikony filtra
                 if (searchQuery.isNotEmpty()) {
-                    // Ak sa vyhľadáva, zobraz krížik na zmazanie
                     IconButton(onClick = { viewModel.updateSearchQuery("") }) {
                         Icon(Icons.Default.Clear, contentDescription = "Vymazať text", tint = Color.Black)
                     }
                 } else {
-                    // Ak je vyhľadávanie prázdne, zobraz ikonu filtra
                     IconButton(onClick = { viewModel.onFilterDialogOpen() }) {
                         Icon(
                             Icons.Filled.FilterList,
                             contentDescription = "Filtrovať zoznam",
-                            // Zmeníme farbu, ak je filter aktívny
                             tint = if (activeFilters.isEmpty()) Color.Black else MaterialTheme.colorScheme.primary
                         )
                     }
                 }
             },
-                colors = SearchBarDefaults.colors(
-                    containerColor = Color.White,
-                    dividerColor = Color.Transparent
-                )
-            ) {}
+            colors = SearchBarDefaults.colors(
+                containerColor = Color.White,
+                dividerColor = Color.Transparent
+            )
+        ) {}
 
 
+        // ✅ POUŽÍVAME FINÁLNY, PLNE PREFILTROVANÝ ZOZNAM `contacts`
         if (contacts.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -345,8 +351,13 @@ private fun AllContactsView(
                     .fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
+                // Vylepšená správa pre používateľa
+                val message = when {
+                    searchQuery.isNotBlank() || activeFilters.isNotEmpty() -> "Pre zadané kritériá sa nenašli žiadne kontakty."
+                    else -> "Zatiaľ žiadne kontakty."
+                }
                 Text(
-                    text = if (searchQuery.isNotBlank()) "Nenašli sa žiadne kontakty pre \"$searchQuery\"." else "Zatiaľ žiadne kontakty.",
+                    text = message,
                     modifier = Modifier.padding(16.dp),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
@@ -356,8 +367,9 @@ private fun AllContactsView(
             LazyColumn(
                 modifier = Modifier.weight(1f),
                 contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 80.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp) // ✅ DOPLŇTE TENTO RIADOK
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                // Používame finálny zoznam `contacts`
                 items(contacts, key = { it.id }) { contact ->
                     ContactListItem(
                         contact = contact,
@@ -368,6 +380,7 @@ private fun AllContactsView(
         }
     }
 }
+
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
