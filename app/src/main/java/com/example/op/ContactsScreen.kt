@@ -219,6 +219,10 @@ fun ContactsScreen(
                     onAddPersonClick = { function ->
                         selectedFunctionForDialog = function
                         showAddPersonDialog = true
+                    },
+                    // ✅ TENTO RIADOK SEM PRIDAJTE
+                    onRemovePersonClick = { functionId, personId ->
+                        viewModel.removePersonFromFunction(functionId, personId)
                     }
                 )
             }
@@ -344,7 +348,9 @@ private fun ChannelDetailView(
     onAddFunction: (String) -> Unit,
     onDeleteFunction: (String) -> Unit,
     onMoveFunction: (Int, Int) -> Unit,
-    onAddPersonClick: (ChannelFunction) -> Unit // Nový parameter
+    onAddPersonClick: (ChannelFunction) -> Unit,
+    // ✅ TENTO RIADOK SEM PRIDAJTE
+    onRemovePersonClick: (functionId: String, personId: String) -> Unit
 ) {
     val reorderState = rememberReorderableLazyListState(
         onMove = { from, to ->
@@ -419,7 +425,11 @@ private fun ChannelDetailView(
                         isEditMode = isEditMode,
                         onDelete = onDeleteFunctionLambda,
                         onUpdate = onUpdateFunction,
-                        onAddPersonClick = { onAddPersonClick(function) }, // Posunieme akciu ďalej
+                        onAddPersonClick = { onAddPersonClick(function) },
+                        // ✅ TENTO RIADOK SEM PRIDAJTE
+                        onRemovePerson = { personId ->
+                            onRemovePersonClick(function.id, personId)
+                        },
                         modifier = if (isEditMode) {
                             Modifier
                                 .detectReorderAfterLongPress(reorderState)
@@ -459,7 +469,9 @@ private fun ChannelFunctionCard(
     modifier: Modifier = Modifier,
     onDelete: () -> Unit,
     onUpdate: (title: String, notes: String?) -> Unit,
-    onAddPersonClick: () -> Unit
+    onAddPersonClick: () -> Unit,
+    // ✅ TENTO RIADOK SEM PRIDAJTE
+    onRemovePerson: (personId: String) -> Unit
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -559,7 +571,9 @@ private fun ChannelFunctionCard(
                 function.assignedPeople.forEach { person ->
                     AssignedPersonRow(
                         person = person,
-                        isEditMode = isEditMode
+                        isEditMode = isEditMode,
+                        // ✅ TENTO RIADOK SEM PRIDAJTE
+                        onRemoveClick = { onRemovePerson(person.id) }
                     )
                 }
             }
@@ -583,6 +597,8 @@ private fun ChannelFunctionCard(
 private fun AssignedPersonRow(
     person: AssignedPerson,
     isEditMode: Boolean,
+    // ✅ PRIDAJTE TENTO RIADOK
+    onRemoveClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -610,7 +626,11 @@ private fun AssignedPersonRow(
 
         // Zobrazenie buď poznámky alebo tlačidla na zmazanie
         if (isEditMode) {
-            IconButton(onClick = { /* TODO: Zmazať osobu */ }, modifier = Modifier.size(40.dp)) {
+            IconButton(
+                // ✅ UPRAVTE TENTO RIADOK
+                onClick = onRemoveClick,
+                modifier = Modifier.size(40.dp)
+            ) {
                 Icon(Icons.Default.RemoveCircleOutline, contentDescription = "Zmazať osobu", tint = Color.LightGray)
             }
         } else {

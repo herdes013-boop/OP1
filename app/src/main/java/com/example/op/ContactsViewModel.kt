@@ -199,6 +199,28 @@ class ContactsViewModel : ViewModel() {
         }
     }
 
+    /**
+     * Odstráni priradenú osobu z funkcie.
+     * @param functionId ID funkcie, z ktorej odstraňujeme osobu.
+     * @param personId ID priradenej osoby (AssignedPerson.id), ktorú treba odstrániť.
+     */
+    fun removePersonFromFunction(functionId: String, personId: String) {
+        _channelFunctions.update { currentFunctions ->
+            currentFunctions.map { function ->
+                // Nájdi správnu funkciu
+                if (function.id == functionId) {
+                    // Vytvor nový zoznam ľudí, kde bude chýbať ten, ktorého chceme zmazať
+                    val updatedPeople = function.assignedPeople.filterNot { it.id == personId }
+                    // Vráť kópiu funkcie s aktualizovaným zoznamom
+                    function.copy(assignedPeople = updatedPeople)
+                } else {
+                    // Inú funkciu vráť bez zmeny
+                    function
+                }
+            }
+        }
+    }
+
     // Načítanie dát pre zvolený kanál
     private fun loadChannelFunctions(channelName: String) {
         // Z našej mapy ukážkových dát vyberieme tie správne
