@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -83,9 +84,16 @@ fun TutorialsScreen(
                     placeholder = { Text("Hľadať v návodoch...", color = Color.Gray) },
                     leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.Black) },
                     trailingIcon = {
+                        // ✅ ÚPRAVA: Pridaná logika pre zobrazenie ikony filtra
                         if (searchQuery.isNotEmpty()) {
+                            // Ak sa vyhľadáva, zobraz krížik na zmazanie
                             IconButton(onClick = { onSearchQueryChange("") }) {
-                                Icon(Icons.Default.Clear, "Vymazať text", tint = Color.Black)
+                                Icon(Icons.Default.Clear, contentDescription = "Vymazať text", tint = Color.Black)
+                            }
+                        } else {
+                            // Ak je vyhľadávanie prázdne, zobraz ikonu filtra
+                            IconButton(onClick = { /* TODO: Otvoriť dialóg s filtrami pre návody */ }) {
+                                Icon(Icons.Filled.FilterList, contentDescription = "Filtrovať zoznam", tint = Color.Black)
                             }
                         }
                     },

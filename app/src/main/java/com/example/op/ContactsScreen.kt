@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.LooksOne
 import androidx.compose.material.icons.filled.LooksTwo
 import androidx.compose.material.icons.filled.Newspaper
@@ -243,13 +244,20 @@ private fun AllContactsView(
                     .offset(y = (-18).dp),
                 placeholder = { Text("Vyhľadať v kontaktoch...", color = Color.Gray) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Black) },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.updateSearchQuery("") }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Vymazať text", tint = Color.Black)
-                        }
+            trailingIcon = {
+                // ✅ ÚPRAVA: Pridaná logika pre zobrazenie ikony filtra
+                if (searchQuery.isNotEmpty()) {
+                    // Ak sa vyhľadáva, zobraz krížik na zmazanie
+                    IconButton(onClick = { viewModel.updateSearchQuery("") }) {
+                        Icon(Icons.Default.Clear, contentDescription = "Vymazať text", tint = Color.Black)
                     }
-                },
+                } else {
+                    // Ak je vyhľadávanie prázdne, zobraz ikonu filtra
+                    IconButton(onClick = { /* TODO: Otvoriť dialóg s filtrami */ }) {
+                        Icon(Icons.Filled.FilterList, contentDescription = "Filtrovať zoznam", tint = Color.Black)
+                    }
+                }
+            },
                 colors = SearchBarDefaults.colors(
                     containerColor = Color.White,
                     dividerColor = Color.Transparent
@@ -290,12 +298,12 @@ private fun AllContactsView(
 
 @Composable
 private fun ChannelDetailView(
-    channelName: String,        functions: List<ChannelFunction>,
+    channelName: String, functions: List<ChannelFunction>,
     isEditMode: Boolean,
     modifier: Modifier = Modifier,
     // Tieto parametre chýbali, teraz ich pridávame:
     onAddFunction: (String) -> Unit,
-    onDeleteFunction: (String) -> Unit
+    onDeleteFunction: (String) -> Unit,
 ) {
     LazyColumn(
         modifier = modifier
@@ -334,7 +342,9 @@ private fun ChannelDetailView(
         if (functions.isEmpty() && !isEditMode) {
             item {
                 Box(
-                    modifier = Modifier.fillParentMaxSize().padding(horizontal = 16.dp),
+                    modifier = Modifier
+                        .fillParentMaxSize()
+                        .padding(horizontal = 16.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text("Pre tento kanál zatiaľ nie sú definované žiadne funkcie.", textAlign = TextAlign.Center)
@@ -358,7 +368,9 @@ private fun ChannelDetailView(
                 TextButton(
                     // Teraz voláme onAddFunction, ktoré sme dostali ako parameter
                     onClick = { onAddFunction("Nová funkcia") },
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
                 ) {
                     Icon(Icons.Default.Add, null)
                     Spacer(Modifier.width(8.dp))
@@ -429,7 +441,7 @@ private fun ChannelFunctionCard(
     isEditMode: Boolean,
     modifier: Modifier = Modifier,
     // Pridávame tento parameter:
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
