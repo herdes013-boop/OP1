@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
@@ -198,13 +199,14 @@ fun ContactsScreen(
                 )
             } else {
                 ChannelDetailView(
+                    // ✅ PRIDAJTE TENTO RIADOK
+                    viewModel = viewModel,
                     channelName = selectedTabFilter,
                     functions = channelFunctions,
                     isEditMode = isEditMode,
                     modifier = Modifier.fillMaxSize(),
                     onAddFunction = { nazov -> viewModel.addChannelFunction(nazov) },
                     onDeleteFunction = { idFunkcie -> viewModel.removeChannelFunction(idFunkcie) },
-                    // ✅ TENTO RIADOK TREBA DOPLNIŤ
                     onMoveFunction = { from, to -> viewModel.moveChannelFunction(from, to) }
                 )
             }
@@ -305,9 +307,11 @@ private fun AllContactsView(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class) // <- PRIDAJTE TENTO IMPORT PRE ANIMATEITEMPLACEMENT
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ChannelDetailView(
+    // ✅ PRIDAJTE TENTO RIADOK
+    viewModel: ContactsViewModel,
     channelName: String,
     functions: List<ChannelFunction>,
     isEditMode: Boolean,
@@ -381,18 +385,26 @@ private fun ChannelDetailView(
         } else {
             // Každá funkcia je teraz ReorderableItem
             items(items = functions, key = { it.id }) { function ->
+                // KROK 1: Vytvoríme si pomocné lambda funkcie PRED volaním ReorderableItem
+                val onUpdateFunction = { newTitle: String, newNotes: String? ->
+                    viewModel.updateChannelFunction(function.id, newTitle, newNotes)
+                }
+                val onDeleteFunctionLambda = { onDeleteFunction(function.id) }
+
                 ReorderableItem(
                     reorderableState = reorderState,
                     key = function.id
                 ) {
+                    // KROK 2: Použijeme naše pripravené funkcie
                     ChannelFunctionCard(
                         function = function,
                         isEditMode = isEditMode,
-                        onDelete = { onDeleteFunction(function.id) },
+                        onDelete = onDeleteFunctionLambda, // Použijeme pomocnú funkciu
+                        onUpdate = onUpdateFunction,       // Použijeme pomocnú funkciu
                         modifier = if (isEditMode) {
                             Modifier
                                 .detectReorderAfterLongPress(reorderState)
-                                .animateItemPlacement() // <-- Krásna animácia presunu
+                                .animateItemPlacement()
                         } else {
                             Modifier.animateItemPlacement()
                         }
@@ -423,9 +435,11 @@ private fun ChannelDetailView(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ChannelFunctionCard(
-    function: ChannelFunction, isEditMode: Boolean,
-    modifier: Modifier = Modifier,
-    onDelete: () -> Unit,
+    function: ChannelFunction,
+    isEditMode: Boolean,
+    modifier: Modifier = Modifier, onDelete: () -> Unit,
+    // Nový parameter pre aktualizáciu
+    onUpdate: (title: String, notes: String?) -> Unit,
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -435,19 +449,37 @@ private fun ChannelFunctionCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 8.dp) // Spodný padding pre tlačidlá
+                .padding(bottom = 8.dp)
         ) {
             // --- HORNÁ ČASŤ S NÁZVOM A TLAČIDLOM ZMAZAŤ ---
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(start = 16.dp, end = 4.dp, top = 12.dp)
+                modifier = Modifier.padding(start = 16.dp, end = 4.dp, top = 4.dp)
             ) {
-                Text(
-                    text = function.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
+                // ✅ Logika na prepínanie medzi Text a TextField pre NÁZOV
+                if (isEditMode) {
+                    BasicTextField(
+                        value = function.title,
+                        onValueChange = { newTitle -> onUpdate(newTitle, function.notes) },
+                        textStyle = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant // Farba textu
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(vertical = 12.dp)
+                    )
+                } else {
+                    Text(
+                        text = function.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(vertical = 12.dp)
+                    )
+                }
+
                 if (isEditMode) {
                     IconButton(onClick = onDelete) {
                         Icon(Icons.Default.Clear, "Zmazať funkciu", tint = Color.Gray)
@@ -456,22 +488,49 @@ private fun ChannelFunctionCard(
             }
 
             // --- POZNÁMKY K FUNKCII ---
-            function.notes?.takeIf { it.isNotBlank() }?.let { notes ->
-                Text(
-                    text = notes,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontStyle = FontStyle.Italic,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 12.dp)
+            // ✅ Logika na prepínanie medzi Text a TextField pre POZNÁMKY
+            if (isEditMode) {
+                BasicTextField(
+                    value = function.notes ?: "",
+                    onValueChange = { newNotes -> onUpdate(function.title, newNotes) },
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        fontStyle = FontStyle.Italic,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+                    decorationBox = { innerTextField ->
+                        if (function.notes.isNullOrBlank()) {
+                            Text(
+                                "Pridať poznámku...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontStyle = FontStyle.Italic,
+                                color = Color.Gray
+                            )
+                        }
+                        innerTextField()
+                    }
                 )
+            } else {
+                function.notes?.takeIf { it.isNotBlank() }?.let { notes ->
+                    Text(
+                        text = notes,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontStyle = FontStyle.Italic,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 12.dp)
+                    )
+                }
             }
+
 
             // --- SEPARATOR (ČIARA) ---
             if (function.assignedPeople.isNotEmpty()) {
                 Divider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
             }
 
-            // --- ZOZNAM PRIRADENÝCH OSÔB ---
+            // --- ZOZNAM PRIRADENÝCH OSÔB (zatiaľ bez zmeny) ---
             if (function.assignedPeople.isEmpty() && !isEditMode) {
                 Text(
                     text = "Nikto nie je priradený",
@@ -491,7 +550,7 @@ private fun ChannelFunctionCard(
             // --- TLAČIDLO "PRIDAŤ OSOBU" V EDITAČNOM MÓDE ---
             if (isEditMode) {
                 TextButton(
-                    onClick = { /* TODO: Pridať osobu */ },
+                    onClick = { /* TODO */ },
                     modifier = Modifier.padding(start = 8.dp, top = 4.dp)
                 ) {
                     Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))

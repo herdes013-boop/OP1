@@ -143,6 +143,27 @@ class ContactsViewModel : ViewModel() {
         // Poznámka: Toto zatiaľ mení poradie iba v pamäti.
     }
 
+    /**
+     * Aktualizuje existujúcu funkciu v zozname.
+     * @param functionId ID funkcie, ktorú treba aktualizovať.
+     * @param newTitle Nový názov funkcie.
+     * @param newNotes Nová poznámka k funkcii.
+     */
+    fun updateChannelFunction(functionId: String, newTitle: String, newNotes: String?) {
+        _channelFunctions.update { currentFunctions ->
+            // Vytvoríme nový zoznam (mapovaním cez starý)
+            currentFunctions.map { function ->
+                // Ak nájdeme správnu funkciu podľa ID, vrátime jej aktualizovanú verziu
+                if (function.id == functionId) {
+                    function.copy(title = newTitle, notes = newNotes)
+                } else {
+                    // Inak vrátime pôvodnú funkciu bez zmeny
+                    function
+                }
+            }
+        }
+    }
+
     // Načítanie dát pre zvolený kanál
     private fun loadChannelFunctions(channelName: String) {
         // Z našej mapy ukážkových dát vyberieme tie správne
