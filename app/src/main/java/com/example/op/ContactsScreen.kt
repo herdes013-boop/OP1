@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -279,6 +280,23 @@ private fun AllContactsView(
 ) {
     val searchQuery = viewModel.searchQuery
     val contacts = viewModel.displayedContacts
+    val isFilterDialogVisible = viewModel.isFilterDialogVisible
+    val activeFilters by viewModel.activeChannelFilters.collectAsState()
+    val allChannels = viewModel.channelOptions.filter { it != "Všetky" } // Odstránime "Všetky" z možností
+
+    // ✅ c) Podmienené zobrazenie dialógu
+    if (isFilterDialogVisible) {
+        FilterContactsDialog(
+            allChannels = allChannels,
+            activeFilters = activeFilters,
+            onDismiss = { viewModel.onFilterDialogDismiss() },
+            onChannelSelected = { channel, isSelected ->
+                viewModel.onFilterChannelSelected(channel, isSelected)
+            },
+            onClearFilters = { viewModel.clearAllFilters() }
+        )
+    }
+
 
     Column(modifier = modifier) {
         SearchBar(
@@ -303,8 +321,13 @@ private fun AllContactsView(
                     }
                 } else {
                     // Ak je vyhľadávanie prázdne, zobraz ikonu filtra
-                    IconButton(onClick = { /* TODO: Otvoriť dialóg s filtrami */ }) {
-                        Icon(Icons.Filled.FilterList, contentDescription = "Filtrovať zoznam", tint = Color.Black)
+                    IconButton(onClick = { viewModel.onFilterDialogOpen() }) {
+                        Icon(
+                            Icons.Filled.FilterList,
+                            contentDescription = "Filtrovať zoznam",
+                            // Zmeníme farbu, ak je filter aktívny
+                            tint = if (activeFilters.isEmpty()) Color.Black else MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             },
@@ -787,6 +810,58 @@ private fun AddPersonToFunctionDialog(
         confirmButton = {
             TextButton(onClick = onDismiss) {
                 Text("Zrušiť")
+            }
+        }
+    )
+}
+
+@Composable
+private fun FilterContactsDialog(
+    allChannels: List<String>,
+    activeFilters: Set<String>,
+    onDismiss: () -> Unit,
+    onChannelSelected: (String, Boolean) -> Unit,
+    onClearFilters: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Filtrovať podľa kanála") },
+        text = {
+            LazyColumn {
+                items(allChannels) { channel ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                onChannelSelected(channel, channel !in activeFilters)
+                            }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = channel in activeFilters,
+                            onCheckedChange = { isChecked ->
+                                onChannelSelected(channel, isChecked)
+                            }
+                        )
+                        Spacer(Modifier.width(16.dp))
+                        Text(text = channel)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Zavrieť")
+            }
+        },
+        dismissButton = {
+            // Tlačidlo na zrušenie všetkých filtrov
+            TextButton(onClick = {
+                onClearFilters()
+                onDismiss() // a zatvoríme dialóg
+            }) {
+                Text("Zrušiť filtre")
             }
         }
     )

@@ -77,17 +77,62 @@ class ContactsViewModel : ViewModel() {
     var searchQuery by mutableStateOf("")
         private set
 
+    var isFilterDialogVisible by mutableStateOf(false)
+        private set
+
+    private val _activeChannelFilters = MutableStateFlow<Set<String>>(emptySet())
+    val activeChannelFilters = _activeChannelFilters.asStateFlow()
+
+    fun onFilterDialogDismiss() {
+        isFilterDialogVisible = false
+    }
+
+    fun onFilterDialogOpen() {
+        isFilterDialogVisible = true
+    }
+
+    fun onFilterChannelSelected(channel: String, isSelected: Boolean) {
+        _activeChannelFilters.update { currentFilters ->
+            if (isSelected) {
+                currentFilters + channel
+            } else {
+                currentFilters - channel
+            }
+        }
+    }
+
+    fun clearAllFilters() {
+        _activeChannelFilters.value = emptySet()
+    }
+// =============================================================
+// ✅ KONIEC NOVÉHO KÓDU
+// =============================================================
+
+
+
+
     val displayedContacts: List<ContactItem> by derivedStateOf {
-        val currentFilter = selectedTabFilter.value // ✅ PRIDALI SME .value
+        val currentFilter = selectedTabFilter.value
         val currentQuery = searchQuery.trim().lowercase()
-        if (currentFilter != ALL_CHANNELS_FILTER) { // Teraz už porovnávame String so Stringom
+        val activeFilters = activeChannelFilters.value // ✅ Načítame aktívne filtre
+
+        if (currentFilter != ALL_CHANNELS_FILTER) {
             return@derivedStateOf emptyList()
         }
+
         contacts.filter { contact ->
+            // Podmienka pre vyhľadávací dotaz (zostáva rovnaká)
             val matchesQuery = if (currentQuery.isBlank()) true else
                 contact.getFullName().lowercase().contains(currentQuery) ||
                         contact.function.orEmpty().lowercase().contains(currentQuery)
-            matchesQuery
+
+            // ✅ Podmienka pre filter kanálov
+            // Kontakt musí patriť do jedného z vybraných kanálov.
+            // Ak je zoznam filtrov prázdny, táto podmienka platí pre všetky kontakty.
+            val matchesFilter = activeFilters.isEmpty() || contact.channel in activeFilters
+
+            // Kontakt sa zobrazí, iba ak spĺňa obe podmienky
+            matchesQuery && matchesFilter
         }
     }
 
