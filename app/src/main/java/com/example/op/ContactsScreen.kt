@@ -1,6 +1,7 @@
 package com.example.op
 
 // ... (všetky importy zostávajú) ...
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -53,6 +54,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.compose.runtime.getValue
+import org.burnoutcrew.reorderable.ReorderableItem
+import org.burnoutcrew.reorderable.detectReorderAfterLongPress
+import org.burnoutcrew.reorderable.rememberReorderableLazyListState
+import org.burnoutcrew.reorderable.reorderable
 
 // --- Tieto funkcie zostávajú bez zmeny ---
 fun getChannelIcon(channel: String?): ImageVector {
@@ -194,9 +199,10 @@ fun ContactsScreen(
                     functions = channelFunctions,
                     isEditMode = isEditMode,
                     modifier = Modifier.fillMaxSize(),
-                    // ✅ FINÁLNE PREPOJENIE S VIEWMODELOM
                     onAddFunction = { nazov -> viewModel.addChannelFunction(nazov) },
-                    onDeleteFunction = { idFunkcie -> viewModel.removeChannelFunction(idFunkcie) }
+                    onDeleteFunction = { idFunkcie -> viewModel.removeChannelFunction(idFunkcie) },
+                    // ✅ TENTO RIADOK TREBA DOPLNIŤ
+                    onMoveFunction = { from, to -> viewModel.moveChannelFunction(from, to) }
                 )
             }
 
@@ -296,6 +302,7 @@ private fun AllContactsView(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class) // <- PRIDAJTE TENTO IMPORT PRE ANIMATEITEMPLACEMENT
 @Composable
 private fun ChannelDetailView(
     channelName: String,
@@ -303,17 +310,32 @@ private fun ChannelDetailView(
     isEditMode: Boolean,
     modifier: Modifier = Modifier,
     onAddFunction: (String) -> Unit,
-    onDeleteFunction: (String) -> Unit
+    onDeleteFunction: (String) -> Unit,
+    onMoveFunction: (Int, Int) -> Unit,
 ) {
     // =========================================================================
     // ✅ ÚPRAVA: Celý obsah je teraz vo veľkej karte
     // =========================================================================
+    val reorderState = rememberReorderableLazyListState(
+        onMove = { from, to ->
+            // Indexy sú tu zložitejšie, pretože máme v zozname aj hlavičku.
+            // Musíme ich posunúť o 1, aby sme pracovali len s indexmi funkcií.
+            // Tiež kontrolujeme, či sa nepresúva hlavička.
+            if (from.index > 0 && to.index > 0) {
+                onMoveFunction(from.index - 1, to.index - 1)
+            }
+        }
+    )
+
     LazyColumn(
-        // Vonkajší LazyColumn zabezpečí rolovanie a hlavný padding
-        modifier = modifier.fillMaxSize(),
+        state = reorderState.listState,
+        modifier = modifier
+            .fillMaxSize()
+            .reorderable(reorderState), // Umožní presúvanie pre celý zoznam
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 80.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp) // Medzery medzi všetkými prvkami
     ) {
-        // 1. HLAVIČKA KANÁLA - zostáva mimo karty, ako výrazný nadpis
+        // 1. HLAVIČKA KANÁLA - je prvý item, ktorý sa nedá presúvať
         item {
             val titleColor = when (channelName) {
                 "Jednotka" -> com.example.op.ui.theme.TelekomMagenta
@@ -322,6 +344,7 @@ private fun ChannelDetailView(
                 else -> Color.Unspecified
             }
             Text(
+                // ... kód pre Text zostáva bez zmeny ...
                 text = when (channelName) {
                     "Jednotka" -> ":1"
                     "Dvojka" -> ":2"
@@ -339,52 +362,49 @@ private fun ChannelDetailView(
             )
         }
 
-        // 2. HLAVNÁ KARTA S OBSAHOM
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-            ) {
-                // Column, ktorý drží všetky menšie karty (bubliny)
-                Column(
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp) // Medzery medzi bublinami
+        // 2. ZOZNAM FUNKCIÍ - teraz priamo v `items`
+        if (functions.isEmpty() && !isEditMode) {
+            item {
+                Card(
+                    // ... kód pre prázdnu kartu zostáva rovnaký ...
                 ) {
-                    // Zobrazenie bublín alebo prázdnej správy
-                    if (functions.isEmpty() && !isEditMode) {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                "Pre tento kanál zatiaľ nie sú definované žiadne funkcie.",
-                                textAlign = TextAlign.Center,
-                                color = Color.Gray
-                            )
-                        }
-                    } else {
-                        // Pre každú funkciu zobrazíme našu bublinu
-                        functions.forEach { function ->
-                            ChannelFunctionCard(
-                                function = function,
-                                isEditMode = isEditMode,
-                                onDelete = { onDeleteFunction(function.id) }
-                            )
-                        }
+                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
+                        Text("Pre tento kanál zatiaľ nie sú definované žiadne funkcie.", textAlign = TextAlign.Center, color = Color.Gray)
                     }
+                }
+            }
+        } else {
+            // Každá funkcia je teraz ReorderableItem
+            items(items = functions, key = { it.id }) { function ->
+                ReorderableItem(
+                    reorderableState = reorderState,
+                    key = function.id
+                ) {
+                    ChannelFunctionCard(
+                        function = function,
+                        isEditMode = isEditMode,
+                        onDelete = { onDeleteFunction(function.id) },
+                        modifier = if (isEditMode) {
+                            Modifier.detectReorderAfterLongPress(reorderState)
+                                .animateItemPlacement() // <-- Krásna animácia presunu
+                        } else {
+                            Modifier.animateItemPlacement()
+                        }
+                    )
+                }
+            }
+        }
 
-                    // Tlačidlo "Pridať novú funkciu" na konci vnútri karty
-                    if (isEditMode) {
-                        TextButton(
-                            onClick = { onAddFunction("Nová funkcia") },
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                        ) {
-                            Icon(Icons.Default.Add, null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Pridať novú funkciu")
-                        }
-                    }
+        // 3. TLAČIDLO "PRIDAŤ" - je posledný item
+        if (isEditMode) {
+            item {
+                TextButton(
+                    onClick = { onAddFunction("Nová funkcia") },
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                ) {
+                    Icon(Icons.Default.Add, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Pridať novú funkciu")
                 }
             }
         }

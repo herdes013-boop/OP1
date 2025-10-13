@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 // --------------------------------------------------
@@ -121,6 +122,21 @@ class ContactsViewModel : ViewModel() {
     fun removeChannelFunction(functionId: String) {
         // Vytvoríme nový zoznam, v ktorom budú všetky funkcie OKREM tej, ktorú chceme zmazať
         _channelFunctions.value = _channelFunctions.value.filterNot { it.id == functionId }
+    }
+    fun moveChannelFunction(from: Int, to: Int) {
+        // Kontrola, či sú indexy platné pre aktuálny zoznam
+        val currentFunctions = _channelFunctions.value
+        if (from < 0 || to < 0 || from >= currentFunctions.size || to >= currentFunctions.size) {
+            return
+        }
+
+        _channelFunctions.update {
+            it.toMutableList().apply {
+                val item = removeAt(from)
+                add(to, item)
+            }
+        }
+        // Poznámka: Toto zatiaľ mení poradie iba v pamäti.
     }
 
     // Načítanie dát pre zvolený kanál
