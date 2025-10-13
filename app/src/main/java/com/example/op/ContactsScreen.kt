@@ -2,6 +2,7 @@ package com.example.op
 
 // ... (všetky importy zostávajú) ...
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +29,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SportsSoccer
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
@@ -57,6 +59,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.font.FontStyle
 import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.detectReorderAfterLongPress
@@ -135,6 +140,9 @@ fun ContactsScreen(
     val ALL_CHANNELS_FILTER = "Všetky"
     val selectedTabIndex = categories.indexOf(selectedTabFilter)
     val isEditMode = viewModel.isEditMode
+    var showAddPersonDialog by remember { mutableStateOf(false) }
+    var selectedFunctionForDialog by remember { mutableStateOf<ChannelFunction?>(null) }
+    // ✅ KONIEC: Nový stav pre dialóg
 
     // Tento blok sa stará o správne zobrazenie hornej lišty
     LaunchedEffect(selectedTabFilter, isEditMode) {
@@ -199,7 +207,6 @@ fun ContactsScreen(
                 )
             } else {
                 ChannelDetailView(
-                    // ✅ PRIDAJTE TENTO RIADOK
                     viewModel = viewModel,
                     channelName = selectedTabFilter,
                     functions = channelFunctions,
@@ -207,9 +214,28 @@ fun ContactsScreen(
                     modifier = Modifier.fillMaxSize(),
                     onAddFunction = { nazov -> viewModel.addChannelFunction(nazov) },
                     onDeleteFunction = { idFunkcie -> viewModel.removeChannelFunction(idFunkcie) },
-                    onMoveFunction = { from, to -> viewModel.moveChannelFunction(from, to) }
+                    onMoveFunction = { from, to -> viewModel.moveChannelFunction(from, to) },
+                    // ✅ TENTO RIADOK SEM PRIDAJTE
+                    onAddPersonClick = { function ->
+                        selectedFunctionForDialog = function
+                        showAddPersonDialog = true
+                    }
                 )
             }
+
+            if (showAddPersonDialog && selectedFunctionForDialog != null) {
+                val assignedIds = selectedFunctionForDialog!!.assignedPeople.map { it.contactId }
+                AddPersonToFunctionDialog(
+                    allContacts = viewModel.contacts,
+                    assignedPeopleIds = assignedIds,
+                    onDismiss = { showAddPersonDialog = false },
+                    onPersonSelected = { contact ->
+                        viewModel.assignPersonToFunction(selectedFunctionForDialog!!.id, contact)
+                        showAddPersonDialog = false // Po výbere dialóg zatvoríme
+                    }
+                )
+            }
+            // ✅ KONIEC: Kód na zobrazenie dialógu
 
             FloatingActionButton(
                 onClick = {
@@ -310,7 +336,6 @@ private fun AllContactsView(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ChannelDetailView(
-    // ✅ PRIDAJTE TENTO RIADOK
     viewModel: ContactsViewModel,
     channelName: String,
     functions: List<ChannelFunction>,
@@ -319,15 +344,10 @@ private fun ChannelDetailView(
     onAddFunction: (String) -> Unit,
     onDeleteFunction: (String) -> Unit,
     onMoveFunction: (Int, Int) -> Unit,
+    onAddPersonClick: (ChannelFunction) -> Unit // Nový parameter
 ) {
-    // =========================================================================
-    // ✅ ÚPRAVA: Celý obsah je teraz vo veľkej karte
-    // =========================================================================
     val reorderState = rememberReorderableLazyListState(
         onMove = { from, to ->
-            // Indexy sú tu zložitejšie, pretože máme v zozname aj hlavičku.
-            // Musíme ich posunúť o 1, aby sme pracovali len s indexmi funkcií.
-            // Tiež kontrolujeme, či sa nepresúva hlavička.
             if (from.index > 0 && to.index > 0) {
                 onMoveFunction(from.index - 1, to.index - 1)
             }
@@ -338,11 +358,11 @@ private fun ChannelDetailView(
         state = reorderState.listState,
         modifier = modifier
             .fillMaxSize()
-            .reorderable(reorderState), // Umožní presúvanie pre celý zoznam
+            .reorderable(reorderState),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 80.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp) // Medzery medzi všetkými prvkami
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // 1. HLAVIČKA KANÁLA - je prvý item, ktorý sa nedá presúvať
+        // 1. HLAVIČKA KANÁLA
         item {
             val titleColor = when (channelName) {
                 "Jednotka" -> com.example.op.ui.theme.TelekomMagenta
@@ -351,7 +371,6 @@ private fun ChannelDetailView(
                 else -> Color.Unspecified
             }
             Text(
-                // ... kód pre Text zostáva bez zmeny ...
                 text = when (channelName) {
                     "Jednotka" -> ":1"
                     "Dvojka" -> ":2"
@@ -369,11 +388,13 @@ private fun ChannelDetailView(
             )
         }
 
-        // 2. ZOZNAM FUNKCIÍ - teraz priamo v `items`
+        // 2. ZOZNAM FUNKCIÍ
         if (functions.isEmpty() && !isEditMode) {
             item {
                 Card(
-                    // ... kód pre prázdnu kartu zostáva rovnaký ...
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Box(modifier = Modifier
                         .fillMaxWidth()
@@ -383,9 +404,7 @@ private fun ChannelDetailView(
                 }
             }
         } else {
-            // Každá funkcia je teraz ReorderableItem
             items(items = functions, key = { it.id }) { function ->
-                // KROK 1: Vytvoríme si pomocné lambda funkcie PRED volaním ReorderableItem
                 val onUpdateFunction = { newTitle: String, newNotes: String? ->
                     viewModel.updateChannelFunction(function.id, newTitle, newNotes)
                 }
@@ -395,12 +414,12 @@ private fun ChannelDetailView(
                     reorderableState = reorderState,
                     key = function.id
                 ) {
-                    // KROK 2: Použijeme naše pripravené funkcie
                     ChannelFunctionCard(
                         function = function,
                         isEditMode = isEditMode,
-                        onDelete = onDeleteFunctionLambda, // Použijeme pomocnú funkciu
-                        onUpdate = onUpdateFunction,       // Použijeme pomocnú funkciu
+                        onDelete = onDeleteFunctionLambda,
+                        onUpdate = onUpdateFunction,
+                        onAddPersonClick = { onAddPersonClick(function) }, // Posunieme akciu ďalej
                         modifier = if (isEditMode) {
                             Modifier
                                 .detectReorderAfterLongPress(reorderState)
@@ -413,7 +432,7 @@ private fun ChannelDetailView(
             }
         }
 
-        // 3. TLAČIDLO "PRIDAŤ" - je posledný item
+        // 3. TLAČIDLO "PRIDAŤ FUNKCIU"
         if (isEditMode) {
             item {
                 TextButton(
@@ -437,9 +456,10 @@ private fun ChannelDetailView(
 private fun ChannelFunctionCard(
     function: ChannelFunction,
     isEditMode: Boolean,
-    modifier: Modifier = Modifier, onDelete: () -> Unit,
-    // Nový parameter pre aktualizáciu
+    modifier: Modifier = Modifier,
+    onDelete: () -> Unit,
     onUpdate: (title: String, notes: String?) -> Unit,
+    onAddPersonClick: () -> Unit
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -456,14 +476,13 @@ private fun ChannelFunctionCard(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(start = 16.dp, end = 4.dp, top = 4.dp)
             ) {
-                // ✅ Logika na prepínanie medzi Text a TextField pre NÁZOV
                 if (isEditMode) {
                     BasicTextField(
                         value = function.title,
                         onValueChange = { newTitle -> onUpdate(newTitle, function.notes) },
                         textStyle = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant // Farba textu
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         ),
                         modifier = Modifier
                             .weight(1f)
@@ -488,7 +507,6 @@ private fun ChannelFunctionCard(
             }
 
             // --- POZNÁMKY K FUNKCII ---
-            // ✅ Logika na prepínanie medzi Text a TextField pre POZNÁMKY
             if (isEditMode) {
                 BasicTextField(
                     value = function.notes ?: "",
@@ -524,13 +542,12 @@ private fun ChannelFunctionCard(
                 }
             }
 
-
             // --- SEPARATOR (ČIARA) ---
             if (function.assignedPeople.isNotEmpty()) {
                 Divider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
             }
 
-            // --- ZOZNAM PRIRADENÝCH OSÔB (zatiaľ bez zmeny) ---
+            // --- ZOZNAM PRIRADENÝCH OSÔB ---
             if (function.assignedPeople.isEmpty() && !isEditMode) {
                 Text(
                     text = "Nikto nie je priradený",
@@ -550,7 +567,7 @@ private fun ChannelFunctionCard(
             // --- TLAČIDLO "PRIDAŤ OSOBU" V EDITAČNOM MÓDE ---
             if (isEditMode) {
                 TextButton(
-                    onClick = { /* TODO */ },
+                    onClick = onAddPersonClick, // Použijeme parameter
                     modifier = Modifier.padding(start = 8.dp, top = 4.dp)
                 ) {
                     Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
@@ -609,4 +626,53 @@ private fun AssignedPersonRow(
             }
         }
     }
+}
+
+@Composable
+private fun AddPersonToFunctionDialog(
+    allContacts: List<ContactItem>,
+    assignedPeopleIds: List<String>,
+    onDismiss: () -> Unit,
+    onPersonSelected: (ContactItem) -> Unit,
+) {
+    // Zobrazíme iba tie kontakty, ktoré ešte nie sú v danej funkcii priradené
+    val availableContacts = allContacts.filter { contact ->
+        contact.id.toString() !in assignedPeopleIds
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Pridať osobu") },
+        text = {
+            if (availableContacts.isEmpty()) {
+                Text("Všetky dostupné kontakty sú už priradené.")
+            } else {
+                LazyColumn {
+                    items(availableContacts, key = { it.id }) { contact ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onPersonSelected(contact) } // Po kliknutí vyberieme osobu
+                                .padding(vertical = 12.dp, horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = getChannelIcon(contact.channel),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(Modifier.width(16.dp))
+                            Text(contact.getFullName(), style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Zrušiť")
+            }
+        }
+    )
 }

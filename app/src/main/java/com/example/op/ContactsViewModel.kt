@@ -164,6 +164,41 @@ class ContactsViewModel : ViewModel() {
         }
     }
 
+    /**
+     * Priradí existujúci kontakt ku konkrétnej funkcii.
+     * @param functionId ID funkcie, do ktorej pridávame osobu.
+     * @param contact Pridávaný kontakt (typu ContactItem).
+     */
+    fun assignPersonToFunction(functionId: String, contact: ContactItem) {
+        _channelFunctions.update { currentFunctions ->
+            currentFunctions.map { function ->
+                // Nájdi správnu funkciu
+                if (function.id == functionId) {
+                    // Skontroluj, či už osoba nie je priradená, aby sme nemali duplicity
+                    val alreadyAssigned = function.assignedPeople.any { it.contactId == contact.id.toString() }
+
+                    if (alreadyAssigned) {
+                        // Ak už je priradená, vráť funkciu bez zmeny
+                        function
+                    } else {
+                        // Vytvor novú priradenú osobu z ContactItem
+                        val newPerson = AssignedPerson(
+                            contactId = contact.id.toString(),
+                            name = contact.getFullName(),
+                            phone = contact.phone,
+                            notes = "" // Poznámka je na začiatku prázdna
+                        )
+                        // Vráť kópiu funkcie s novou osobou v zozname
+                        function.copy(assignedPeople = function.assignedPeople + newPerson)
+                    }
+                } else {
+                    // Toto nie je funkcia, ktorú hľadáme, vráť ju bez zmeny
+                    function
+                }
+            }
+        }
+    }
+
     // Načítanie dát pre zvolený kanál
     private fun loadChannelFunctions(channelName: String) {
         // Z našej mapy ukážkových dát vyberieme tie správne
