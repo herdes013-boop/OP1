@@ -298,21 +298,22 @@ private fun AllContactsView(
 
 @Composable
 private fun ChannelDetailView(
-    channelName: String, functions: List<ChannelFunction>,
+    channelName: String,
+    functions: List<ChannelFunction>,
     isEditMode: Boolean,
     modifier: Modifier = Modifier,
-    // Tieto parametre chýbali, teraz ich pridávame:
     onAddFunction: (String) -> Unit,
-    onDeleteFunction: (String) -> Unit,
+    onDeleteFunction: (String) -> Unit
 ) {
+    // =========================================================================
+    // ✅ ÚPRAVA: Celý obsah je teraz vo veľkej karte
+    // =========================================================================
     LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 8.dp), // Padding pre celý zoznam
-        contentPadding = PaddingValues(top = 8.dp, bottom = 80.dp), // Priestor hore a dole
-        verticalArrangement = Arrangement.spacedBy(8.dp) // Medzera medzi bublinami
+        // Vonkajší LazyColumn zabezpečí rolovanie a hlavný padding
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 80.dp),
     ) {
-        // Farebný nadpis kanála
+        // 1. HLAVIČKA KANÁLA - zostáva mimo karty, ako výrazný nadpis
         item {
             val titleColor = when (channelName) {
                 "Jednotka" -> com.example.op.ui.theme.TelekomMagenta
@@ -338,43 +339,52 @@ private fun ChannelDetailView(
             )
         }
 
-        // Zobrazenie bublín alebo prázdnej správy
-        if (functions.isEmpty() && !isEditMode) {
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillParentMaxSize()
-                        .padding(horizontal = 16.dp),
-                    contentAlignment = Alignment.Center
+        // 2. HLAVNÁ KARTA S OBSAHOM
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                // Column, ktorý drží všetky menšie karty (bubliny)
+                Column(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp) // Medzery medzi bublinami
                 ) {
-                    Text("Pre tento kanál zatiaľ nie sú definované žiadne funkcie.", textAlign = TextAlign.Center)
-                }
-            }
-        } else {
-            // Pre každú funkciu zobrazíme našu novú bublinu
-            items(functions, key = { it.id }) { function ->
-                ChannelFunctionCard(
-                    function = function,
-                    isEditMode = isEditMode,
-                    // Teraz voláme onDelete, ktoré sme dostali ako parameter
-                    onDelete = { onDeleteFunction(function.id) }
-                )
-            }
-        }
+                    // Zobrazenie bublín alebo prázdnej správy
+                    if (functions.isEmpty() && !isEditMode) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "Pre tento kanál zatiaľ nie sú definované žiadne funkcie.",
+                                textAlign = TextAlign.Center,
+                                color = Color.Gray
+                            )
+                        }
+                    } else {
+                        // Pre každú funkciu zobrazíme našu bublinu
+                        functions.forEach { function ->
+                            ChannelFunctionCard(
+                                function = function,
+                                isEditMode = isEditMode,
+                                onDelete = { onDeleteFunction(function.id) }
+                            )
+                        }
+                    }
 
-        // Tlačidlo "Pridať novú funkciu" na konci
-        if (isEditMode) {
-            item {
-                TextButton(
-                    // Teraz voláme onAddFunction, ktoré sme dostali ako parameter
-                    onClick = { onAddFunction("Nová funkcia") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                ) {
-                    Icon(Icons.Default.Add, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Pridať novú funkciu")
+                    // Tlačidlo "Pridať novú funkciu" na konci vnútri karty
+                    if (isEditMode) {
+                        TextButton(
+                            onClick = { onAddFunction("Nová funkcia") },
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                        ) {
+                            Icon(Icons.Default.Add, null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Pridať novú funkciu")
+                        }
+                    }
                 }
             }
         }
