@@ -67,12 +67,13 @@ fun getChannelIcon(channel: String?): ImageVector {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContactListItem(contact: ContactItem, onItemClick: () -> Unit) {
+    // ✅ ÚPRAVA PRE ZJEDNOTENIE VZHĽADU
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth(), // Odstránili sme vertikálny padding priamo tu
         onClick = onItemClick,
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        // Použijeme rovnaké farby a tieň ako inde v aplikácii
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Row(
             modifier = Modifier
@@ -273,7 +274,8 @@ private fun AllContactsView(
         } else {
             LazyColumn(
                 modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 80.dp)
+                contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 80.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp) // ✅ DOPLŇTE TENTO RIADOK
             ) {
                 items(contacts, key = { it.id }) { contact ->
                     ContactListItem(
