@@ -44,6 +44,8 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -358,7 +360,7 @@ private fun ChannelDetailView(
     onAddPersonClick: (ChannelFunction) -> Unit,
     // ✅ TENTO RIADOK SEM PRIDAJTE
     onRemovePersonClick: (functionId: String, personId: String) -> Unit,
-    onUpdatePersonNote: (functionId: String, personId: String, newNote: String) -> Unit
+    onUpdatePersonNote: (functionId: String, personId: String, newNote: String) -> Unit,
 ) {
     val reorderState = rememberReorderableLazyListState(
         onMove = { from, to ->
@@ -485,7 +487,7 @@ private fun ChannelFunctionCard(
     // ✅ TENTO RIADOK SEM PRIDAJTE
     onRemovePerson: (personId: String) -> Unit,
     // ✅ TENTO RIADOK SEM PRIDAJTE
-    onUpdatePersonNote: (personId: String, newNote: String) -> Unit
+    onUpdatePersonNote: (personId: String, newNote: String) -> Unit,
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -615,7 +617,7 @@ private fun ChannelFunctionCard(
 private fun AssignedPersonRow(
     person: AssignedPerson,
     isEditMode: Boolean,
-    onRemoveClick: () -> Unit,onNoteChange: (String) -> Unit // Nový parameter
+    onRemoveClick: () -> Unit, onNoteChange: (String) -> Unit, // Nový parameter
 ) {
     Row(
         modifier = Modifier
@@ -695,6 +697,7 @@ private fun AssignedPersonRow(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class) // Uistite sa, že máte tento OptIn
 @Composable
 private fun AddPersonToFunctionDialog(
     allContacts: List<ContactItem>,
@@ -702,35 +705,80 @@ private fun AddPersonToFunctionDialog(
     onDismiss: () -> Unit,
     onPersonSelected: (ContactItem) -> Unit,
 ) {
+    // ✅ KROK 1: Pridáme lokálny stav pre vyhľadávací text
+    var searchQuery by remember { mutableStateOf("") }
+
     // Zobrazíme iba tie kontakty, ktoré ešte nie sú v danej funkcii priradené
     val availableContacts = allContacts.filter { contact ->
         contact.id.toString() !in assignedPeopleIds
+    }
+
+    // ✅ KROK 2: Filtrujeme dostupné kontakty na základe vyhľadávania
+    val filteredContacts = if (searchQuery.isBlank()) {
+        availableContacts
+    } else {
+        availableContacts.filter {
+            it.getFullName().contains(searchQuery, ignoreCase = true)
+        }
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Pridať osobu") },
         text = {
-            if (availableContacts.isEmpty()) {
-                Text("Všetky dostupné kontakty sú už priradené.")
-            } else {
-                LazyColumn {
-                    items(availableContacts, key = { it.id }) { contact ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onPersonSelected(contact) } // Po kliknutí vyberieme osobu
-                                .padding(vertical = 12.dp, horizontal = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = getChannelIcon(contact.channel),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(Modifier.width(16.dp))
-                            Text(contact.getFullName(), style = MaterialTheme.typography.bodyLarge)
+            // ✅ KROK 3: Vložíme Column, aby sme mohli mať TextField aj zoznam pod sebou
+            Column {
+                // Vyhľadávacie pole
+                TextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    placeholder = { Text("Vyhľadať kontakt...") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Vymazať")
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        // Použijeme štandardné farby
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        disabledContainerColor = Color.Transparent,
+                    )
+                )
+
+                // Zoznam kontaktov
+                if (filteredContacts.isEmpty()) {
+                    Text(
+                        if (searchQuery.isNotBlank()) "Nenašiel sa žiadny zodpovedajúci kontakt."
+                        else "Všetky dostupné kontakty sú už priradené."
+                    )
+                } else {
+                    LazyColumn {
+                        // Použijeme už prefiltrovaný zoznam
+                        items(filteredContacts, key = { it.id }) { contact ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onPersonSelected(contact) }
+                                    .padding(vertical = 12.dp, horizontal = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = getChannelIcon(contact.channel),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(Modifier.width(16.dp))
+                                Text(contact.getFullName(), style = MaterialTheme.typography.bodyLarge)
+                            }
                         }
                     }
                 }
