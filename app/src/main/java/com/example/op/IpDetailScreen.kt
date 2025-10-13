@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IpDetailScreen(
     modifier: Modifier = Modifier,
@@ -73,12 +74,15 @@ fun IpDetailScreen(
             .fillMaxSize()
     ) {
         Column(
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
+            // Pridáme medzeru zhora
+            Spacer(modifier = Modifier.height(8.dp))
+
             // Zobrazujeme polia pre IpItem
             DetailItem(label = "Názov", value = ipItem.name)
             DetailItem(label = "IP Adresa", value = ipItem.ipAddress)
@@ -87,12 +91,15 @@ fun IpDetailScreen(
                     DetailItem(label = "Poznámky", value = it)
                 }
             }
+            // Pridáme medzeru zospodu
+            Spacer(modifier = Modifier.height(8.dp))
         }
 
-        // Dropdown menu pre Úpravu/Zmazanie
+        // Dropdown menu a AlertDialog zostávajú mimo hlavného stĺpca
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(top = 4.dp, end = 4.dp) // Odsadenie pre "MoreVert" ikonu
                 .wrapContentSize(Alignment.TopEnd)
         ) {
             DropdownMenu(
@@ -107,6 +114,7 @@ fun IpDetailScreen(
                     },
                     leadingIcon = { Icon(Icons.Default.Edit, "Upraviť") }
                 )
+                // Odstránime farbu priamo z textu, je to čistejšie
                 DropdownMenuItem(
                     text = { Text("Zmazať") },
                     onClick = {
@@ -117,6 +125,9 @@ fun IpDetailScreen(
                 )
             }
         }
+
+
+
     }
 
     // Dialóg pre potvrdenie zmazania

@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.padding
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PasswordDetailScreen(
     modifier: Modifier = Modifier,
@@ -80,13 +81,16 @@ fun PasswordDetailScreen(
             .then(modifier) // Spojí fillMaxSize s odsadením zhora
     ) {
         Column(
-            modifier = Modifier
+            // 'modifier' už obsahuje padding zo Scaffoldu, takže ho len aplikujeme.
+            // Pridáme vertikálne rolovanie a náš vlastný vnútorný padding.
+            modifier = modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState()) // Rolovanie
-                .padding(horizontal = 16.dp, vertical = 8.dp), // Vlastný padding pre obsah
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp), // Vnútorný horizontálny padding
+            verticalArrangement = Arrangement.spacedBy(18.dp) // Zväčšíme medzery medzi položkami
         ) {
-
+            // Pridáme medzeru zhora, aby obsah nebol nalepený na TopBar
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Názov služby
             DetailItem(label = "Názov služby", value = passwordItem.name)
@@ -114,15 +118,21 @@ fun PasswordDetailScreen(
                     DetailItem(label = "Poznámky", value = it)
                 }
             }
+
+            // Pridáme medzeru zospodu
+            Spacer(modifier = Modifier.height(8.dp))
         }
 
-        // Dropdown menu
+        // Dropdown menu a AlertDialog zostávajú v hlavnom @Composable
+        // ALE mimo hlavného stĺpca s obsahom.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(top = 4.dp, end = 4.dp) // Odsadenie pre "MoreVert" ikonu
                 .wrapContentSize(Alignment.TopEnd)
         ) {
             DropdownMenu(
+                // ... zvyšok menu zostáva nezmenený ...
                 expanded = showMenu,
                 onDismissRequest = { showMenu = false },
             ) {
@@ -134,8 +144,10 @@ fun PasswordDetailScreen(
                     },
                     leadingIcon = { Icon(Icons.Default.Edit, "Upraviť") }
                 )
+                // Tu ste mali v texte farbu, ale správne je ju dať na ikonu.
+                // Text sa prispôsobí téme, ale pre istotu som nechal aj color property.
                 DropdownMenuItem(
-                    text = { Text("Zmazať", color = MaterialTheme.colorScheme.error) },
+                    text = { Text("Zmazať") },
                     onClick = {
                         showMenu = false
                         showDeleteDialog = true
@@ -144,6 +156,10 @@ fun PasswordDetailScreen(
                 )
             }
         }
+
+
+        // Dialóg na potvrdenie zmazania zostáva bez zmeny...
+
     }
 
     // Dialóg na potvrdenie zmazania
