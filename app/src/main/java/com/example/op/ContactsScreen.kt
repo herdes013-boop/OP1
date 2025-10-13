@@ -245,19 +245,22 @@ fun ContactsScreen(
             }
             // ✅ KONIEC: Kód na zobrazenie dialógu
 
-            FloatingActionButton(
-                onClick = {
-                    viewModel.resetForm()
-                    navController.navigate(Routes.ADD_CONTACT)
-                },
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(16.dp)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Pridať")
-            }
-        }
-    }
+            if (selectedTabFilter == ALL_CHANNELS_FILTER) {
+                FloatingActionButton(
+                    onClick = {
+                        viewModel.resetForm()
+                        navController.navigate(Routes.ADD_CONTACT)
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(16.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Pridať kontakt")
+                }
+            } // Koniec `if` bloku - správne
+
+        } // Koniec `Box`
+    } // Koniec `Column`
 }
 
 
