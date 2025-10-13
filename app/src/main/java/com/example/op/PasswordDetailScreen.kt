@@ -75,91 +75,75 @@ fun PasswordDetailScreen(
     }
 
     // Vonkajší Box preberá odsadenie od Scaffold
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp) // Odsadenie karty od okrajov
+    ) {
+        // Všetky detaily sú teraz vo vnútri tejto karty
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            // Vnútorný stĺpec pre obsah karty
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 20.dp), // Vnútorný padding karty
+                verticalArrangement = Arrangement.spacedBy(18.dp) // Medzery medzi položkami
+            ) {
+                // Položky detailu zostávajú rovnaké, len sú teraz vo vnútri karty
+                DetailItem(label = "Názov služby", value = passwordItem.name)
+                passwordItem.username?.let {
+                    if (it.isNotBlank()) {
+                        DetailItem(label = "Používateľské meno / E-mail", value = it)
+                    }
+                }
+                PasswordDetailItem(label = "Heslo", password = passwordItem.password)
+                passwordItem.url?.let { urlString ->
+                    if (urlString.isNotBlank()) {
+                        UrlDetailItem(urlString = urlString)
+                    }
+                }
+                passwordItem.notes?.let {
+                    if (it.isNotBlank()) {
+                        DetailItem(label = "Poznámky", value = it)
+                    }
+                }
+            }
+        }
+    }
+
+// Dropdown menu zostáva vonku, aby sa správne zobrazilo nad všetkým
     Box(
         modifier = Modifier
-            .fillMaxSize()
-            .then(modifier) // Spojí fillMaxSize s odsadením zhora
+            .fillMaxWidth()
+            .padding(top = 4.dp, end = 4.dp) // Odsadenie pre "MoreVert" ikonu
+            .wrapContentSize(Alignment.TopEnd)
     ) {
-        Column(
-            // 'modifier' už obsahuje padding zo Scaffoldu, takže ho len aplikujeme.
-            // Pridáme vertikálne rolovanie a náš vlastný vnútorný padding.
-            modifier = modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp), // Vnútorný horizontálny padding
-            verticalArrangement = Arrangement.spacedBy(18.dp) // Zväčšíme medzery medzi položkami
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false },
         ) {
-            // Pridáme medzeru zhora, aby obsah nebol nalepený na TopBar
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Názov služby
-            DetailItem(label = "Názov služby", value = passwordItem.name)
-
-            // Používateľské meno
-            passwordItem.username?.let {
-                if (it.isNotBlank()) {
-                    DetailItem(label = "Používateľské meno / E-mail", value = it)
-                }
-            }
-
-            // Heslo
-            PasswordDetailItem(label = "Heslo", password = passwordItem.password)
-
-            // URL
-            passwordItem.url?.let { urlString ->
-                if (urlString.isNotBlank()) {
-                    UrlDetailItem(urlString = urlString)
-                }
-            }
-
-            // Poznámky
-            passwordItem.notes?.let {
-                if (it.isNotBlank()) {
-                    DetailItem(label = "Poznámky", value = it)
-                }
-            }
-
-            // Pridáme medzeru zospodu
-            Spacer(modifier = Modifier.height(8.dp))
+            DropdownMenuItem(
+                text = { Text("Upraviť") },
+                onClick = {
+                    showMenu = false
+                    onNavigateToEdit(passwordId)
+                },
+                leadingIcon = { Icon(Icons.Default.Edit, "Upraviť") }
+            )
+            DropdownMenuItem(
+                text = { Text("Zmazať") },
+                onClick = {
+                    showMenu = false
+                    showDeleteDialog = true
+                },
+                leadingIcon = { Icon(Icons.Default.Delete, "Zmazať", tint = MaterialTheme.colorScheme.error) }
+            )
         }
-
-        // Dropdown menu a AlertDialog zostávajú v hlavnom @Composable
-        // ALE mimo hlavného stĺpca s obsahom.
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 4.dp, end = 4.dp) // Odsadenie pre "MoreVert" ikonu
-                .wrapContentSize(Alignment.TopEnd)
-        ) {
-            DropdownMenu(
-                // ... zvyšok menu zostáva nezmenený ...
-                expanded = showMenu,
-                onDismissRequest = { showMenu = false },
-            ) {
-                DropdownMenuItem(
-                    text = { Text("Upraviť") },
-                    onClick = {
-                        showMenu = false
-                        onNavigateToEdit(passwordId)
-                    },
-                    leadingIcon = { Icon(Icons.Default.Edit, "Upraviť") }
-                )
-                // Tu ste mali v texte farbu, ale správne je ju dať na ikonu.
-                // Text sa prispôsobí téme, ale pre istotu som nechal aj color property.
-                DropdownMenuItem(
-                    text = { Text("Zmazať") },
-                    onClick = {
-                        showMenu = false
-                        showDeleteDialog = true
-                    },
-                    leadingIcon = { Icon(Icons.Default.Delete, "Zmazať", tint = MaterialTheme.colorScheme.error) }
-                )
-            }
-        }
-
-
-        // Dialóg na potvrdenie zmazania zostáva bez zmeny...
-
     }
 
     // Dialóg na potvrdenie zmazania
@@ -200,7 +184,7 @@ private fun DetailItem(label: String, value: String) {
             style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
             fontWeight = FontWeight.SemiBold,
         )
-        Divider()
+
     }
 }
 
@@ -236,7 +220,7 @@ private fun PasswordDetailItem(
             style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
             fontWeight = FontWeight.SemiBold
         )
-        Divider()
+
     }
 }
 
@@ -270,6 +254,6 @@ private fun UrlDetailItem(urlString: String) {
                 }
             }
         )
-        Divider()
+
     }
 }

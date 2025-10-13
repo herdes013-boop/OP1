@@ -17,21 +17,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.Color // Pridaný import pre pomocnú funkciu
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IpDetailScreen(
     modifier: Modifier = Modifier,
-    ipId: String, // Zmenené z passwordId
+    ipId: String,
     viewModel: PasswordsViewModel,
     sharedViewModel: SharedViewModel,
     onNavigateToEdit: (String) -> Unit,
     onBack: () -> Unit
 ) {
-    // Berieme si dáta z ipList
     val ips by viewModel.ipList.collectAsState()
 
-    // Hľadáme správnu položku v zozname IP adries
     val ipItem = remember(ipId, ips) {
         ips.find { it.id == ipId }
     }
@@ -42,7 +41,7 @@ fun IpDetailScreen(
     LaunchedEffect(ipItem) {
         sharedViewModel.setTopBarState(
             TopBarState(
-                title = ipItem?.name ?: "Detail IP", // Zmenený titulok
+                title = ipItem?.name ?: "Detail IP",
                 isVisible = true,
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -60,7 +59,6 @@ fun IpDetailScreen(
         )
     }
 
-    // Ak sa položka nenájde, zobrazíme chybu
     if (ipItem == null) {
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("Chyba: IP adresa sa nenašla.")
@@ -68,66 +66,68 @@ fun IpDetailScreen(
         return
     }
 
-    // Aplikujeme odsadenie od Scaffold
-    Box(
+    // =================================================================
+    // ✅ ÚPRAVA: Celý obsah vložíme do jednej hlavnej karty
+    // =================================================================
+    Column(
+        // Tento vonkajší Column zabezpečí rolovanie a odsadenie celej karty
         modifier = modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp) // Odsadenie karty od okrajov obrazovky
     ) {
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
         ) {
-            // Pridáme medzeru zhora
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Zobrazujeme polia pre IpItem
-            DetailItem(label = "Názov", value = ipItem.name)
-            DetailItem(label = "IP Adresa", value = ipItem.ipAddress)
-            ipItem.notes?.let {
-                if (it.isNotBlank()) {
-                    DetailItem(label = "Poznámky", value = it)
+            // Vnútorný Column pre obsah karty
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 20.dp), // Vnútorný padding karty
+                verticalArrangement = Arrangement.spacedBy(18.dp) // Medzery medzi položkami
+            ) {
+                // Zobrazujeme polia pre IpItem
+                DetailItem(label = "Názov", value = ipItem.name)
+                DetailItem(label = "IP Adresa", value = ipItem.ipAddress)
+                ipItem.notes?.let {
+                    if (it.isNotBlank()) {
+                        DetailItem(label = "Poznámky", value = it)
+                    }
                 }
             }
-            // Pridáme medzeru zospodu
-            Spacer(modifier = Modifier.height(8.dp))
         }
+    }
 
-        // Dropdown menu a AlertDialog zostávajú mimo hlavného stĺpca
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 4.dp, end = 4.dp) // Odsadenie pre "MoreVert" ikonu
-                .wrapContentSize(Alignment.TopEnd)
+    // Dropdown menu zostáva vonku, aby sa správne zobrazilo nad všetkým
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp, end = 4.dp)
+            .wrapContentSize(Alignment.TopEnd)
+    ) {
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false },
         ) {
-            DropdownMenu(
-                expanded = showMenu,
-                onDismissRequest = { showMenu = false },
-            ) {
-                DropdownMenuItem(
-                    text = { Text("Upraviť") },
-                    onClick = {
-                        showMenu = false
-                        onNavigateToEdit(ipId)
-                    },
-                    leadingIcon = { Icon(Icons.Default.Edit, "Upraviť") }
-                )
-                // Odstránime farbu priamo z textu, je to čistejšie
-                DropdownMenuItem(
-                    text = { Text("Zmazať") },
-                    onClick = {
-                        showMenu = false
-                        showDeleteDialog = true
-                    },
-                    leadingIcon = { Icon(Icons.Default.Delete, "Zmazať", tint = MaterialTheme.colorScheme.error) }
-                )
-            }
+            DropdownMenuItem(
+                text = { Text("Upraviť") },
+                onClick = {
+                    showMenu = false
+                    onNavigateToEdit(ipId)
+                },
+                leadingIcon = { Icon(Icons.Default.Edit, "Upraviť") }
+            )
+            DropdownMenuItem(
+                text = { Text("Zmazať") },
+                onClick = {
+                    showMenu = false
+                    showDeleteDialog = true
+                },
+                leadingIcon = { Icon(Icons.Default.Delete, "Zmazať", tint = MaterialTheme.colorScheme.error) }
+            )
         }
-
-
-
     }
 
     // Dialóg pre potvrdenie zmazania
@@ -139,7 +139,7 @@ fun IpDetailScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        viewModel.deleteIpAddress(ipId) // Používame správnu funkciu
+                        viewModel.deleteIpAddress(ipId)
                         showDeleteDialog = false
                         onBack()
                     },
@@ -153,7 +153,7 @@ fun IpDetailScreen(
     }
 }
 
-// Pomocná funkcia, ktorá zostáva rovnaká
+// Pomocná funkcia, ktorá zostáva rovnaká, ale bez deliacej čiary
 @Composable
 private fun DetailItem(label: String, value: String) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -167,6 +167,6 @@ private fun DetailItem(label: String, value: String) {
             style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
             fontWeight = FontWeight.SemiBold,
         )
-        Divider()
+        // Divider() // <-- ČIARA JE ODSTRÁNENÁ
     }
 }
