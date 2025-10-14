@@ -157,6 +157,8 @@ fun ContactsScreen(
     val isEditMode = viewModel.isEditMode
     var showAddPersonDialog by remember { mutableStateOf(false) }
     var selectedFunctionForDialog by remember { mutableStateOf<ChannelFunction?>(null) }
+    var showEditFunctionDialog by remember { mutableStateOf(false) }
+    var functionToEdit by remember { mutableStateOf<ChannelFunction?>(null) }
     // ✅ KONIEC: Nový stav pre dialóg
 
     // Tento blok sa stará o správne zobrazenie hornej lišty
@@ -237,6 +239,11 @@ fun ContactsScreen(
                     },
                     onUpdatePersonNote = { functionId, personId, newNote ->
                         viewModel.updatePersonNoteInFunction(functionId, personId, newNote)
+
+                    },
+                    onEditFunctionClick = { function ->
+                        functionToEdit = function
+                        showEditFunctionDialog = true
                     }
                 )
             }
@@ -254,6 +261,38 @@ fun ContactsScreen(
                 )
             }
             // ✅ KONIEC: Kód na zobrazenie dialógu
+
+            if (showEditFunctionDialog && functionToEdit != null) {
+                var newTitle by remember { mutableStateOf(functionToEdit!!.title) }
+                AlertDialog(
+                    onDismissRequest = { showEditFunctionDialog = false },
+                    title = { Text("Upraviť názov funkcie") },
+                    text = {
+                        TextField(
+                            value = newTitle,
+                            onValueChange = { newTitle = it },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                viewModel.updateChannelFunction(functionToEdit!!.id, newTitle, functionToEdit!!.notes ?: "")
+                                showEditFunctionDialog = false
+                            },
+                            enabled = newTitle.isNotBlank() // Tlačidlo je aktívne, len ak názov nie je prázdny
+                        ) {
+                            Text("Uložiť")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showEditFunctionDialog = false }) {
+                            Text("Zrušiť")
+                        }
+                    }
+                )
+            }
 
             if (selectedTabFilter == ALL_CHANNELS_FILTER) {
                 FloatingActionButton(
@@ -402,7 +441,10 @@ private fun ChannelDetailView(
     // ✅ TIETO RIADKY PRIDAJTE SPÄŤ
     onAddPersonClick: (ChannelFunction) -> Unit,
     onRemovePersonClick: (functionId: String, personId: String) -> Unit,
-    onUpdatePersonNote: (functionId: String, personId: String, newNote: String) -> Unit
+    onUpdatePersonNote: (functionId: String, personId: String, newNote: String) -> Unit,
+    onEditFunctionClick: (ChannelFunction) -> Unit
+
+
 ) {
     val reorderState = rememberReorderableLazyListState(
         onMove = { from, to -> onMoveFunction(from.index, to.index) }
@@ -450,7 +492,8 @@ private fun ChannelDetailView(
                             .then(if (isEditMode) Modifier.detectReorderAfterLongPress(reorderState) else Modifier),
                         onAddPersonClick = { onAddPersonClick(function) },
                         onRemovePersonClick = { personId -> onRemovePersonClick(function.id, personId) },
-                        onUpdatePersonNote = { personId, newNote -> onUpdatePersonNote(function.id, personId, newNote) }
+                        onUpdatePersonNote = { personId, newNote -> onUpdatePersonNote(function.id, personId, newNote) },
+                        onEditFunctionClick = { onEditFunctionClick(function) }
                     )
                 }
 
@@ -490,7 +533,8 @@ private fun FunctionSection(
     modifier: Modifier = Modifier,
     onAddPersonClick: () -> Unit,
     onRemovePersonClick: (personId: String) -> Unit,
-    onUpdatePersonNote: (personId: String, newNote: String) -> Unit
+    onUpdatePersonNote: (personId: String, newNote: String) -> Unit,
+    onEditFunctionClick: () -> Unit
 ) {
     // Modifikátor, ktorý pridá orámovanie a odsadenie IBA v režime úprav
     val containerModifier = if (isEditMode) {
@@ -528,7 +572,7 @@ private fun FunctionSection(
                 modifier = Modifier.weight(1f)
             )
             if (isEditMode) {
-                IconButton(onClick = { /* TODO: onEditFunction() */ }, modifier = Modifier.size(24.dp)) {
+                IconButton(onClick = onEditFunctionClick, modifier = Modifier.size(24.dp)) {
                     Icon(Icons.Default.Edit, "Upraviť názov", tint = MaterialTheme.colorScheme.secondary)
                 }
                 Spacer(Modifier.width(8.dp))
