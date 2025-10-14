@@ -128,10 +128,20 @@ fun MainScreen() {
         // Reset ikony, aby sa nezobrazovala na iných obrazovkách
         var currentNavIcon: (@Composable () -> Unit)? = null
 
+        when {
+            // Ak sme na niektorej z hlavných "root" obrazoviek, spodná lišta je viditeľná
+            currentRoute in bottomNavItems.map { it.route } -> {
+                sharedViewModel.setShowBottomBar(true)
+            }
+            // Ak sme inde (napr. detail, nastavenia), spodnú lištu skryjeme
+            else -> {
+                sharedViewModel.setShowBottomBar(false)
+            }
+        }
+
         when (currentRoute) {
             Routes.HOME_ROOT -> {
-                sharedViewModel.setShowBottomBar(true)
-                // Na domovskej obrazovke nastavíme ikonu menu
+                // Logika pre Domov zostáva
                 currentNavIcon = {
                     IconButton(onClick = { scope.launch { drawerState.open() } }) {
                         Icon(Icons.Default.Menu, contentDescription = "Menu")
@@ -141,13 +151,8 @@ fun MainScreen() {
                     TopBarState(title = "Domov", isVisible = true, navigationIcon = currentNavIcon)
                 )
             }
-            Routes.PASSWORDS_ROOT, Routes.CONTACTS_ROOT, Routes.TUTORIALS_ROOT -> {
-                // Pre hlavné sekcie s vnorenou navigáciou iba zaistíme,
-                // že spodná lišta je viditeľná.
-                // O hornú lištu (titulok a akcie) sa postarajú
-                // samotné NavHosty (PasswordsNavHost, ContactsNavHost, atď.).
-                sharedViewModel.setShowBottomBar(true)
-            }
+            // Ostatné prípady už nie sú potrebné, pretože top bar si riadia obrazovky samé
+            // a o bottom bar sme sa postarali vyššie.
         }
     }
 
@@ -215,15 +220,24 @@ fun MainScreen() {
                                 label = { Text(screen.label) },
                                 selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
                                 onClick = {
-                                    val isLeavingPasswords = currentDestination?.hierarchy?.any { it.route == Routes.PASSWORDS_ROOT } == true &&
-                                            screen.route != Routes.PASSWORDS_ROOT
-                                    if (isLeavingPasswords) {
-                                        // ✅ SPRÁVNE VOLANIE NOVEJ FUNKCIE
+                                    // ✅ KROK 1: Zistíme, či opúšťame sekciu "Heslá" a ideme inam.
+                                    // Podmienky:
+                                    // 1. Práve sa nachádzame v sekcii Heslá (PASSWORDS_ROOT).
+                                    val isCurrentlyInPasswords = currentDestination?.hierarchy?.any { it.route == Routes.PASSWORDS_ROOT } == true
+                                    // 2. Cieľová cesta (screen.route) NIE JE sekcia Heslá.
+                                    val isTargetOutsidePasswords = screen.route != Routes.PASSWORDS_ROOT
+
+                                    // Ak platia obe podmienky, resetujeme ViewModel.
+                                    if (isCurrentlyInPasswords && isTargetOutsidePasswords) {
                                         passwordsViewModel.resetTabToDefault()
                                     }
 
+                                    // ✅ KROK 2: Vždy vykonáme navigáciu na zvolenú obrazovku.
+                                    // Táto časť bola v mojom predchádzajúcom návrhu omylom vynechaná.
                                     navController.navigate(screen.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
                                         launchSingleTop = true
                                         restoreState = true
                                     }
@@ -318,11 +332,7 @@ fun MainScreen() {
 @Composable
 fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues, sharedViewModel: SharedViewModel) {
     val nestedNavController = rememberNavController()
-    val navBackStackEntry by nestedNavController.currentBackStackEntryAsState()
-    LaunchedEffect(navBackStackEntry) {
-        val currentRoute = navBackStackEntry?.destination?.route
-        sharedViewModel.setShowBottomBar(currentRoute == Routes.PASSWORDS_LIST)
-    }
+
 
     NavHost(
         navController = nestedNavController,

@@ -45,22 +45,25 @@ fun PasswordsScreen(
     // TOTO VLOŽTE NAMIESTO PÔVODNÉHO LaunchedEffect
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    // Tento efekt sa postará o správne volanie funkcií ViewModelu
-    // na základe životného cyklu obrazovky.
-    DisposableEffect(Unit) {
-        // onDispose sa zavolá presne vtedy, keď používateľ opustí
-        // túto Composable funkciu (teda prejde na inú obrazovku).
-        onDispose {
-            // Okamžite resetujeme záložku na predvolenú hodnotu.
-            viewModel.resetTabToDefault()
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            // Toto sa spustí VŽDY, keď sa obrazovka stane viditeľnou
+            if (event == Lifecycle.Event.ON_START) {
+                // Nastavíme správny stav hornej a dolnej lišty pre túto obrazovku
+                sharedViewModel.setTopBarState(TopBarState(title = "Heslá", isVisible = true))
+                sharedViewModel.setShowBottomBar(true)
+            }
         }
-    }
 
-    // Efekt pre nastavenie horného a dolného panela zostáva,
-    // pretože sa má vykonať len raz.
-    LaunchedEffect(Unit) {
-        sharedViewModel.setTopBarState(TopBarState(title = "Heslá", isVisible = true))
-        sharedViewModel.setShowBottomBar(true)
+
+
+        // Pripojíme nášho "pozorovateľa"
+        lifecycleOwner.lifecycle.addObserver(observer)
+
+        // Odpojíme ho, keď obrazovka zmizne, aby sme predišli únikom pamäte
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
 
