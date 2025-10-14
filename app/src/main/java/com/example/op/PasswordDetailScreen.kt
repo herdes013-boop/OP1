@@ -25,6 +25,8 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.selection.SelectionContainer
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,38 +81,31 @@ fun PasswordDetailScreen(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp) // Odsadenie karty od okrajov
     ) {
-        // Všetky detaily sú teraz vo vnútri tejto karty
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-        ) {
-            // Vnútorný stĺpec pre obsah karty
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 20.dp), // Vnútorný padding karty
-                verticalArrangement = Arrangement.spacedBy(18.dp) // Medzery medzi položkami
-            ) {
-                // Položky detailu zostávajú rovnaké, len sú teraz vo vnútri karty
-                DetailItem(label = "Názov služby", value = passwordItem.name)
-                passwordItem.username?.let {
-                    if (it.isNotBlank()) {
-                        DetailItem(label = "Používateľské meno / E-mail", value = it)
-                    }
+        // Použijeme našu novú, centrálnu DetailCard
+        DetailCard {
+            // Medzery medzi položkami definujeme priamo tu pomocou Spacer
+            DetailItem(label = "Názov služby", value = passwordItem.name, isValueSelectable = true)
+            passwordItem.username?.let {
+                if (it.isNotBlank()) {
+                    Spacer(Modifier.height(16.dp))
+                    DetailItem(label = "Používateľské meno / E-mail", value = it, isValueSelectable = true)
                 }
-                PasswordDetailItem(label = "Heslo", password = passwordItem.password)
-                passwordItem.url?.let { urlString ->
-                    if (urlString.isNotBlank()) {
-                        UrlDetailItem(urlString = urlString)
-                    }
+            }
+
+            Spacer(Modifier.height(16.dp))
+            PasswordDetailItem(label = "Heslo", password = passwordItem.password)
+
+            passwordItem.url?.let { urlString ->
+                if (urlString.isNotBlank()) {
+                    Spacer(Modifier.height(16.dp))
+                    UrlDetailItem(urlString = urlString)
                 }
-                passwordItem.notes?.let {
-                    if (it.isNotBlank()) {
-                        DetailItem(label = "Poznámky", value = it)
-                    }
+            }
+            passwordItem.notes?.let {
+                if (it.isNotBlank()) {
+                    Spacer(Modifier.height(16.dp))
+                    DetailItem(label = "Poznámky", value = it, isValueSelectable = true)
                 }
             }
         }
@@ -172,37 +167,40 @@ fun PasswordDetailScreen(
 // --- POMOCNÉ FUNKCIE ---
 
 @Composable
-private fun DetailItem(label: String, value: String) {
+private fun DetailItem(
+    label: String,
+    value: String,
+    isValueSelectable: Boolean = false // Parameter na povolenie kopírovania
+) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.primary
+            text = label.uppercase(), // Zjednotený vzhľad
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold
         )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
-            fontWeight = FontWeight.SemiBold,
-        )
+        Spacer(Modifier.height(2.dp))
 
+        if (isValueSelectable) {
+            SelectionContainer {
+                Text(text = value, style = MaterialTheme.typography.bodyLarge)
+            }
+        } else {
+            Text(text = value, style = MaterialTheme.typography.bodyLarge)
+        }
     }
 }
 
 @Composable
-private fun PasswordDetailItem(
-    label: String,
-    password: String,
-    defaultColor: Color = LocalContentColor.current,
-    numberColor: Color = MaterialTheme.colorScheme.primary
-) {
+private fun PasswordDetailItem(label: String, password: String) {
     val annotatedString = buildAnnotatedString {
         password.forEach { char ->
             if (char.isDigit()) {
-                withStyle(style = SpanStyle(color = numberColor, fontWeight = FontWeight.Bold)) {
+                withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)) {
                     append(char)
                 }
             } else {
-                withStyle(style = SpanStyle(color = defaultColor)) {
+                withStyle(style = SpanStyle(color = LocalContentColor.current)) {
                     append(char)
                 }
             }
@@ -211,49 +209,51 @@ private fun PasswordDetailItem(
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.primary
+            text = label.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold
         )
-        Text(
-            text = annotatedString,
-            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
-            fontWeight = FontWeight.SemiBold
-        )
+        Spacer(Modifier.height(2.dp))
 
+        // Heslo je vždy kopírovateľné
+        SelectionContainer {
+            Text(text = annotatedString, style = MaterialTheme.typography.bodyLarge)
+        }
     }
 }
 
 @Composable
 private fun UrlDetailItem(urlString: String) {
     val uriHandler = LocalUriHandler.current
+    val annotatedUrl = buildAnnotatedString {
+        withStyle(
+            style = SpanStyle(
+                color = MaterialTheme.colorScheme.primary,
+                textDecoration = TextDecoration.Underline
+            )
+        ) {
+            append(urlString)
+        }
+    }
+
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = "URL",
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.primary
         )
-        val annotatedUrl = buildAnnotatedString {
-            withStyle(
-                style = SpanStyle(
-                    color = MaterialTheme.colorScheme.primary,
-                    textDecoration = TextDecoration.Underline
-                )
-            ) {
-                append(urlString)
-            }
-        }
+        Spacer(Modifier.height(2.dp))
         ClickableText(
             text = annotatedUrl,
-            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
+            style = MaterialTheme.typography.bodyLarge,
             onClick = {
                 try {
                     uriHandler.openUri(urlString)
-                } catch (e: Exception) {
-                    println("Chyba pri otváraní URL: ${e.message}")
+                } catch (_: Exception) {
+                    // Chybu môžeme ignorovať alebo zalogovať
                 }
             }
         )
-
     }
 }

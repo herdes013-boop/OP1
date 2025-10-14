@@ -16,6 +16,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.ui.graphics.Color
+
 
 @Composable
 fun ContactDetailScreen(
@@ -89,19 +92,38 @@ fun ContactDetailScreen(
 
     // Zvyšok súboru (Column, DetailItem, AlertDialog) zostáva úplne bez zmeny...
     contact?.let { c ->
+        // Hlavný kontajner, ktorý umožňuje skrolovanie
         Column(
             modifier = modifier
                 .fillMaxSize()
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .verticalScroll(rememberScrollState())
         ) {
-            DetailItem(label = "Meno a Priezvisko", value = c.getFullName())
-            c.function?.let { DetailItem(label = "Funkcia", value = it) }
-            c.phone?.let { DetailItem(label = "Telefón", value = it, isClickable = true) }
-            c.email?.let { DetailItem(label = "Email", value = it, isClickable = true) }
-            c.channel?.let { DetailItem(label = "Kanál", value = it) }
-            c.notes?.let { DetailItem(label = "Poznámky", value = it) }
+            // ✅ Použijeme našu novú, centrálnu DetailCard
+            DetailCard {
+                // Použijeme vylepšenú funkciu DetailRow s medzerami
+                DetailRow(label = "Meno a Priezvisko", value = c.getFullName())
+
+                c.function?.let {
+                    Spacer(Modifier.height(16.dp))
+                    DetailRow(label = "Funkcia", value = it)
+                }
+                c.phone?.let {
+                    Spacer(Modifier.height(16.dp))
+                    DetailRow(label = "Telefón", value = it)
+                }
+                c.email?.let {
+                    Spacer(Modifier.height(16.dp))
+                    DetailRow(label = "Email", value = it, isValueSelectable = true)
+                }
+                c.channel?.let {
+                    Spacer(Modifier.height(16.dp))
+                    DetailRow(label = "Kanál", value = it)
+                }
+                c.notes?.let {
+                    Spacer(Modifier.height(16.dp))
+                    DetailRow(label = "Poznámky", value = it, isValueSelectable = true)
+                }
+            }
         }
     }
 
@@ -125,22 +147,34 @@ fun ContactDetailScreen(
     }
 }
 
-// Pomocná komponenta zostáva bez zmeny
+// ✅ Vylepšená pomocná komponenta (nahradí starú DetailItem)
 @Composable
-private fun DetailItem(label: String, value: String, isClickable: Boolean = false) {
+private fun DetailRow(
+    label: String,
+    value: String,
+    isValueSelectable: Boolean = false
+) {
     Column {
         Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.secondary
+            text = label.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold
         )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyLarge.copy(
-                fontSize = 18.sp,
-                color = if (isClickable) MaterialTheme.colorScheme.primary else LocalContentColor.current,
-                fontWeight = if (isClickable) FontWeight.SemiBold else FontWeight.Normal
+        Spacer(Modifier.height(2.dp))
+
+        if (isValueSelectable) {
+            SelectionContainer {
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
+        } else {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyLarge
             )
-        )
+        }
     }
 }
