@@ -30,10 +30,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
-import androidx.compose.material3.ScrollableTabRow
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -46,10 +45,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import androidx.compose.material.icons.filled.ImageNotSupported
 import androidx.compose.ui.layout.ContentScale
-import coil.compose.AsyncImage
 import androidx.compose.ui.res.painterResource
+import coil.compose.AsyncImage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,70 +57,69 @@ fun TutorialsScreen(
     modifier: Modifier = Modifier,
 ) {
     val tutorials by viewModel.filteredTutorials.collectAsState()
-    val categories = viewModel.categories
-    val selectedCategory by viewModel::selectedCategory
     val searchQuery by viewModel::searchQuery
     val onSearchQueryChange = viewModel::onSearchQueryChange
 
-    // =========================================================================
-    // ✅ ÚPRAVA ŠTRUKTÚRY: Box > Column, presne ako v PasswordsScreen
-    // =========================================================================
+    // Tento blok zabezpečí, že sa vždy zobrazia všetky návody
+    LaunchedEffect(Unit) {
+        viewModel.onCategorySelected("Všetky")
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
-            // 1. ZÁLOŽKY - zostávajú na vrchu
-            CategoryTabs(
-                categories = categories,
-                selectedCategory = selectedCategory,
-                onCategorySelected = { category -> viewModel.onCategorySelected(category) }
-            )
 
-            // 2. SEARCHBAR - presne ako v ostatných obrazovkách
-            // Zobrazí sa, len ak je zvolená kategória "Všetky"
-            if (selectedCategory == "Všetky") {
-                SearchBar(
-                    query = searchQuery,
-                    onQueryChange = onSearchQueryChange,
-                    onSearch = { /* Hľadá sa priebežne */ },
-                    active = false, // Vždy neaktívny
-                    onActiveChange = {},
-                    // ✅ MODIFIER S PADDING A OFFSETOM
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp, bottom = 0.dp, start = 16.dp, end = 16.dp)
-                        .offset(y = (-18).dp),
-                    placeholder = { Text("Hľadať v návodoch...", color = Color.Gray) },
-                    leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.Black) },
-                    trailingIcon = {
-                        // ✅ ÚPRAVA: Pridaná logika pre zobrazenie ikony filtra
-                        if (searchQuery.isNotEmpty()) {
-                            // Ak sa vyhľadáva, zobraz krížik na zmazanie
-                            IconButton(onClick = { onSearchQueryChange("") }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Vymazať text", tint = Color.Black)
-                            }
-                        } else {
-                            // Ak je vyhľadávanie prázdne, zobraz ikonu filtra
-                            IconButton(onClick = { /* TODO: Otvoriť dialóg s filtrami pre návody */ }) {
-                                Icon(Icons.Filled.FilterList, contentDescription = "Filtrovať zoznam", tint = Color.Black)
-                            }
+            // =================================================================
+            // ✅ KROK 1: POUŽITIE ROVNAKÉHO SEARCHBAR-u AKO V KONTAKTOCH
+            // =================================================================
+            SearchBar(
+                query = searchQuery,
+                onQueryChange = onSearchQueryChange,
+                onSearch = { /* Hľadá sa priebežne */ },
+                active = false,
+                onActiveChange = {},
+                modifier = Modifier
+                    .fillMaxWidth()
+                    // Použijeme odsadenie zhora a posunutie nadol, aby sa SearchBar
+                    // vizuálne prekryl s hornou časťou obrazovky a vytvoril tak
+                    // rovnakú medzeru ako v ContactsScreen.
+                    .padding(top = 4.dp, bottom = 0.dp, start = 16.dp, end = 16.dp)
+                    .offset(y = (-18).dp),
+                placeholder = { Text("Hľadať v návodoch...", color = Color.Gray) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Black) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { onSearchQueryChange("") }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Vymazať text", tint = Color.Black)
                         }
-                    },
-                    colors = SearchBarDefaults.colors(
-                        containerColor = Color.White,
-                        dividerColor = Color.Transparent
-                    )
-                ) {}
-            }
+                    } else {
+                        // Ikona filtra, ktorá zatiaľ nerobí nič
+                        IconButton(onClick = { /* TODO: Otvoriť dialóg s filtrom kategórií */ }) {
+                            Icon(
+                                Icons.Filled.FilterList,
+                                contentDescription = "Filtrovať zoznam",
+                                tint = Color.Black // V budúcnosti môže byť farba podmienená
+                            )
+                        }
+                    }
+                },
+                colors = SearchBarDefaults.colors(
+                    // Biela farba a žiadna deliaca čiara, presne ako v Kontaktoch
+                    containerColor = Color.White,
+                    dividerColor = Color.Transparent
+                )
+            ) {}
 
-            // 3. ZOZNAM ALEBO SPRÁVA O PRÁZDNOM STAVE
+            // =================================================================
+            // ✅ KROK 2: ZOBRAZENIE ZOZNAMU ALEBO SPRÁVY
+            // =================================================================
             if (tutorials.isEmpty()) {
-                val message = when {
-                    selectedCategory == "Všetky" && searchQuery.isNotBlank() ->
-                        "Nenašli sa žiadne návody pre '${searchQuery}'."
-                    selectedCategory != "Všetky" ->
-                        "V kategórii \"$selectedCategory\" zatiaľ nie sú žiadne návody."
-                    else -> "Zatiaľ neboli pridané žiadne návody."
+                val message = if (searchQuery.isNotBlank()) {
+                    "Nenašli sa žiadne návody pre '${searchQuery}'."
+                } else {
+                    "Zatiaľ neboli pridané žiadne návody."
                 }
                 Box(
+                    // Box sa už nerozťahuje na celú obrazovku, aby bol text centrovaný
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
@@ -136,7 +133,7 @@ fun TutorialsScreen(
                 }
             } else {
                 LazyColumn(
-                    // ✅ Upravený padding, aby bol hore priestor pre SearchBar
+                    // Vrchný padding je upravený, aby bol zoznam správne pod SearchBar-om
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 80.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
@@ -150,7 +147,7 @@ fun TutorialsScreen(
             }
         }
 
-        // FloatingActionButton je zarovnaný v hlavnom Boxe
+        // FloatingActionButton zostáva na svojom mieste
         FloatingActionButton(
             onClick = {
                 viewModel.resetForm()
@@ -165,35 +162,12 @@ fun TutorialsScreen(
     }
 }
 
-// Funkcie CategoryTabs a TutorialCard zostávajú bez zmeny
-@Composable
-fun CategoryTabs(
-    categories: List<String>,
-    selectedCategory: String,
-    onCategorySelected: (String) -> Unit,
-) {
-    val selectedIndex = categories.indexOf(selectedCategory).coerceAtLeast(0)
-
-    ScrollableTabRow(
-        selectedTabIndex = selectedIndex,
-        edgePadding = 8.dp
-    ) {
-        categories.forEach { category ->
-            Tab(
-                selected = (category == selectedCategory),
-                onClick = { onCategorySelected(category) },
-                text = { Text(category) }
-            )
-        }
-    }
-}
-
+// Funkcia TutorialCard zostáva bez zmeny
 @Composable
 fun TutorialCard(
     tutorial: Tutorial,
     onClick: () -> Unit,
 ) {
-    // ✅ KROK 1: Nájdeme prvý obrázok v návode
     val firstImageBlock = tutorial.content.filterIsInstance<TutorialContentBlock.ImageBlock>().firstOrNull()
 
     Card(
@@ -203,22 +177,19 @@ fun TutorialCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        // ✅ KROK 2: Použijeme Row pre usporiadanie obrázka a textu vedľa seba
         Row(
-            modifier = Modifier.padding(12.dp), // Zmenšený padding pre kompaktnejší vzhľad
+            modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // --- OBRÁZKOVÁ ČASŤ (vľavo) ---
             Box(
                 modifier = Modifier
-                    .size(80.dp) // Pevná veľkosť pre náhľadový obrázok
+                    .size(80.dp)
                     .background(
                         MaterialTheme.colorScheme.surface,
                         shape = MaterialTheme.shapes.medium
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                // ✅ KROK 3: Použijeme knižnicu Coil na zobrazenie obrázka
                 AsyncImage(
                     model = firstImageBlock?.uriString ?: firstImageBlock?.imageRes,
                     contentDescription = "Náhľad návodu",
@@ -227,17 +198,16 @@ fun TutorialCard(
                     placeholder = painterResource(id = R.drawable.ic_image_not_supported),
                     error = painterResource(id = R.drawable.ic_image_not_supported)
                 )
-            } // ✅ TÁTO ZÁTVORKA UKONČUJE BOX
+            }
 
-            Spacer(Modifier.width(16.dp)) // Teraz je Spacer na správnom mieste
+            Spacer(Modifier.width(16.dp))
 
-            // --- TEXTOVÁ ČASŤ (vpravo) ---
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = tutorial.title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    maxLines = 2, // Povolenie 2 riadkov pre dlhšie názvy
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
@@ -247,7 +217,6 @@ fun TutorialCard(
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(top = 4.dp)
                 )
-                // Pôvodný textový náhľad je odstránený
             }
         }
     }

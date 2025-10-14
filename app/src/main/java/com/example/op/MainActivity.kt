@@ -160,7 +160,6 @@ fun MainScreen() {
         drawerState = drawerState,
         gesturesEnabled = currentRoute == Routes.HOME_ROOT,
         drawerContent = {
-            // Pridajte modifier priamo sem, do zátvoriek ModalDrawerSheet
             ModalDrawerSheet(modifier = Modifier.width(280.dp)) {
                 Spacer(Modifier.height(16.dp))
                 Text(
@@ -169,6 +168,19 @@ fun MainScreen() {
                     style = MaterialTheme.typography.titleMedium
                 )
                 Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+                // ✅ KROK 1: PRIDANÁ NOVÁ POLOŽKA "DOCHÁDZKA"
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.CalendarMonth, contentDescription = null) },
+                    label = { Text("Dochádzka") },
+                    selected = false,
+                    onClick = {
+                        // Zatiaľ nerobí nič, len zatvorí menu
+                        scope.launch { drawerState.close() }
+                        // TODO: V budúcnosti navigovať na obrazovku dochádzky
+                    },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
 
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Default.Settings, contentDescription = null) },
