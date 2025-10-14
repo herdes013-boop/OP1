@@ -218,7 +218,8 @@ fun MainScreen() {
                                     val isLeavingPasswords = currentDestination?.hierarchy?.any { it.route == Routes.PASSWORDS_ROOT } == true &&
                                             screen.route != Routes.PASSWORDS_ROOT
                                     if (isLeavingPasswords) {
-                                        passwordsViewModel.onExitedMainRoute()
+                                        // ✅ SPRÁVNE VOLANIE NOVEJ FUNKCIE
+                                        passwordsViewModel.resetTabToDefault()
                                     }
 
                                     navController.navigate(screen.route) {

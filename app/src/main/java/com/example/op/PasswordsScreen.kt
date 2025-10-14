@@ -20,6 +20,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -37,11 +42,27 @@ fun PasswordsScreen(
     val selectedTabIndex by viewModel.selectedTabIndex
     val tabs = listOf("Heslá", "IP Adresy")
 
+    // TOTO VLOŽTE NAMIESTO PÔVODNÉHO LaunchedEffect
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // Tento efekt sa postará o správne volanie funkcií ViewModelu
+    // na základe životného cyklu obrazovky.
+    DisposableEffect(Unit) {
+        // onDispose sa zavolá presne vtedy, keď používateľ opustí
+        // túto Composable funkciu (teda prejde na inú obrazovku).
+        onDispose {
+            // Okamžite resetujeme záložku na predvolenú hodnotu.
+            viewModel.resetTabToDefault()
+        }
+    }
+
+    // Efekt pre nastavenie horného a dolného panela zostáva,
+    // pretože sa má vykonať len raz.
     LaunchedEffect(Unit) {
-        viewModel.onScreenAppeared()
         sharedViewModel.setTopBarState(TopBarState(title = "Heslá", isVisible = true))
         sharedViewModel.setShowBottomBar(true)
     }
+
 
     // ==================================================================
     //                         KĽÚČOVÁ ZMENA

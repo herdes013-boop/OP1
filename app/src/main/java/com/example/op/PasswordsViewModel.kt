@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 
+
 class PasswordsViewModel : ViewModel() {
 
     // --- ID Management ---
@@ -34,24 +35,22 @@ class PasswordsViewModel : ViewModel() {
     }
 
     // --- Ovládanie záložiek (Tabs) ---
-    private var shouldResetTabs = true
+    // --- Ovládanie záložiek (Tabs) ---
     private val _selectedTabIndex = mutableStateOf(0)
     val selectedTabIndex: State<Int> = _selectedTabIndex
 
-    fun onScreenAppeared() {
-        if (shouldResetTabs) {
-            _selectedTabIndex.value = 0
-            shouldResetTabs = false
-        }
-    }
-
-    fun onExitedMainRoute() {
-        shouldResetTabs = true
+    /**
+     * Nastaví záložku na prvú pozíciu.
+     * Volá sa, keď používateľ opustí obrazovku.
+     */
+    fun resetTabToDefault() {
+        _selectedTabIndex.value = 0
     }
 
     fun onTabSelected(index: Int) {
         _selectedTabIndex.value = index
     }
+
 
 
     // --- Vyhľadávanie ---
