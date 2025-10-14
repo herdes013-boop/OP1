@@ -228,8 +228,18 @@ fun MainScreen() {
                                     val isTargetOutsidePasswords = screen.route != Routes.PASSWORDS_ROOT
 
                                     // Ak platia obe podmienky, resetujeme ViewModel.
-                                    if (isCurrentlyInPasswords && isTargetOutsidePasswords) {
+                                    if (currentDestination?.hierarchy?.any { it.route == Routes.PASSWORDS_ROOT } == true && screen.route != Routes.PASSWORDS_ROOT) {
                                         passwordsViewModel.resetTabToDefault()
+                                    }
+
+                                    // 2. Reset pre sekciu KONTAKTY
+                                    if (currentDestination?.hierarchy?.any { it.route == Routes.CONTACTS_ROOT } == true && screen.route != Routes.CONTACTS_ROOT) {
+                                        contactsViewModel.resetTabToDefault() // Toto teraz bude fungovať
+                                    }
+
+                                    // 3. Reset pre sekciu NÁVODY
+                                    if (currentDestination?.hierarchy?.any { it.route == Routes.TUTORIALS_ROOT } == true && screen.route != Routes.TUTORIALS_ROOT) {
+                                        tutorialsViewModel.resetTabToDefault() // Aj toto bude fungovať
                                     }
 
                                     // ✅ KROK 2: Vždy vykonáme navigáciu na zvolenú obrazovku.

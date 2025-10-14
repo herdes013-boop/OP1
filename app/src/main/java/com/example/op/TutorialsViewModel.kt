@@ -195,6 +195,17 @@ class TutorialsViewModel : ViewModel() {
         searchQuery = newQuery
     }
 
+    // ✅ TÚTO FUNKCIU PRIDAJTE
+    /**
+     * Resetuje filter kategórií na predvolenú hodnotu ("Všetky").
+     * Volá sa pri opustení sekcie Návodov.
+     */
+    fun resetTabToDefault() {
+        // Jednoducho zavoláme existujúcu funkciu `onCategorySelected`
+        // s predvolenou hodnotou.
+        onCategorySelected(categories.first())
+    }
+
     fun onCategorySelected(category: String) {
         selectedCategory = category
         if (category != "Všetky") {

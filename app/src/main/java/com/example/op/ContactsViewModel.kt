@@ -435,6 +435,16 @@ class ContactsViewModel : ViewModel() {
         searchQuery = newQuery
     }
 
+    // ✅ TÚTO FUNKCIU PRIDAJTE
+    /**
+     * Resetuje filter záložiek na predvolenú hodnotu ("Všetky").
+     * Volá sa pri opustení sekcie Kontaktov.
+     */
+    fun resetTabToDefault() {
+        // Jednoducho zavoláme existujúcu funkciu so správnou hodnotou
+        updateSelectedTabFilter(ALL_CHANNELS_FILTER)
+    }
+
     // Metódy pre správu kanálov
     fun addChannel(channel: String) {
         val trimmedChannel = channel.trim()
