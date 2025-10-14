@@ -247,36 +247,43 @@ fun PasswordListItem(item: PasswordItem, onClick: () -> Unit) {
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        Column(
+        // ✅ KROK 1: Hlavný kontajner zmeníme z Column na Row
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalAlignment = Alignment.CenterVertically // Zarovnáme všetko na stred vertikálne
         ) {
+            // --- ČASŤ VĽAVO (NÁZOV) ---
+            // ✅ KROK 2: Názov zaberie všetok voľný priestor
             Text(
                 text = item.name,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                maxLines = 2, // Povolené 2 riadky pre dlhšie názvy
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f) // Kľúčová zmena
             )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+
+            Spacer(modifier = Modifier.width(16.dp)) // Medzera medzi názvom a prihlasovacími údajmi
+
+            // --- ČASŤ VPRAVO (USER + HESLO) ---
+            // ✅ KROK 3: Zoskupíme username a password do stĺpca
+            Column(
+                horizontalAlignment = Alignment.End // Zarovnáme obsah tohto stĺpca doprava
             ) {
+                // Používateľské meno (ak existuje)
                 if (!item.username.isNullOrBlank()) {
                     Text(
                         text = item.username,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.weight(1f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                } else {
-                    Spacer(modifier = Modifier.weight(1f))
                 }
+
+                // Heslo (vždy viditeľné)
                 ColoredPasswordText(
                     password = item.password
                 )
@@ -284,7 +291,6 @@ fun PasswordListItem(item: PasswordItem, onClick: () -> Unit) {
         }
     }
 }
-
 @Composable
 fun IpListItem(item: IpItem, onClick: () -> Unit) {
     Card(
