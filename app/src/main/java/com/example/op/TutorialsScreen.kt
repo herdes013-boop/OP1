@@ -21,8 +21,10 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -31,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -57,12 +60,26 @@ fun TutorialsScreen(
     modifier: Modifier = Modifier,
 ) {
     val tutorials by viewModel.filteredTutorials.collectAsState()
+    val categories = viewModel.categories
+    val selectedCategory by viewModel::selectedCategory
     val searchQuery by viewModel::searchQuery
     val onSearchQueryChange = viewModel::onSearchQueryChange
 
-    // Tento blok zabezpečí, že sa vždy zobrazia všetky návody
-    LaunchedEffect(Unit) {
-        viewModel.onCategorySelected("Všetky")
+
+    // NOVÉ: Získame stavy pre filter dialóg
+    val isFilterDialogVisible by viewModel::isFilterDialogVisible
+    val activeFilters by viewModel.activeCategoryFilters.collectAsState()
+    val allCategoriesForFilter = viewModel.allCategoriesForFilter
+
+    // NOVÉ: Zobrazenie dialógu
+    if (isFilterDialogVisible) {
+        FilterTutorialsDialog(
+            allCategories = allCategoriesForFilter,
+            activeFilters = activeFilters,
+            onDismiss = viewModel::onFilterDialogDismiss,
+            onCategorySelected = viewModel::onFilterCategorySelected,
+            onClearFilters = viewModel::clearAllFilters
+        )
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -88,16 +105,20 @@ fun TutorialsScreen(
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Black) },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { onSearchQueryChange("") }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Vymazať text", tint = Color.Black)
+                        IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Vymazať text")
                         }
                     } else {
-                        // Ikona filtra, ktorá zatiaľ nerobí nič
-                        IconButton(onClick = { /* TODO: Otvoriť dialóg s filtrom kategórií */ }) {
+                        // UPRAVENÁ LOGIKA PRE IKONU FILTRA
+                        IconButton(onClick = viewModel::onFilterDialogOpen) {
                             Icon(
-                                Icons.Filled.FilterList,
-                                contentDescription = "Filtrovať zoznam",
-                                tint = Color.Black // V budúcnosti môže byť farba podmienená
+                                Icons.Default.FilterList,
+                                contentDescription = "Filter",
+                                tint = if (activeFilters.isEmpty()) {
+                                    MaterialTheme.colorScheme.onSurfaceVariant // Alebo iná default farba
+                                } else {
+                                    MaterialTheme.colorScheme.primary // Zvýraznená farba
+                                }
                             )
                         }
                     }
@@ -220,4 +241,52 @@ fun TutorialCard(
             }
         }
     }
+}
+// PRIDAJTE TENTO KÓD NA KONIEC SÚBORU TutorialsScreen.kt
+@Composable
+private fun FilterTutorialsDialog(
+    allCategories: List<String>,
+    activeFilters: Set<String>,
+    onDismiss: () -> Unit,
+    onCategorySelected: (String, Boolean) -> Unit,
+    onClearFilters: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Filtrovať podľa kategórie") },
+        text = {
+            LazyColumn {
+                items(allCategories) { category ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onCategorySelected(category, category !in activeFilters) }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = category in activeFilters,
+                            onCheckedChange = { isChecked -> onCategorySelected(category, isChecked) }
+                        )
+                        Spacer(Modifier.width(16.dp))
+                        Text(text = category)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Zavrieť") }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    onClearFilters()
+                    onDismiss()
+                },
+                enabled = activeFilters.isNotEmpty()
+            ) {
+                Text("Zrušiť filtre")
+            }
+        }
+    )
 }

@@ -47,6 +47,14 @@ class TutorialsViewModel : ViewModel() {
     var searchQuery by mutableStateOf("")
         private set
 
+    // --- NOVÉ: STAVY PRE FILTER DIALÓG ---
+    var isFilterDialogVisible by mutableStateOf(false)
+        private set
+    private val _activeCategoryFilters = MutableStateFlow<Set<String>>(emptySet())
+    val activeCategoryFilters: StateFlow<Set<String>> = _activeCategoryFilters.asStateFlow()
+    val allCategoriesForFilter: List<String> // Zoznam kategórií pre dialóg
+        get() = categories.filter { it != "Všetky" }
+
     // --- STAVY PRE OBRAZOVKU PRIDANIA/ÚPRAVY ---
     var tutorialTitle by mutableStateOf("")
         private set
@@ -69,7 +77,7 @@ class TutorialsViewModel : ViewModel() {
     init {
         loadInitialTutorials()
 
-        // Sledovanie zmien pre formulár úprav/pridania
+        // Sledovanie zmien pre formulár úprav/pridania (bez zmeny)
         viewModelScope.launch {
             combine(
                 _contentBlocks,
@@ -85,23 +93,34 @@ class TutorialsViewModel : ViewModel() {
             }.collect {}
         }
 
-        // Reaktívne filtrovanie, ktoré kombinuje kategóriu a vyhľadávanie
+        // UPRAVENÉ: Reaktívne filtrovanie, ktoré teraz zahŕňa aj filter z dialógu
         viewModelScope.launch {
             combine(
                 _tutorials,
                 snapshotFlow { selectedCategory },
-                snapshotFlow { searchQuery }.debounce(300L)
-            ) { tutorials, category, query ->
+                snapshotFlow { searchQuery }.debounce(300L),
+                _activeCategoryFilters // NOVÉ: Sledujeme aj zmeny v aktívnych filtroch
+            ) { tutorials, category, query, activeFilters ->
+                // Filter podľa záložky (TabRow)
                 val tutorialsByCategory = if (category == "Všetky") {
                     tutorials
                 } else {
                     tutorials.filter { it.category == category }
                 }
 
-                val finalFilteredList = if (query.isBlank()) {
+                // NOVÉ: Filter z dialógu (Checkboxy) - aplikuje sa na výsledok z TabRow
+                val tutorialsByDialogFilter = if (activeFilters.isEmpty()) {
                     tutorialsByCategory
                 } else {
-                    tutorialsByCategory.filter { tutorial ->
+                    // Ak je záložka "Všetky", filtrujeme z nej. Ak je iná, filtrujeme z nej.
+                    tutorialsByCategory.filter { it.category in activeFilters }
+                }
+
+                // Finálny filter podľa vyhľadávania (bez zmeny)
+                val finalFilteredList = if (query.isBlank()) {
+                    tutorialsByDialogFilter
+                } else {
+                    tutorialsByDialogFilter.filter { tutorial ->
                         tutorial.title.contains(query, ignoreCase = true) ||
                                 tutorial.content.any { block ->
                                     block is TutorialContentBlock.TextBlock && block.text.contains(query, ignoreCase = true)
@@ -135,8 +154,7 @@ class TutorialsViewModel : ViewModel() {
         _tutorials.value = initialData
     }
 
-    // --- FUNKCIE PRE Ukladanie a Pridávanie obrázkov ---
-
+    // --- FUNKCIE PRE Ukladanie a Pridávanie obrázkov (bez zmeny) ---
     suspend fun saveTutorial() {
         if (tutorialTitle.isBlank()) return
 
@@ -156,7 +174,6 @@ class TutorialsViewModel : ViewModel() {
         }
     }
 
-    // ✅ TÁTO FUNKCIA JE TERAZ PRIDANÁ SPÄŤ
     private suspend fun saveImageToInternalStorageAndGetUri(context: Context, sourceUri: Uri): Uri? {
         return withContext(Dispatchers.IO) {
             try {
@@ -189,28 +206,56 @@ class TutorialsViewModel : ViewModel() {
         }
     }
 
-    // --- OSTATNÉ FUNKCIE ---
+    // --- NOVÉ: FUNKCIE PRE OVLÁDANIE FILTRA ---
+    fun onFilterDialogOpen() {
+        isFilterDialogVisible = true
+    }
+
+    fun onFilterDialogDismiss() {
+        isFilterDialogVisible = false
+    }
+
+    fun onFilterCategorySelected(category: String, isSelected: Boolean) {
+        _activeCategoryFilters.update { currentFilters ->
+            val newFilters = currentFilters.toMutableSet()
+            if (isSelected) {
+                newFilters.add(category)
+            } else {
+                newFilters.remove(category)
+            }
+            newFilters
+        }
+    }
+
+    fun clearAllFilters() {
+        _activeCategoryFilters.value = emptySet()
+    }
+
+
+    // --- OSTATNÉ FUNKCIE (s drobnou úpravou) ---
 
     fun onSearchQueryChange(newQuery: String) {
         searchQuery = newQuery
     }
 
-    // ✅ TÚTO FUNKCIU PRIDAJTE
+    // ✅ TÚTO FUNKCIU SEM PRIDAJTE
     /**
-     * Resetuje filter kategórií na predvolenú hodnotu ("Všetky").
-     * Volá sa pri opustení sekcie Návodov.
+     * Resetuje filter kategórií (záložiek) na predvolenú hodnotu ("Všetky").
+     * Volá sa pri opustení sekcie Návodov, aby sa pri návrate vždy
+     * zobrazila východzia záložka.
      */
     fun resetTabToDefault() {
         // Jednoducho zavoláme existujúcu funkciu `onCategorySelected`
-        // s predvolenou hodnotou.
+        // s predvolenou hodnotou "Všetky".
         onCategorySelected(categories.first())
     }
 
+    // UPRAVENÉ: Pri zmene kategórie resetujeme aj filter z dialógu
     fun onCategorySelected(category: String) {
         selectedCategory = category
-        if (category != "Všetky") {
-            searchQuery = ""
-        }
+        // Pri prepnutí záložky chceme vždy zrušiť filtre z dialógu aj vyhľadávanie
+        clearAllFilters()
+        onSearchQueryChange("")
     }
 
     fun onTitleChange(newTitle: String) {
