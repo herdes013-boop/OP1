@@ -516,7 +516,6 @@ fun ContactsNavHost(
                     nestedNavController.navigate(Routes.editContact(id))
                 },
                 onBack = {
-                    viewModel.clearSelectedContact()
                     nestedNavController.popBackStack()
                 }
             )
