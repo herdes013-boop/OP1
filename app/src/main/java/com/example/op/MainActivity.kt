@@ -500,7 +500,11 @@ fun ContactsNavHost(
         }
         composable(
             route = Routes.CONTACT_DETAIL,
-            arguments = listOf(navArgument("contactId") { type = NavType.IntType })
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
+            // ✅ PRIDANÉ: Pri návrate (pop) na predchádzajúcu obrazovku sa nespustí žiadna animácia.
+            popEnterTransition = { EnterTransition.None },
+            // ✅ PRIDANÉ: Detail obrazovka pri svojom zmiznutí (pop) tiež nespustí žiadnu animáciu.
+            popExitTransition = { ExitTransition.None }
         ) { backStackEntry ->
             val contactId = backStackEntry.arguments?.getInt("contactId") ?: 0
             ContactDetailScreen(
