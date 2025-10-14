@@ -476,7 +476,13 @@ private fun ChannelDetailView(
         ) {
             if (functions.isEmpty() && !isEditMode) {
                 item {
-                    Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
+                    // Odstránili sme .fillParentMaxSize(), aby sa Box nerozťahoval
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth() // Iba na šírku
+                            .padding(vertical = 48.dp), // Dáme mu trochu miesta zhora a zdola
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text(
                             "Pre tento kanál zatiaľ nie sú definované žiadne funkcie.",
                             textAlign = TextAlign.Center,
