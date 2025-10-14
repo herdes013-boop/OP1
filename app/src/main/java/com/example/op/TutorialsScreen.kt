@@ -1,14 +1,19 @@
 package com.example.op
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -41,6 +46,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.compose.material.icons.filled.ImageNotSupported
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
+import androidx.compose.ui.res.painterResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -184,6 +193,9 @@ fun TutorialCard(
     tutorial: Tutorial,
     onClick: () -> Unit,
 ) {
+    // ✅ KROK 1: Nájdeme prvý obrázok v návode
+    val firstImageBlock = tutorial.content.filterIsInstance<TutorialContentBlock.ImageBlock>().firstOrNull()
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -191,25 +203,51 @@ fun TutorialCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        Column(Modifier.padding(16.dp)) {
-            Text(text = tutorial.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text(
-                text = tutorial.category,
-                style = MaterialTheme.typography.bodySmall,
-                fontStyle = FontStyle.Italic,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(top = 2.dp)
-            )
-            val firstText = tutorial.content.filterIsInstance<TutorialContentBlock.TextBlock>().firstOrNull()?.text
-            if (firstText != null) {
-                Text(
-                    text = firstText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 8.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+        // ✅ KROK 2: Použijeme Row pre usporiadanie obrázka a textu vedľa seba
+        Row(
+            modifier = Modifier.padding(12.dp), // Zmenšený padding pre kompaktnejší vzhľad
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // --- OBRÁZKOVÁ ČASŤ (vľavo) ---
+            Box(
+                modifier = Modifier
+                    .size(80.dp) // Pevná veľkosť pre náhľadový obrázok
+                    .background(
+                        MaterialTheme.colorScheme.surface,
+                        shape = MaterialTheme.shapes.medium
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                // ✅ KROK 3: Použijeme knižnicu Coil na zobrazenie obrázka
+                AsyncImage(
+                    model = firstImageBlock?.uriString ?: firstImageBlock?.imageRes,
+                    contentDescription = "Náhľad návodu",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                    placeholder = painterResource(id = R.drawable.ic_image_not_supported),
+                    error = painterResource(id = R.drawable.ic_image_not_supported)
                 )
+            } // ✅ TÁTO ZÁTVORKA UKONČUJE BOX
+
+            Spacer(Modifier.width(16.dp)) // Teraz je Spacer na správnom mieste
+
+            // --- TEXTOVÁ ČASŤ (vpravo) ---
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = tutorial.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2, // Povolenie 2 riadkov pre dlhšie názvy
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = tutorial.category,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontStyle = FontStyle.Italic,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+                // Pôvodný textový náhľad je odstránený
             }
         }
     }
