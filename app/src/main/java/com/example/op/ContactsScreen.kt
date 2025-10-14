@@ -439,14 +439,15 @@ private fun ChannelDetailView(
             itemsIndexed(items = functions) { index, function ->
                 ReorderableItem(
                     reorderableState = reorderState,
-                    key = function.id
+                    key = function.id,
+                    // ✅ Modifikátor pre presúvanie patrí priamo SEM
+                    modifier = if (isEditMode) Modifier.detectReorderAfterLongPress(reorderState) else Modifier
                 ) {
                     FunctionSection(
                         function = function,
                         viewModel = viewModel,
                         isEditMode = isEditMode,
-                        modifier = if (isEditMode) Modifier.detectReorderAfterLongPress(reorderState) else Modifier,
-                        // ✅ TIETO RIADKY SEM DOPLŇTE
+                        // modifier tu už nie je potrebný, môžeme ho odstrániť
                         onAddPersonClick = { onAddPersonClick(function) },
                         onRemovePersonClick = { personId -> onRemovePersonClick(function.id, personId) },
                         onUpdatePersonNote = { personId, newNote -> onUpdatePersonNote(function.id, personId, newNote) }
@@ -488,24 +489,24 @@ private fun FunctionSection(
     function: ChannelFunction,
     viewModel: ContactsViewModel,
     isEditMode: Boolean,
-    modifier: Modifier = Modifier,
-    // ✅ TIETO RIADKY SEM DOPLŇTE
     onAddPersonClick: () -> Unit,
     onRemovePersonClick: (personId: String) -> Unit,
     onUpdatePersonNote: (personId: String, newNote: String) -> Unit
 ) {
     // Dynamický modifikátor, ktorý pridá okraj iba v režime úprav
     val containerModifier = if (isEditMode) {
-        modifier
+        Modifier // ✅ OPRAVA č. 1
             .border(
                 width = 1.dp,
-                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f), // Jemnejšia farba
-                shape = RoundedCornerShape(12.dp) // Zaoblené rohy
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(12.dp)
             )
             .padding(8.dp)
     } else {
-        modifier // V normálnom režime žiadny okraj ani padding
-    }
+        Modifier // ✅ OPRAVA č. 2
+
+    //...
+}
 
     Column(modifier = containerModifier) {
         // --- HLAVIČKA S NÁZVOM A AKCIAMI ---
@@ -513,7 +514,6 @@ private fun FunctionSection(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Priestor pre "uchopovač" na presúvanie
             if (isEditMode) {
                 Icon(
                     imageVector = Icons.Default.DragIndicator,
@@ -529,8 +529,7 @@ private fun FunctionSection(
                 modifier = Modifier.weight(1f)
             )
             if (isEditMode) {
-                // TODO: Dialóg pre úpravu názvu a poznámky funkcie
-                IconButton(onClick = { /* onEditFunction() */ }, modifier = Modifier.size(24.dp)) {
+                IconButton(onClick = { /* TODO: onEditFunction() */ }, modifier = Modifier.size(24.dp)) {
                     Icon(Icons.Default.Edit, "Upraviť názov", tint = MaterialTheme.colorScheme.secondary)
                 }
                 Spacer(Modifier.width(8.dp))
@@ -541,13 +540,43 @@ private fun FunctionSection(
         }
 
         // --- POZNÁMKY K FUNKCII ---
-        if (!function.notes.isNullOrBlank()) {
-            Text(
-                text = function.notes,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
+        if (isEditMode) {
+            BasicTextField(
+                value = function.notes ?: "",
+                onValueChange = { newNotes ->
+                    // Priamo voláme viewModel, aby sme aktualizovali poznámku
+                    viewModel.updateChannelFunction(function.id, function.title, newNotes)
+                },
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    fontStyle = FontStyle.Italic,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp, bottom = 8.dp),
+                decorationBox = { innerTextField ->
+                    // Placeholder, ak je text prázdny
+                    if (function.notes.isNullOrBlank()) {
+                        Text(
+                            "Pridať poznámku k funkcii...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontStyle = FontStyle.Italic,
+                            color = Color.Gray
+                        )
+                    }
+                    innerTextField()
+                }
             )
+        } else {
+            // V normálnom režime len zobrazíme text (ak nie je prázdny)
+            function.notes?.takeIf { it.isNotBlank() }?.let { notes ->
+                Text(
+                    text = notes,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
+                )
+            }
         }
 
         // --- ZOZNAM PRIRADENÝCH ĽUDÍ ---
@@ -557,18 +586,19 @@ private fun FunctionSection(
                 AssignedPersonRow(
                     person = person,
                     isEditMode = isEditMode,
-                    onRemoveClick = { viewModel.removePersonFromFunction(function.id, person.id) },
-                    onNoteChange = { newNote -> viewModel.updatePersonNoteInFunction(function.id, person.id, newNote) }
+                    // ✅ OPRAVA č.1: Používame funkcie, ktoré sme dostali
+                    onRemoveClick = { onRemovePersonClick(person.id) },
+                    onNoteChange = { newNote -> onUpdatePersonNote(person.id, newNote) }
                 )
                 Spacer(Modifier.height(4.dp))
             }
         }
 
         // --- TLAČIDLO "PRIRADIŤ OSOBU" (len v edit mode) ---
-        var showDialog by remember { mutableStateOf(false) }
         if (isEditMode) {
             TextButton(
-                onClick = { showDialog = true },
+                // ✅ OPRAVA č.2: Používame funkciu, ktorú sme dostali
+                onClick = onAddPersonClick,
                 modifier = Modifier.padding(top = 4.dp)
             ) {
                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -577,18 +607,8 @@ private fun FunctionSection(
             }
         }
 
-        if (showDialog) {
-            val assignedIds = function.assignedPeople.map { it.contactId }
-            AddPersonToFunctionDialog(
-                allContacts = viewModel.contacts,
-                assignedPeopleIds = assignedIds,
-                onDismiss = { showDialog = false },
-                onPersonSelected = { contact ->
-                    viewModel.assignPersonToFunction(function.id, contact)
-                    showDialog = false
-                }
-            )
-        }
+        // TENTO BLOK SME ODSTRÁNILI, PRETOŽE LOGIKA DIALÓGU JE UŽ V HLAVNEJ FUNKCII
+        // if (showDialog) { ... }
     }
 }
 
