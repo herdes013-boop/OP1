@@ -426,8 +426,12 @@ class ContactsViewModel : ViewModel() {
 
     // Funkcie pre aktualizáciu filtrov z ContactsScreen
     fun updateSelectedTabFilter(newFilter: String) {
+        // ✅ KROK 1: Resetuj režim úprav VŽDY, keď sa mení záložka.
+        // Ak bol režim úprav aktívny, vypne sa. Ak nebol, nič sa nestane.
+        isEditMode = false
+
+        // Zvyšok funkcie zostáva rovnaký
         _selectedTabFilter.value = newFilter
-        // Po zmene filtra iba znovu načítame dáta pre daný kanál z našej pamäte
         loadChannelFunctions(newFilter)
     }
 
