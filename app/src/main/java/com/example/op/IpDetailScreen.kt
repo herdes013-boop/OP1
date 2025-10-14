@@ -18,6 +18,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color // Pridaný import pre pomocnú funkciu
+import androidx.compose.foundation.text.selection.SelectionContainer
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,31 +72,22 @@ fun IpDetailScreen(
     // ✅ ÚPRAVA: Celý obsah vložíme do jednej hlavnej karty
     // =================================================================
     Column(
-        // Tento vonkajší Column zabezpečí rolovanie a odsadenie celej karty
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp) // Odsadenie karty od okrajov obrazovky
     ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-        ) {
-            // Vnútorný Column pre obsah karty
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 20.dp), // Vnútorný padding karty
-                verticalArrangement = Arrangement.spacedBy(18.dp) // Medzery medzi položkami
-            ) {
-                // Zobrazujeme polia pre IpItem
-                DetailItem(label = "Názov", value = ipItem.name)
-                DetailItem(label = "IP Adresa", value = ipItem.ipAddress)
-                ipItem.notes?.let {
-                    if (it.isNotBlank()) {
-                        DetailItem(label = "Poznámky", value = it)
-                    }
+        // Použijeme našu centrálnu DetailCard
+        DetailCard {
+            // Zobrazujeme polia pre IpItem s medzerami a kopírovaním
+            DetailItem(label = "Názov", value = ipItem.name, isValueSelectable = true)
+
+            Spacer(Modifier.height(16.dp))
+            DetailItem(label = "IP Adresa", value = ipItem.ipAddress, isValueSelectable = true)
+
+            ipItem.notes?.let {
+                if (it.isNotBlank()) {
+                    Spacer(Modifier.height(16.dp))
+                    DetailItem(label = "Poznámky", value = it, isValueSelectable = true)
                 }
             }
         }
@@ -155,18 +148,27 @@ fun IpDetailScreen(
 
 // Pomocná funkcia, ktorá zostáva rovnaká, ale bez deliacej čiary
 @Composable
-private fun DetailItem(label: String, value: String) {
+private fun DetailItem(
+    label: String,
+    value: String,
+    isValueSelectable: Boolean = false // Parameter na povolenie kopírovania
+) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.primary
+            text = label.uppercase(), // Zjednotený vzhľad s veľkými písmenami
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold
         )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
-            fontWeight = FontWeight.SemiBold,
-        )
-        // Divider() // <-- ČIARA JE ODSTRÁNENÁ
+        Spacer(Modifier.height(2.dp))
+
+        // Ak je hodnota kopírovateľná, obalíme ju
+        if (isValueSelectable) {
+            SelectionContainer {
+                Text(text = value, style = MaterialTheme.typography.bodyLarge)
+            }
+        } else {
+            Text(text = value, style = MaterialTheme.typography.bodyLarge)
+        }
     }
 }
