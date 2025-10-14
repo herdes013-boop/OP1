@@ -227,7 +227,7 @@ fun ContactsScreen(
                     viewModel = viewModel,
                     functions = channelFunctions,
                     isEditMode = isEditMode,
-                    modifier = Modifier.fillMaxSize(),onAddFunction = { nazov -> viewModel.addChannelFunction(nazov) },
+                    onAddFunction = { nazov -> viewModel.addChannelFunction(nazov) },
                     onMoveFunction = { from, to -> viewModel.moveChannelFunction(from, to) },
                     // ✅ TIETO RIADKY SEM DOPLŇTE
                     onAddPersonClick = { function ->
@@ -451,10 +451,19 @@ private fun ChannelDetailView(
     )
 
     // ✅ KROK 1: Vytvoríme jednu veľkú hlavnú kartu
-    Card(
-        modifier = modifier
+    val cardModifier = if (isEditMode) {
+        // V edit móde sa karta roztiahne na celú obrazovku a bude sa dať presúvať
+        Modifier
             .fillMaxSize()
-            .reorderable(reorderState), // ✅ TOTO JE SPRÁVNE MIESTO
+            .reorderable(reorderState)
+    } else {
+        // V normálnom režime sa výška prispôsobí obsahu a nedá sa presúvať
+        Modifier.padding(horizontal = 8.dp, vertical = 4.dp) // Pridáme trochu miesta okolo karty
+    }
+
+// 2. Použijeme ho na karte
+    Card(
+        modifier = cardModifier, // ✅ POUŽIJEME NÁŠ NOVÝ PODMIENENÝ MODIFIKÁTOR
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface) // Svetlé pozadie
     ) {
