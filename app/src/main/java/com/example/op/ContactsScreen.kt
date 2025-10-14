@@ -392,9 +392,9 @@ private fun AllContactsView(
         // ✅ POUŽÍVAME FINÁLNY, PLNE PREFILTROVANÝ ZOZNAM `contacts`
         if (contacts.isEmpty()) {
             Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
+                modifier = Modifier// .weight(1f) SME ODSTRÁNILI
+                    .fillMaxWidth()
+                    .padding(vertical = 48.dp), // Pridali sme padding, aby text nebol nalepený hore
                 contentAlignment = Alignment.Center
             ) {
                 // Vylepšená správa pre používateľa
@@ -412,7 +412,7 @@ private fun AllContactsView(
         } else {
             LazyColumn(
                 // ✅ Jednoduchý LazyColumn bez presúvania
-                modifier = Modifier.weight(1f),
+                // modifier = Modifier.weight(1f) SME ODSTRÁNILI
                 contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 80.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
