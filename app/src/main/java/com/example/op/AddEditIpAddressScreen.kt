@@ -1,3 +1,4 @@
+// Súbor: AddEditIpAddressScreen.kt
 package com.example.op
 
 import androidx.activity.compose.BackHandler
@@ -25,60 +26,51 @@ fun AddEditIpAddressScreen(
     navController: NavController,
     viewModel: PasswordsViewModel,
     sharedViewModel: SharedViewModel,
-    ipId: String? = null
+    ipId: String? = null,
+    // ✅ KROK 2.1: Pridanie nového parametra
+    onBack: () -> Unit
 ) {
-    // 1. Príprava stavov a načítanie dát
     val isNewItem = ipId == null
 
-    // Načítame položku alebo vytvoríme novú
     val originalIpItem: IpItem = remember(ipId) {
         if (isNewItem) {
             viewModel.createEmptyIpItem()
         } else {
-            viewModel.getIpAddressById(ipId!!) ?: viewModel.createEmptyIpItem()
+            (viewModel.getIpAddressById(ipId!!) ?: viewModel.createEmptyIpItem()).copy()
         }
     }
 
-    // Lokálny stav, ktorý používateľ upravuje vo formulári
     var localIpItem by remember { mutableStateOf(originalIpItem) }
-
-    // Stavy pre dialógy a menu
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showUnsavedChangesDialog by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
 
-    // Vypočítaný stav, ktorý zisťuje, či sú zmeny
     val hasUnsavedChanges by remember {
         derivedStateOf { localIpItem != originalIpItem }
     }
 
-    // Ak upravujeme neexistujúcu položku (napr. bola medzitým zmazaná), vrátime sa späť
     if (!isNewItem && viewModel.getIpAddressById(ipId!!) == null) {
-        LaunchedEffect(Unit) { navController.popBackStack() }
+        LaunchedEffect(Unit) { onBack() } // Použijeme onBack
         return
     }
 
-
-    // 2. Funkcie pre ukladanie, mazanie a navigáciu
     fun saveItemAndGoBack() {
         if (isNewItem) {
             viewModel.addIpAddress(localIpItem)
         } else {
             viewModel.updateIpAddress(localIpItem)
         }
-        navController.popBackStack()
+        onBack() // Použijeme onBack
     }
 
     fun handleBackNavigation() {
         if (hasUnsavedChanges) {
             showUnsavedChangesDialog = true
         } else {
-            navController.popBackStack()
+            onBack() // Použijeme onBack
         }
     }
 
-
-    // 3. Nastavenie horného panela (TopAppBar) cez SharedViewModel
     LaunchedEffect(isNewItem, hasUnsavedChanges) {
         sharedViewModel.setTopBarState(
             TopBarState(
@@ -89,19 +81,17 @@ fun AddEditIpAddressScreen(
                     }
                 },
                 actions = {
-                    // Zobrazí tlačidlo ULOŽIŤ iba ak sú zmeny
                     if (hasUnsavedChanges) {
                         Button(
                             onClick = ::saveItemAndGoBack,
                             modifier = Modifier.padding(horizontal = 8.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF4CAF50) // Zelená farba
+                                containerColor = Color(0xFF4CAF50)
                             )
                         ) {
                             Text("ULOŽIŤ")
                         }
                     }
-                    // Menu pre zmazanie sa zobrazí iba pri úprave existujúcej položky
                     if (!isNewItem) {
                         IconButton(onClick = { showMenu = true }) {
                             Icon(Icons.Default.MoreVert, "Viac")
@@ -112,11 +102,8 @@ fun AddEditIpAddressScreen(
         )
     }
 
-    // Zabezpečí správne fungovanie systémového tlačidla "späť"
     BackHandler(onBack = ::handleBackNavigation)
 
-
-    // 4. Hlavný obsah obrazovky (formulár)
     Box(
         modifier = modifier.fillMaxSize()
     ) {
@@ -147,10 +134,8 @@ fun AddEditIpAddressScreen(
                 label = { Text("Poznámky (voliteľné)") },
                 modifier = Modifier.fillMaxWidth()
             )
-            // TLAČIDLO "ULOŽIŤ" JE ODTIAĽTO ODSTRÁNENÉ!
         }
 
-        // Dropdown menu je zarovnané vpravo hore
         DropdownMenu(
             expanded = showMenu,
             onDismissRequest = { showMenu = false },
@@ -167,8 +152,6 @@ fun AddEditIpAddressScreen(
         }
     }
 
-
-    // 5. Dialógy pre potvrdenie
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
@@ -182,7 +165,7 @@ fun AddEditIpAddressScreen(
                     onClick = {
                         viewModel.deleteIpAddress(originalIpItem.id)
                         showDeleteDialog = false
-                        navController.popBackStack()
+                        onBack() // Použijeme onBack
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) { Text("Odstrániť") }
@@ -190,71 +173,20 @@ fun AddEditIpAddressScreen(
         )
     }
 
+    // ✅ KROK 2.2: Nahradenie starého dialógu novým
     if (showUnsavedChangesDialog) {
-        AlertDialog(
-            onDismissRequest = { showUnsavedChangesDialog = false },
-            title = { Text("Neuložené zmeny") },
-
-            // Do parametra 'text' opäť vložíme vlastnú štruktúru
-            text = {
-                Column(
-                    // Zarovnanie prvkov v stĺpci na stred
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // Text otázky
-                    Text(
-                        text = "Prajete si uložiť zmeny pred odchodom?",
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-
-                    // HORNÝ RIADOK s dvoma tlačidlami
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        // Tlačidlo NEULOŽIŤ (vľavo)
-                        Button(
-                            onClick = {
-                                showUnsavedChangesDialog = false
-                                navController.popBackStack()
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error
-                            ),
-                            modifier = Modifier.weight(1f) // Zaberie polovicu šírky
-                        ) {
-                            Text("Neuložiť")
-                        }
-
-                        // Tlačidlo ULOŽIŤ (vpravo)
-                        Button(
-                            onClick = {
-                                showUnsavedChangesDialog = false
-                                saveItemAndGoBack()
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF4CAF50)
-                            ),
-                            modifier = Modifier.weight(1f) // Zaberie druhú polovicu šírky
-                        ) {
-                            Text("Uložiť")
-                        }
-                    }
-
-                    // SPODNÉ TLAČIDLO "Zrušiť"
-                    // Je umiestnené priamo v Column, takže bude pod horným Row
-                    TextButton(
-                        onClick = { showUnsavedChangesDialog = false },
-                        modifier = Modifier.padding(top = 8.dp) // Odsadenie od horného radu
-                    ) {
-                        Text("Zrušiť")
-                    }
-                }
+        UnsavedChangesDialog(
+            onSave = {
+                showUnsavedChangesDialog = false
+                saveItemAndGoBack()
             },
-
-            // Pôvodné sloty pre tlačidlá opäť necháme prázdne
-            confirmButton = {},
-            dismissButton = {}
+            onDiscard = {
+                showUnsavedChangesDialog = false
+                onBack()
+            },
+            onCancel = {
+                showUnsavedChangesDialog = false
+            }
         )
     }
 }

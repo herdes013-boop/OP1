@@ -1,3 +1,4 @@
+// Súbor: AddEditPasswordScreen.kt
 package com.example.op
 
 import androidx.activity.compose.BackHandler
@@ -27,62 +28,54 @@ fun AddEditPasswordScreen(
     navController: NavController,
     viewModel: PasswordsViewModel,
     sharedViewModel: SharedViewModel,
-    passwordId: String? = null
+    passwordId: String? = null,
+    // ✅ KROK 1: Pridanie nového parametra
+    onBack: () -> Unit
 ) {
-    // 1. Príprava stavov a načítanie dát
     val isNewItem = passwordId == null
 
-    // Načítame položku alebo vytvoríme novú z ViewModelu.
-    // `remember` zabezpečí, že sa to nestane pri každej rekompozícii.
     val originalPasswordItem: PasswordItem = remember(passwordId) {
         if (isNewItem) {
-            viewModel.createEmptyPasswordItem()
-        } else {
-            // Pri úprave nájdeme existujúcu položku
-            viewModel.getPasswordById(passwordId!!) ?: viewModel.createEmptyPasswordItem()
+            viewModel.createEmptyPasswordItem()} else {
+            // Pri úprave nájdeme existujúcu položku A HNEĎ VYTVORÍME KÓPIU
+            (viewModel.getPasswordById(passwordId!!) ?: viewModel.createEmptyPasswordItem()).copy()
         }
     }
 
-    // Lokálny stav, ktorý používateľ upravuje vo formulári.
-    // Začína s hodnotou originálnej položky.
     var localPasswordItem by remember { mutableStateOf(originalPasswordItem) }
-
-    // Stavy pre dialógy a horné menu
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showUnsavedChangesDialog by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
 
-    // Vypočítaný stav, ktorý zisťuje, či sú zmeny.
-    // `derivedStateOf` je optimalizácia, aby sa kód nespúšťal zbytočne.
     val hasUnsavedChanges by remember {
         derivedStateOf { localPasswordItem != originalPasswordItem }
     }
 
-    // Poistka: Ak upravujeme neexistujúcu položku (napr. bola medzitým zmazaná), vrátime sa späť.
     if (!isNewItem && viewModel.getPasswordById(passwordId!!) == null) {
-        LaunchedEffect(Unit) { navController.popBackStack() }
+        // ✅ KROK 2: Použitie onBack() namiesto priameho volania
+        LaunchedEffect(Unit) { onBack() }
         return
     }
 
-    // 2. Funkcie pre ukladanie a navigáciu
     fun saveItemAndGoBack() {
         if (isNewItem) {
             viewModel.addPassword(localPasswordItem)
         } else {
             viewModel.updatePassword(localPasswordItem)
         }
-        navController.popBackStack()
+        // ✅ KROK 2: Použitie onBack() namiesto priameho volania
+        onBack()
     }
 
     fun handleBackNavigation() {
         if (hasUnsavedChanges) {
             showUnsavedChangesDialog = true
         } else {
-            navController.popBackStack()
+            // ✅ KROK 2: Použitie onBack() namiesto priameho volania
+            onBack()
         }
     }
 
-    // 3. Nastavenie horného panela (TopAppBar) cez SharedViewModel
     LaunchedEffect(isNewItem, hasUnsavedChanges) {
         sharedViewModel.setTopBarState(
             TopBarState(
@@ -93,7 +86,6 @@ fun AddEditPasswordScreen(
                     }
                 },
                 actions = {
-                    // Tlačidlo ULOŽIŤ sa zobrazí iba vtedy, ak `hasUnsavedChanges` je true
                     if (hasUnsavedChanges) {
                         Button(
                             onClick = ::saveItemAndGoBack,
@@ -105,7 +97,6 @@ fun AddEditPasswordScreen(
                             Text("ULOŽIŤ")
                         }
                     }
-                    // Menu pre zmazanie sa zobrazí iba pri úprave existujúcej položky
                     if (!isNewItem) {
                         IconButton(onClick = { showMenu = true }) {
                             Icon(Icons.Default.MoreVert, "Viac")
@@ -116,10 +107,8 @@ fun AddEditPasswordScreen(
         )
     }
 
-    // Zabezpečí správne fungovanie systémového tlačidla "späť"
     BackHandler(onBack = ::handleBackNavigation)
 
-    // 4. Hlavný obsah obrazovky (formulár)
     Box(modifier = modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -128,7 +117,6 @@ fun AddEditPasswordScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Všetky polia sú prepojené na `localPasswordItem`
             OutlinedTextField(
                 value = localPasswordItem.name,
                 onValueChange = { localPasswordItem = localPasswordItem.copy(name = it) },
@@ -166,7 +154,6 @@ fun AddEditPasswordScreen(
             )
         }
 
-        // Dropdown menu pre možnosť "Zmazať"
         DropdownMenu(
             expanded = showMenu,
             onDismissRequest = { showMenu = false },
@@ -183,7 +170,6 @@ fun AddEditPasswordScreen(
         }
     }
 
-    // 5. Dialógy pre potvrdenie
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
@@ -197,7 +183,8 @@ fun AddEditPasswordScreen(
                     onClick = {
                         viewModel.deletePassword(originalPasswordItem.id)
                         showDeleteDialog = false
-                        navController.popBackStack()
+                        // ✅ KROK 2: Použitie onBack() namiesto priameho volania
+                        onBack()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) { Text("Odstrániť") }
@@ -205,71 +192,20 @@ fun AddEditPasswordScreen(
         )
     }
 
+    // ✅ KROK 3: Nahradenie starého dialógu novým, univerzálnym dialógom
     if (showUnsavedChangesDialog) {
-        AlertDialog(
-            onDismissRequest = { showUnsavedChangesDialog = false },
-            title = { Text("Neuložené zmeny") },
-
-            // Do parametra 'text' opäť vložíme vlastnú štruktúru
-            text = {
-                Column(
-                    // Zarovnanie prvkov v stĺpci na stred
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // Text otázky
-                    Text(
-                        text = "Prajete si uložiť zmeny pred odchodom?",
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-
-                    // HORNÝ RIADOK s dvoma tlačidlami
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        // Tlačidlo NEULOŽIŤ (vľavo)
-                        Button(
-                            onClick = {
-                                showUnsavedChangesDialog = false
-                                navController.popBackStack()
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error
-                            ),
-                            modifier = Modifier.weight(1f) // Zaberie polovicu šírky
-                        ) {
-                            Text("Neuložiť")
-                        }
-
-                        // Tlačidlo ULOŽIŤ (vpravo)
-                        Button(
-                            onClick = {
-                                showUnsavedChangesDialog = false
-                                saveItemAndGoBack()
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF4CAF50)
-                            ),
-                            modifier = Modifier.weight(1f) // Zaberie druhú polovicu šírky
-                        ) {
-                            Text("Uložiť")
-                        }
-                    }
-
-                    // SPODNÉ TLAČIDLO "Zrušiť"
-                    // Je umiestnené priamo v Column, takže bude pod horným Row
-                    TextButton(
-                        onClick = { showUnsavedChangesDialog = false },
-                        modifier = Modifier.padding(top = 8.dp) // Odsadenie od horného radu
-                    ) {
-                        Text("Zrušiť")
-                    }
-                }
+        UnsavedChangesDialog(
+            onSave = {
+                showUnsavedChangesDialog = false
+                saveItemAndGoBack()
             },
-
-            // Pôvodné sloty pre tlačidlá opäť necháme prázdne
-            confirmButton = {},
-            dismissButton = {}
+            onDiscard = {
+                showUnsavedChangesDialog = false
+                onBack()
+            },
+            onCancel = {
+                showUnsavedChangesDialog = false
+            }
         )
     }
 }

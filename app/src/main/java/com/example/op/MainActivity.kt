@@ -416,7 +416,9 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
                 modifier = Modifier.padding(paddingValues),
                 navController = nestedNavController,
                 viewModel = viewModel,
-                sharedViewModel = sharedViewModel
+                sharedViewModel = sharedViewModel,
+                // ✅ KROK 3.1: Pridanie chýbajúceho parametra
+                onBack = { nestedNavController.popBackStack() }
             )
         }
         composable(
@@ -429,7 +431,13 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
                 navController = nestedNavController,
                 viewModel = viewModel,
                 passwordId = passwordId,
-                sharedViewModel = sharedViewModel
+                sharedViewModel = sharedViewModel,
+                // ✅ KROK 3.1: Pridanie chýbajúceho parametra
+                onBack = {
+                    // VRACIAME SA O DVA KROKY: Z Editácie -> cez Detail -> na Zoznam
+                    nestedNavController.popBackStack() // Zatvorí Detail
+                    nestedNavController.popBackStack() // Zatvorí Editáciu
+                }
             )
         }
         composable(Routes.ADD_IP_ADDRESS) {
@@ -437,7 +445,9 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
                 modifier = Modifier.padding(paddingValues),
                 navController = nestedNavController,
                 viewModel = viewModel,
-                sharedViewModel = sharedViewModel
+                sharedViewModel = sharedViewModel,
+                // ✅ KROK 3.1: Pridanie chýbajúceho parametra
+                onBack = { nestedNavController.popBackStack() }
             )
         }
         composable(
@@ -450,7 +460,13 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
                 navController = nestedNavController,
                 viewModel = viewModel,
                 ipId = ipId,
-                sharedViewModel = sharedViewModel
+                sharedViewModel = sharedViewModel,
+                // ✅ KROK 3.1: Pridanie chýbajúceho parametra
+                onBack = {
+                    // VRACIAME SA O DVA KROKY: Z Editácie -> cez Detail -> na Zoznam
+                    nestedNavController.popBackStack() // Zatvorí Detail
+                    nestedNavController.popBackStack() // Zatvorí Editáciu
+                }
             )
         }
     }
