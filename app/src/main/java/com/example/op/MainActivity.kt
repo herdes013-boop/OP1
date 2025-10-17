@@ -481,20 +481,10 @@ fun ContactsNavHost(
     val nestedNavController = rememberNavController()
     val navBackStackEntry by nestedNavController.currentBackStackEntryAsState()
 
-    // --- Toto je nová, zjednodušená verzia ---
     LaunchedEffect(navBackStackEntry) {
         val currentRoute = navBackStackEntry?.destination?.route
-
-        // Spodnú lištu zobrazíme LEN na hlavnej obrazovke so zoznamom
         sharedViewModel.setShowBottomBar(currentRoute == Routes.CONTACTS_LIST)
-
-        // Ak sa vraciame na obrazovku so zoznamom,
-        // musíme "prebiť" nastavenie z predchádzajúcej obrazovky.
-        // ALE už tu neriešime konkrétne záložky. Iba resetujeme titulok.
-        // O zvyšok sa postará ContactsScreen sama.
         if (currentRoute == Routes.CONTACTS_LIST) {
-            // Jednoducho nastavíme všeobecný titulok.
-            // Správny titulok pre záložku si hneď potom nastaví ContactsScreen.
             sharedViewModel.setTopBarState(TopBarState(title = "Kontakty"))
         }
     }
@@ -509,18 +499,26 @@ fun ContactsNavHost(
         composable(Routes.CONTACTS_LIST) {
             ContactsScreen(
                 navController = nestedNavController,
-                sharedViewModel = sharedViewModel, // <-- ✅ TENTO RIADOK STE PRIDALI
+                sharedViewModel = sharedViewModel,
                 viewModel = viewModel,
                 modifier = Modifier.padding(paddingValues)
             )
         }
+
+        // ✅ PRIDANÝ CHÝBAJÚCI BLOK PRE PRIDANIE KONTAKTU
+        composable(Routes.ADD_CONTACT) {
+            AddContactScreen(
+                modifier = Modifier.padding(paddingValues),
+                navController = nestedNavController,
+                viewModel = viewModel,
+                sharedViewModel = sharedViewModel,
+                onBack = { nestedNavController.popBackStack() } // Návrat o 1 krok
+            )
+        }
+
         composable(
             route = Routes.CONTACT_DETAIL,
-            arguments = listOf(navArgument("contactId") { type = NavType.IntType }),
-            // ✅ PRIDANÉ: Pri návrate (pop) na predchádzajúcu obrazovku sa nespustí žiadna animácia.
-            popEnterTransition = { EnterTransition.None },
-            // ✅ PRIDANÉ: Detail obrazovka pri svojom zmiznutí (pop) tiež nespustí žiadnu animáciu.
-            popExitTransition = { ExitTransition.None }
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType })
         ) { backStackEntry ->
             val contactId = backStackEntry.arguments?.getInt("contactId") ?: 0
             ContactDetailScreen(
@@ -536,6 +534,8 @@ fun ContactsNavHost(
                 }
             )
         }
+
+        // ✅ JEDEN, SPRÁVNY BLOK PRE ÚPRAVU KONTAKTU
         composable(
             route = Routes.EDIT_CONTACT,
             arguments = listOf(navArgument("contactId") { type = NavType.IntType })
@@ -547,16 +547,14 @@ fun ContactsNavHost(
                 contactId = contactId,
                 viewModel = viewModel,
                 sharedViewModel = sharedViewModel,
-                onBack = { nestedNavController.popBackStack() }
+                // SPRÁVNY NÁVRAT O 2 KROKY (z Editácie cez Detail na Zoznam)
+                onBack = {
+                    nestedNavController.popBackStack()
+                    nestedNavController.popBackStack()
+                }
             )
         }
-        composable(Routes.ADD_CONTACT) {
-            sharedViewModel.setTopBarState(TopBarState(isVisible = false))
-            AddContactScreen(
-                navController = nestedNavController,
-                viewModel = viewModel
-            )
-        }
+
         composable(Routes.MANAGE_CHANNELS) {
             ManageChannelsScreen(
                 viewModel = viewModel,

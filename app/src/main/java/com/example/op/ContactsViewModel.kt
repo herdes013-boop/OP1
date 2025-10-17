@@ -405,6 +405,17 @@ class ContactsViewModel : ViewModel() {
         resetForm()
     }
 
+    // ✅ PRIDAJTE TÚTO NOVÚ FUNKCIU
+    /**
+     * Pridá nový kontakt prijatý ako celý objekt z obrazovky.
+     */
+    fun addContact(contact: ContactItem) {
+        val newContact = contact.copy(
+            id = (contacts.maxOfOrNull { it.id } ?: 0) + 1
+        )
+        contacts.add(newContact) // Použijeme metódu .add() pre SnapshotStateList
+    }
+
     // Metódy pre EditContactScreen
     fun getContactById(id: Int): ContactItem? {
         return contacts.find { it.id == id }

@@ -1,5 +1,8 @@
+// Súbor: AddContactScreen.kt
+
 package com.example.op
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -10,243 +13,160 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.op.ui.theme.TelekomMagenta // ✅ PRIDANÝ IMPORT
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddContactScreen(
+    // ✅ Prijímame modifier a onBack, presne ako pri editácii
+    modifier: Modifier = Modifier,
     navController: NavController,
-    viewModel: ContactsViewModel
+    viewModel: ContactsViewModel = viewModel(),
+    sharedViewModel: SharedViewModel,
+    onBack: () -> Unit
 ) {
-    var showDiscardDialog by remember { mutableStateOf(false) }
-
-    // Formulár je "špinavý" (dirty) a zároveň platný, ak má vyplnené aspoň Meno alebo Priezvisko.
-    val isFormValidAndDirty = viewModel.formFirstName.isNotBlank() || viewModel.formLastName.isNotBlank()
-
-    val saveContactAndGoBack: () -> Unit = {
-        viewModel.saveNewContact()
-        navController.popBackStack()
+    // ✅ Používame lokálny stav, nie ViewModel
+    var localContact by remember {
+        mutableStateOf(ContactItem(id = 0, firstName = "", lastName = ""))
     }
+    var showUnsavedChangesDialog by remember { mutableStateOf(false) }
 
-    val performDiscardAndGoBack: () -> Unit = {
-        viewModel.resetForm()
-        navController.popBackStack()
-    }
-
-    val onBackClicked: () -> Unit = {
-        if (isFormValidAndDirty) {
-            showDiscardDialog = true
-        } else {
-            performDiscardAndGoBack()
+    // ✅ Zisťujeme zmeny porovnaním s prázdnym objektom
+    val hasUnsavedChanges by remember(localContact) {
+        derivedStateOf {
+            localContact.firstName.isNotBlank() ||
+                    localContact.lastName.isNotBlank() ||
+                    localContact.function?.isNotBlank() == true ||
+                    localContact.phone?.isNotBlank() == true ||
+                    localContact.email?.isNotBlank() == true ||
+                    localContact.notes?.isNotBlank() == true
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Pridať nový kontakt") },
-                navigationIcon = {
-                    IconButton(onClick = onBackClicked) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Späť")
-                    }
-                },
-                // ✅ KROK 1: PRIDANIE TLAČIDLA "ULOŽIŤ" DO HORNEJ LIŠTY
-                actions = {
-                    // Tlačidlo "Uložiť" sa zobrazí, len ak je formulár platný
-                    if (isFormValidAndDirty) {
-                        Button(
-                            onClick = saveContactAndGoBack,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF4CAF50), // Zelená farba
-                                contentColor = Color.White
-                            )
-                        ) {
-                            Text("Uložiť")
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(8.dp)) // Malý odstup od okraja
-                },
-                // ✅ KROK 2: NASTAVENIE SPRÁVNYCH FARIEB
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = TelekomMagenta,
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White,
-                    actionIconContentColor = Color.White
-                )
-            )
-        },
-        // ✅ KROK 3: ODSTRÁNENIE floatingActionButton
-        // floatingActionButton = { ... } // Táto celá sekcia je preč
-    ) { paddingValues ->
-        val scrollState = rememberScrollState()
+    // ✅ Funkcie na uloženie a návrat
+    fun saveContactAndGoBack() {
+        viewModel.addContact(localContact) // Uložíme celý lokálny objekt naraz
+        onBack()
+    }
 
+    fun handleBackNavigation() {
+        if (hasUnsavedChanges) {
+            showUnsavedChangesDialog = true
+        } else {
+            onBack()
+        }
+    }
+
+    // ✅ Správa horného panela cez SharedViewModel
+    LaunchedEffect(hasUnsavedChanges) {
+        sharedViewModel.setTopBarState(TopBarState(
+            title = "Nový kontakt",
+            navigationIcon = {
+                IconButton(onClick = ::handleBackNavigation) {
+                    Icon(Icons.Default.ArrowBack, "Naspäť")
+                }
+            },
+            actions = {
+                if (hasUnsavedChanges) {
+                    Button(
+                        onClick = ::saveContactAndGoBack,
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF4CAF50)
+                        )
+                    ) {
+                        Text("ULOŽIŤ")
+                    }
+                }
+            }
+        ))
+    }
+
+    // ✅ Spracovanie systémového tlačidla "späť"
+    BackHandler(onBack = ::handleBackNavigation)
+
+    // Formulár už nie je v Scaffolde, ale v Boxe, ktorý dostane padding
+    Box(
+        modifier = modifier.fillMaxSize()
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp)
-                .verticalScroll(scrollState),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Formulár zostáva bez zmeny
-            ContactForm(viewModel = viewModel)
+            // ✅ Formulár je prepojený na `localContact`, nie na ViewModel
+            OutlinedTextField(
+                value = localContact.firstName,
+                onValueChange = { localContact = localContact.copy(firstName = it) },
+                label = { Text("Meno") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = localContact.lastName,
+                onValueChange = { localContact = localContact.copy(lastName = it) },
+                label = { Text("Priezvisko") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = localContact.phone ?: "",
+                onValueChange = { localContact = localContact.copy(phone = it) },
+                label = { Text("Telefónne číslo") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = localContact.email ?: "",
+                onValueChange = { localContact = localContact.copy(email = it) },
+                label = { Text("Email") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = localContact.function ?: "",
+                onValueChange = { localContact = localContact.copy(function = it) },
+                label = { Text("Funkcia/Pozícia") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = localContact.notes ?: "",
+                onValueChange = { localContact = localContact.copy(notes = it) },
+                label = { Text("Poznámky") },
+                minLines = 3,
+                modifier = Modifier.fillMaxWidth()
+            )
+            val selectedChannelValue: String = localContact.channel ?: viewModel.channelOptions.first()
+            ChannelDropdown(
+                selectedChannel = selectedChannelValue,
+                onChannelSelected = { localContact = localContact.copy(channel = it) },
+                channelOptions = viewModel.channelOptions
+            )
         }
     }
 
-    if (showDiscardDialog) {
-        AlertDialog(
-            onDismissRequest = { showDiscardDialog = false },
-            title = { Text("Zahodiť zmeny?") },
-            text = { Text("Máte neuložené zmeny. Naozaj ich chcete zahodiť a vrátiť sa späť?") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDiscardDialog = false
-                        performDiscardAndGoBack()
-                    }
-                ) {
-                    Text("Zahodiť")
-                }
+    // ✅ Používame náš univerzálny dialóg
+    if (showUnsavedChangesDialog) {
+        UnsavedChangesDialog(
+            onSave = {
+                saveContactAndGoBack()
+                showUnsavedChangesDialog = false
             },
-            dismissButton = {
-                TextButton(
-                    onClick = { showDiscardDialog = false }
-                ) {
-                    Text("Zrušiť")
-                }
+            onDiscard = {
+                onBack()
+                showUnsavedChangesDialog = false
+            },
+            onCancel = {
+                showUnsavedChangesDialog = false
             }
         )
-    }
-}
-
-
-// =========================================================================
-// Zvyšok súboru (ContactForm, ChannelDropdownField) je úplne bez zmeny.
-// Môžete si ho nechať tak, ako je.
-// =========================================================================
-
-@Composable
-fun ContactForm(viewModel: ContactsViewModel) {
-
-    Spacer(modifier = Modifier.height(16.dp))
-
-    // Meno
-    OutlinedTextField(
-        value = viewModel.formFirstName,
-        onValueChange = viewModel::updateFirstName,
-        label = { Text("Meno") },
-        modifier = Modifier.fillMaxWidth()
-    )
-
-    Spacer(modifier = Modifier.height(8.dp))
-
-    // Priezvisko
-    OutlinedTextField(
-        value = viewModel.formLastName,
-        onValueChange = viewModel::updateLastName,
-        label = { Text("Priezvisko") },
-        modifier = Modifier.fillMaxWidth()
-    )
-
-    Spacer(modifier = Modifier.height(8.dp))
-
-    // Funkcia/Pozícia
-    OutlinedTextField(
-        value = viewModel.formFunction,
-        onValueChange = viewModel::updateFunction,
-        label = { Text("Funkcia") },
-        modifier = Modifier.fillMaxWidth()
-    )
-
-    Spacer(modifier = Modifier.height(8.dp))
-
-    // Telefónne číslo
-    OutlinedTextField(
-        value = viewModel.formPhone,
-        onValueChange = viewModel::updatePhone,
-        label = { Text("Telefónne číslo") },
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-        modifier = Modifier.fillMaxWidth()
-    )
-
-    Spacer(modifier = Modifier.height(8.dp))
-
-    // E-mail
-    OutlinedTextField(
-        value = viewModel.formEmail,
-        onValueChange = viewModel::updateEmail,
-        label = { Text("E-mail") },
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-        modifier = Modifier.fillMaxWidth()
-    )
-
-    Spacer(modifier = Modifier.height(8.dp))
-
-    // Kanál (Rozbaľovacia ponuka)
-    ChannelDropdownField(viewModel = viewModel)
-
-    Spacer(modifier = Modifier.height(8.dp))
-
-    // Poznámky
-    OutlinedTextField(
-        value = viewModel.formNotes,
-        onValueChange = viewModel::updateNotes,
-        label = { Text("Poznámky") },
-        minLines = 3,
-        modifier = Modifier.fillMaxWidth()
-    )
-
-    Spacer(modifier = Modifier.height(16.dp))
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ChannelDropdownField(viewModel: ContactsViewModel) {
-    var isExpanded by remember { mutableStateOf(false) }
-
-    val dropdownOptions = remember {
-        viewModel.channelOptions.drop(1)
-    }
-
-    ExposedDropdownMenuBox(
-        expanded = isExpanded,
-        onExpandedChange = { isExpanded = !isExpanded },
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        OutlinedTextField(
-            value = viewModel.formChannel,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text("Kanál") },
-            trailingIcon = {
-                ExposedDropdownMenuDefaults.TrailingIcon(expanded = isExpanded)
-            },
-            colors = ExposedDropdownMenuDefaults.textFieldColors(),
-            modifier = Modifier
-                .menuAnchor()
-                .fillMaxWidth()
-        )
-
-        ExposedDropdownMenu(
-            expanded = isExpanded,
-            onDismissRequest = { isExpanded = false }
-        ) {
-            dropdownOptions.forEach { channel ->
-                DropdownMenuItem(
-                    text = { Text(channel) },
-                    onClick = {
-                        viewModel.updateChannel(channel)
-                        isExpanded = false
-                    },
-                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
-                )
-            }
-        }
     }
 }
