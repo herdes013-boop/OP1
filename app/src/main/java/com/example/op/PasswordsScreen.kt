@@ -224,7 +224,7 @@ private fun <T> TabContent(
                 .padding(horizontal = 8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
             // Zmena: Použijeme vertikálny padding priamo tu, aby bol priestor nad prvou položkou
-            contentPadding = PaddingValues(top = 8.dp, bottom = 0.dp)
+            contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp)
         ) {
             items(data) { item ->
                 itemContent(item)
