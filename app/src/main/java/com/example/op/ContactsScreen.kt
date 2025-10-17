@@ -584,6 +584,7 @@ private fun FunctionSection(
                 text = function.title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary, // <-- PRIDAJTE TENTO RIADOK
                 modifier = Modifier.weight(1f)
             )
             if (isEditMode) {
