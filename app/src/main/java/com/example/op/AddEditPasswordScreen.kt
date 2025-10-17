@@ -209,16 +209,67 @@ fun AddEditPasswordScreen(
         AlertDialog(
             onDismissRequest = { showUnsavedChangesDialog = false },
             title = { Text("Neuložené zmeny") },
-            text = { Text("Máte neuložené zmeny. Chcete ich zahodiť a odísť?") },
-            confirmButton = {
-                Button(onClick = {
-                    showUnsavedChangesDialog = false
-                    navController.popBackStack()
-                }) { Text("Zahodiť a odísť") }
+
+            // Do parametra 'text' opäť vložíme vlastnú štruktúru
+            text = {
+                Column(
+                    // Zarovnanie prvkov v stĺpci na stred
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Text otázky
+                    Text(
+                        text = "Prajete si uložiť zmeny pred odchodom?",
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+
+                    // HORNÝ RIADOK s dvoma tlačidlami
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Tlačidlo NEULOŽIŤ (vľavo)
+                        Button(
+                            onClick = {
+                                showUnsavedChangesDialog = false
+                                navController.popBackStack()
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            ),
+                            modifier = Modifier.weight(1f) // Zaberie polovicu šírky
+                        ) {
+                            Text("Neuložiť")
+                        }
+
+                        // Tlačidlo ULOŽIŤ (vpravo)
+                        Button(
+                            onClick = {
+                                showUnsavedChangesDialog = false
+                                saveItemAndGoBack()
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF4CAF50)
+                            ),
+                            modifier = Modifier.weight(1f) // Zaberie druhú polovicu šírky
+                        ) {
+                            Text("Uložiť")
+                        }
+                    }
+
+                    // SPODNÉ TLAČIDLO "Zrušiť"
+                    // Je umiestnené priamo v Column, takže bude pod horným Row
+                    TextButton(
+                        onClick = { showUnsavedChangesDialog = false },
+                        modifier = Modifier.padding(top = 8.dp) // Odsadenie od horného radu
+                    ) {
+                        Text("Zrušiť")
+                    }
+                }
             },
-            dismissButton = {
-                TextButton(onClick = { showUnsavedChangesDialog = false }) { Text("Zostať") }
-            }
+
+            // Pôvodné sloty pre tlačidlá opäť necháme prázdne
+            confirmButton = {},
+            dismissButton = {}
         )
     }
 }
