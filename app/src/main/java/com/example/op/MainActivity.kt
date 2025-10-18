@@ -95,8 +95,8 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
 
 val bottomNavItems = listOf(
     Screen.Home,
-    Screen.Passwords,
     Screen.Contacts,
+    Screen.Passwords,
     Screen.Tutorials,
 )
 
