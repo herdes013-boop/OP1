@@ -617,22 +617,27 @@ fun TutorialsNavHost(
             )
         }
         composable(Routes.ADD_TUTORIAL) {
-            AddTutorialScreen(
+            AddEditTutorialScreen(
                 modifier = Modifier.padding(paddingValues),
                 navController = nestedNavController,
                 tutorialsViewModel = tutorialsViewModel,
                 sharedViewModel = sharedViewModel
+                // tutorialId je null, takže sa spustí logika pre pridávanie
             )
         }
+
+// Pre editáciu existujúceho návodu
         composable(
             route = Routes.EDIT_TUTORIAL,
             arguments = listOf(navArgument("tutorialId") { type = NavType.StringType })
         ) { backStackEntry ->
-            AddTutorialScreen(
+            AddEditTutorialScreen(
                 modifier = Modifier.padding(paddingValues),
                 navController = nestedNavController,
                 tutorialsViewModel = tutorialsViewModel,
-                sharedViewModel = sharedViewModel
+                sharedViewModel = sharedViewModel,
+                // Odovzdáme ID, čím sa spustí logika pre editáciu
+                tutorialId = backStackEntry.arguments?.getString("tutorialId")
             )
         }
     }

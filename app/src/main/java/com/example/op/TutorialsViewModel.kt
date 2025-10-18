@@ -155,26 +155,21 @@ class TutorialsViewModel : ViewModel() {
     }
 
     // --- FUNKCIE PRE Ukladanie a Pridávanie obrázkov (bez zmeny) ---
-    suspend fun saveTutorial() {
-        if (tutorialTitle.isBlank()) return
-
-        val editedTutorial = Tutorial(
-            id = editingTutorialId ?: UUID.randomUUID().toString(),
-            title = tutorialTitle,
-            category = tutorialCategory,
-            content = _contentBlocks.value
-        )
-
-        if (editingTutorialId == null) {
-            _tutorials.update { it + editedTutorial }
-        } else {
-            _tutorials.update { list ->
-                list.map { if (it.id == editingTutorialId) editedTutorial else it }
+    suspend fun saveTutorial(tutorial: Tutorial) {
+        _tutorials.update { list ->
+            // Ak návod s daným ID už existuje, nahradíme ho. Inak ho pridáme.
+            val existingIndex = list.indexOfFirst { it.id == tutorial.id }
+            if (existingIndex != -1) {
+                // Návod existuje, aktualizujeme ho v zozname
+                list.toMutableList().apply { this[existingIndex] = tutorial }
+            } else {
+                // Návod neexistuje, pridáme ho na koniec zoznamu
+                list + tutorial
             }
         }
     }
 
-    private suspend fun saveImageToInternalStorageAndGetUri(context: Context, sourceUri: Uri): Uri? {
+    suspend fun saveImageToInternalStorageAndGetUri(context: Context, sourceUri: Uri): Uri? {
         return withContext(Dispatchers.IO) {
             try {
                 val inputStream = context.contentResolver.openInputStream(sourceUri)
@@ -271,6 +266,11 @@ class TutorialsViewModel : ViewModel() {
         _contentBlocks.update { it + newBlock }
         // Vrátime index poslednej (práve pridanej) položky
         return _contentBlocks.value.lastIndex
+    }
+
+    // ✅ TÚTO FUNKCIU VLOŽTE SEM
+    fun getTutorialById(tutorialId: String): Tutorial? {
+        return _tutorials.value.firstOrNull { it.id == tutorialId }
     }
 
     fun onContentBlockChange(index: Int, newBlock: TutorialContentBlock) {
