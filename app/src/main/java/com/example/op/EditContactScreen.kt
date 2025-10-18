@@ -65,8 +65,17 @@ fun EditContactScreen(
         }
 
         fun saveContactAndGoBack() {
-            viewModel.updateContact(localContact)
+            localContactState?.let { currentContact ->
+                viewModel.updateContact(currentContact)
+            }
             onBack()
+        }
+
+        fun saveChanges() {
+            localContactState?.let { currentContact -> // Získame aktuálny stav
+                viewModel.updateContact(currentContact)
+                originalContact = currentContact.copy()
+            }
         }
 
         fun handleBackNavigation() {
@@ -89,7 +98,7 @@ fun EditContactScreen(
                     actions = {
                         if (hasUnsavedChanges) {
                             Button(
-                                onClick = ::saveContactAndGoBack,
+                                onClick = { saveChanges() }, // ✅ Nová funkcia a správna syntax
                                 modifier = Modifier.padding(horizontal = 8.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = Color(0xFF4CAF50)
