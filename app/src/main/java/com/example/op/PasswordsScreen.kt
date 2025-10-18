@@ -279,7 +279,7 @@ fun PasswordListItem(item: PasswordItem, onClick: () -> Unit) {
                 .fillMaxWidth()
                 .heightIn(min = 72.dp) // Zaručí minimálnu výšku karty
                 .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.Top // ✅ TOTO JE SPRÁVNE RIEŠENIE
         ) {
             // --- ČASŤ VĽAVO (NÁZOV + USER) ---
             // Tento stĺpec zaberie všetok voľný priestor.
