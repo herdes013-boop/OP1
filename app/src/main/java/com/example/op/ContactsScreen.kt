@@ -397,7 +397,7 @@ private fun ChannelDetailView(
             .reorderable(reorderState)
     } else {
         // V normálnom režime sa výška prispôsobí obsahu a nedá sa presúvať
-        Modifier.padding(horizontal = 8.dp, vertical = 4.dp) // Pridáme trochu miesta okolo karty
+        Modifier.padding(horizontal = 16.dp, vertical = 8.dp) // Pridáme trochu miesta okolo karty
     }
 
 // 2. Použijeme ho na karte
