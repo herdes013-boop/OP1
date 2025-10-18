@@ -17,6 +17,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.copy
+import androidx.compose.ui.semantics.password
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -34,12 +36,14 @@ fun AddEditPasswordScreen(
 ) {
     val isNewItem = passwordId == null
 
-    val originalPasswordItem: PasswordItem = remember(passwordId) {
-        if (isNewItem) {
-            viewModel.createEmptyPasswordItem()} else {
-            // Pri úprave nájdeme existujúcu položku A HNEĎ VYTVORÍME KÓPIU
-            (viewModel.getPasswordById(passwordId!!) ?: viewModel.createEmptyPasswordItem()).copy()
-        }
+    var originalPasswordItem by remember(passwordId) {
+        mutableStateOf(
+            if (isNewItem) {
+                viewModel.createEmptyPasswordItem()
+            } else {
+                (viewModel.getPasswordById(passwordId!!) ?: viewModel.createEmptyPasswordItem()).copy()
+            }
+        )
     }
 
     var localPasswordItem by remember { mutableStateOf(originalPasswordItem) }
@@ -67,6 +71,10 @@ fun AddEditPasswordScreen(
         onBack()
     }
 
+    fun saveChanges() {// Uložíme aktuálny stav z 'localPasswordItem'
+        viewModel.updatePassword(localPasswordItem)
+    }
+
     fun handleBackNavigation() {
         if (hasUnsavedChanges) {
             showUnsavedChangesDialog = true
@@ -88,7 +96,12 @@ fun AddEditPasswordScreen(
                 actions = {
                     if (hasUnsavedChanges) {
                         Button(
-                            onClick = ::saveItemAndGoBack,
+                            onClick = {
+                                saveChanges() // Najprv uložíme
+                                // Potom aktualizujeme 'originalPasswordItem', aby sa stav 'hasUnsavedChanges' prepočítal na false
+                                // TOTO JE KĽÚČOVÉ PRE ZMIZNUTIE TLAČIDLA
+                                originalPasswordItem = localPasswordItem.copy()
+                            },
                             modifier = Modifier.padding(horizontal = 8.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFF4CAF50) // Zelená

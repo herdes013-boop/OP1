@@ -16,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.copy
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 
@@ -32,12 +33,14 @@ fun AddEditIpAddressScreen(
 ) {
     val isNewItem = ipId == null
 
-    val originalIpItem: IpItem = remember(ipId) {
-        if (isNewItem) {
-            viewModel.createEmptyIpItem()
-        } else {
-            (viewModel.getIpAddressById(ipId!!) ?: viewModel.createEmptyIpItem()).copy()
-        }
+    var originalIpItem by remember(ipId) { // ✅ Zmena na 'var' a pridanie 'by'
+        mutableStateOf( // ✅ Obalenie do mutableStateOf
+            if (isNewItem) {
+                viewModel.createEmptyIpItem()
+            } else {
+                (viewModel.getIpAddressById(ipId!!) ?: viewModel.createEmptyIpItem()).copy() // ✅ SPRÁVNE: bez podčiarkovníka
+            }
+        )
     }
 
     var localIpItem by remember { mutableStateOf(originalIpItem) }
@@ -63,6 +66,11 @@ fun AddEditIpAddressScreen(
         onBack() // Použijeme onBack
     }
 
+    fun saveChanges() {
+        // Použijeme správnu funkciu a správnu premennú z tejto obrazovky
+        viewModel.updateIpAddress(localIpItem)
+    }
+
     fun handleBackNavigation() {
         if (hasUnsavedChanges) {
             showUnsavedChangesDialog = true
@@ -83,7 +91,11 @@ fun AddEditIpAddressScreen(
                 actions = {
                     if (hasUnsavedChanges) {
                         Button(
-                            onClick = ::saveItemAndGoBack,
+                            onClick = {
+                                saveChanges()
+                                // TOTO JE KĽÚČOVÉ PRE ZMIZNUTIE TLAČIDLA
+                                originalIpItem = localIpItem.copy() // ✅ Správne názvy premenných
+                            },
                             modifier = Modifier.padding(horizontal = 8.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFF4CAF50)
