@@ -72,6 +72,7 @@ import org.burnoutcrew.reorderable.rememberReorderableLazyListState
 import org.burnoutcrew.reorderable.reorderable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -97,16 +98,15 @@ fun getChannelIcon(channel: String?): ImageVector {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContactListItem(contact: ContactItem, onItemClick: () -> Unit) {
-    // ✅ ÚPRAVA PRE ZJEDNOTENIE VZHĽADU
     Card(
-        modifier = Modifier.fillMaxWidth(), // Odstránili sme vertikálny padding priamo tu
+        modifier = Modifier.fillMaxWidth(), // Toto je už správne
         onClick = onItemClick,
-        // Použijeme rovnaké farby a tieň ako inde v aplikácii
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Row(
             modifier = Modifier
+                .heightIn(min = 72.dp) // ✅ TOTO JE KĽÚČOVÁ ZMENA
                 .padding(16.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -138,17 +138,13 @@ fun ContactListItem(contact: ContactItem, onItemClick: () -> Unit) {
     }
 }
 
-// =========================================================================
-// ✅ HLAVNÁ OBRAZOVKA KONTAKTOV - OPRAVENÁ
-// =========================================================================
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContactsScreen(
     navController: NavController,
     viewModel: ContactsViewModel = viewModel(),
-    sharedViewModel: SharedViewModel,
-    modifier: Modifier = Modifier,
+    sharedViewModel: SharedViewModel,modifier: Modifier = Modifier,
 ) {
     val selectedTabFilter by viewModel.selectedTabFilter.collectAsState()
     val categories = viewModel.channelOptions.toList()
@@ -159,15 +155,11 @@ fun ContactsScreen(
     var selectedFunctionForDialog by remember { mutableStateOf<ChannelFunction?>(null) }
     var showEditFunctionDialog by remember { mutableStateOf(false) }
     var functionToEdit by remember { mutableStateOf<ChannelFunction?>(null) }
-    // ✅ KONIEC: Nový stav pre dialóg
 
-    // Tento blok sa stará o správne zobrazenie hornej lišty
     LaunchedEffect(selectedTabFilter, isEditMode) {
         if (selectedTabFilter == ALL_CHANNELS_FILTER) {
-            // Pre záložku "Všetky"
             sharedViewModel.setTopBarState(TopBarState(title = "Kontakty", actions = {}))
         } else {
-            // Pre ostatné záložky
             val channelDisplayName = when (selectedTabFilter) {
                 "Jednotka" -> ":1"
                 "Dvojka" -> ":2"
@@ -180,10 +172,7 @@ fun ContactsScreen(
                     title = channelDisplayName,
                     actions = {
                         TextButton(onClick = { viewModel.toggleEditMode() }) {
-                            Text(
-                                text = if (isEditMode) "Hotovo" else "Upraviť",
-                                color = Color.White // Týmto povieme, že text má byť biely
-                            )
+                            Text(text = if (isEditMode) "Hotovo" else "Upraviť", color = Color.White)
                         }
                     }
                 )
@@ -191,239 +180,189 @@ fun ContactsScreen(
         }
     }
 
-
-
-    Column(modifier = modifier.fillMaxSize()) {
-        TabRow(selectedTabIndex = if (selectedTabIndex == -1) 0 else selectedTabIndex) {
-            categories.forEach { originalTitle ->
-                val displayTitle = when (originalTitle) {
-                    "Jednotka" -> ":1"
-                    "Dvojka" -> ":2"
-                    "24" -> ":24"
-                    "Sport" -> ":Sport"
-                    else -> originalTitle
+    // =========================================================================
+    // ✅ KĽÚČOVÁ ZMENA: Aplikujeme rovnakú štruktúru ako v PasswordsScreen
+    // =========================================================================
+    Box(
+        modifier = modifier.fillMaxSize()
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            TabRow(selectedTabIndex = if (selectedTabIndex == -1) 0 else selectedTabIndex) {
+                categories.forEach { originalTitle ->
+                    val displayTitle = when (originalTitle) {
+                        "Jednotka" -> ":1"
+                        "Dvojka" -> ":2"
+                        "24" -> ":24"
+                        "Sport" -> ":Sport"
+                        else -> originalTitle
+                    }
+                    Tab(
+                        selected = selectedTabFilter == originalTitle,
+                        onClick = { viewModel.updateSelectedTabFilter(originalTitle) },
+                        text = { Text(displayTitle, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                    )
                 }
-                Tab(
-                    selected = selectedTabFilter == originalTitle,
-                    onClick = { viewModel.updateSelectedTabFilter(originalTitle) },
-                    text = { Text(displayTitle, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                )
             }
-        }
 
-        Box(modifier = Modifier.weight(1f)) {
-
-            // Tento riadok musí byť TU, vo vnútri Box-u
-            val channelFunctions by viewModel.channelFunctions.collectAsState()
-
+            // Obsah pod záložkami
             if (selectedTabFilter == ALL_CHANNELS_FILTER) {
-                AllContactsView(
-                    viewModel = viewModel,
-                    navController = navController,
-                    modifier = Modifier.fillMaxSize()
-                )
+                // ✅ OBSAH AllContactsView VLOŽENÝ PRIAMO SEM
+                val searchQuery = viewModel.searchQuery
+                val contactsFromViewModel = viewModel.displayedContacts
+                val isFilterDialogVisible = viewModel.isFilterDialogVisible
+                val activeFilters by viewModel.activeChannelFilters.collectAsState()
+                val allChannels = viewModel.channelOptions.filter { it != "Všetky" }
+
+                if (isFilterDialogVisible) {
+                    FilterContactsDialog(
+                        allChannels = allChannels,
+                        activeFilters = activeFilters,
+                        onDismiss = { viewModel.onFilterDialogDismiss() },
+                        onChannelSelected = { channel, isSelected ->
+                            viewModel.onFilterChannelSelected(channel, isSelected)
+                        },
+                        onClearFilters = { viewModel.clearAllFilters() }
+                    )
+                }
+
+                val contacts = if (activeFilters.isEmpty()) {
+                    contactsFromViewModel
+                } else {
+                    contactsFromViewModel.filter { contact -> contact.channel in activeFilters }
+                }
+
+                // Tento Column už nie je v samostatnej funkcii
+                Column {
+                    SearchBar(
+                        query = searchQuery,
+                        onQueryChange = { viewModel.updateSearchQuery(it) },
+                        onSearch = {},
+                        active = false,
+                        onActiveChange = {},
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp, bottom = 0.dp, start = 16.dp, end = 16.dp)
+                            .offset(y = (-18).dp),
+                        placeholder = { Text("Vyhľadať v kontaktoch...", color = Color.Gray) },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Black) },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { viewModel.updateSearchQuery("") }) {
+                                    Icon(Icons.Default.Clear, "Vymazať text", tint = Color.Black)
+                                }
+                            } else {
+                                IconButton(onClick = { viewModel.onFilterDialogOpen() }) {
+                                    Icon(
+                                        Icons.Filled.FilterList,
+                                        "Filtrovať zoznam",
+                                        tint = if (activeFilters.isEmpty()) Color.Black else MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        },
+                        colors = SearchBarDefaults.colors(
+                            containerColor = Color.White,
+                            dividerColor = Color.Transparent
+                        )
+                    ) {}
+
+                    if (contacts.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 48.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            val message = when {
+                                searchQuery.isNotBlank() || activeFilters.isNotEmpty() -> "Pre zadané kritériá sa nenašli žiadne kontakty."
+                                else -> "Zatiaľ žiadne kontakty."
+                            }
+                            Text(message, Modifier.padding(16.dp), style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
+                        }
+                    } else {
+                        LazyColumn(
+                            contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 80.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(contacts, key = { it.id }) { contact ->
+                                ContactListItem(
+                                    contact = contact,
+                                    onItemClick = { navController.navigate("contact_detail/${contact.id}") }
+                                )
+                            }
+                        }
+                    }
+                }
             } else {
+                val channelFunctions by viewModel.channelFunctions.collectAsState()
                 ChannelDetailView(
                     viewModel = viewModel,
                     functions = channelFunctions,
                     isEditMode = isEditMode,
                     onAddFunction = { nazov -> viewModel.addChannelFunction(nazov) },
                     onMoveFunction = { from, to -> viewModel.moveChannelFunction(from, to) },
-                    // ✅ TIETO RIADKY SEM DOPLŇTE
                     onAddPersonClick = { function ->
                         selectedFunctionForDialog = function
                         showAddPersonDialog = true
                     },
-                    onRemovePersonClick = { functionId, personId ->
-                        viewModel.removePersonFromFunction(functionId, personId)
-                    },
-                    onUpdatePersonNote = { functionId, personId, newNote ->
-                        viewModel.updatePersonNoteInFunction(functionId, personId, newNote)
-
-                    },
+                    onRemovePersonClick = { functionId, personId -> viewModel.removePersonFromFunction(functionId, personId) },
+                    onUpdatePersonNote = { functionId, personId, newNote -> viewModel.updatePersonNoteInFunction(functionId, personId, newNote) },
                     onEditFunctionClick = { function ->
                         functionToEdit = function
                         showEditFunctionDialog = true
                     }
                 )
             }
+        }
 
-            if (showAddPersonDialog && selectedFunctionForDialog != null) {
-                val assignedIds = selectedFunctionForDialog!!.assignedPeople.map { it.contactId }
-                AddPersonToFunctionDialog(
-                    allContacts = viewModel.contacts,
-                    assignedPeopleIds = assignedIds,
-                    onDismiss = { showAddPersonDialog = false },
-                    onPersonSelected = { contact ->
-                        viewModel.assignPersonToFunction(selectedFunctionForDialog!!.id, contact)
-                        showAddPersonDialog = false // Po výbere dialóg zatvoríme
-                    }
-                )
+        if (selectedTabFilter == ALL_CHANNELS_FILTER) {
+            FloatingActionButton(
+                onClick = {
+                    viewModel.resetForm()
+                    navController.navigate(Routes.ADD_CONTACT)
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp)
+            ) {
+                Icon(Icons.Default.Add, "Pridať kontakt")
             }
-            // ✅ KONIEC: Kód na zobrazenie dialógu
+        }
 
-            if (showEditFunctionDialog && functionToEdit != null) {
-                var newTitle by remember { mutableStateOf(functionToEdit!!.title) }
-                AlertDialog(
-                    onDismissRequest = { showEditFunctionDialog = false },
-                    title = { Text("Upraviť názov funkcie") },
-                    text = {
-                        TextField(
-                            value = newTitle,
-                            onValueChange = { newTitle = it },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    },
-                    confirmButton = {
-                        TextButton(
-                            onClick = {
-                                viewModel.updateChannelFunction(functionToEdit!!.id, newTitle, functionToEdit!!.notes ?: "")
-                                showEditFunctionDialog = false
-                            },
-                            enabled = newTitle.isNotBlank() // Tlačidlo je aktívne, len ak názov nie je prázdny
-                        ) {
-                            Text("Uložiť")
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { showEditFunctionDialog = false }) {
-                            Text("Zrušiť")
-                        }
-                    }
-                )
-            }
-
-            if (selectedTabFilter == ALL_CHANNELS_FILTER) {
-                FloatingActionButton(
-                    onClick = {
-                        viewModel.resetForm()
-                        navController.navigate(Routes.ADD_CONTACT)
-                    },
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(16.dp)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Pridať kontakt")
+        if (showAddPersonDialog && selectedFunctionForDialog != null) {
+            val assignedIds = selectedFunctionForDialog!!.assignedPeople.map { it.contactId }
+            AddPersonToFunctionDialog(
+                allContacts = viewModel.contacts,
+                assignedPeopleIds = assignedIds,
+                onDismiss = { showAddPersonDialog = false },
+                onPersonSelected = { contact ->
+                    viewModel.assignPersonToFunction(selectedFunctionForDialog!!.id, contact)
+                    showAddPersonDialog = false
                 }
-            } // Koniec `if` bloku - správne
-
-        } // Koniec `Box`
-    } // Koniec `Column`
-}
-
-
-// =========================================================================
-// ✅ POMOCNÉ FUNKCIE - KOMPLETNÉ A OPRAVENÉ
-// =========================================================================
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AllContactsView(
-    viewModel: ContactsViewModel,
-    navController: NavController,
-    modifier: Modifier = Modifier,
-) {
-    val searchQuery = viewModel.searchQuery
-    // Získame zoznam kontaktov, ktorý je už prípadne filtrovaný SearchBar-om
-    val contactsFromViewModel = viewModel.displayedContacts
-
-    val isFilterDialogVisible = viewModel.isFilterDialogVisible
-    // Tu bezpečne voláme collectAsState, lebo sme v @Composable funkcii
-    val activeFilters by viewModel.activeChannelFilters.collectAsState()
-    val allChannels = viewModel.channelOptions.filter { it != "Všetky" }
-
-    // Podmienené zobrazenie dialógu (toto zostáva bez zmeny)
-    if (isFilterDialogVisible) {
-        FilterContactsDialog(
-            allChannels = allChannels,
-            activeFilters = activeFilters,
-            onDismiss = { viewModel.onFilterDialogDismiss() },
-            onChannelSelected = { channel, isSelected ->
-                viewModel.onFilterChannelSelected(channel, isSelected)
-            },
-            onClearFilters = { viewModel.clearAllFilters() }
-        )
-    }
-
-    // ✅ FINÁLNE FILTROVANIE PRIAMO V UI
-    // Na zoznam z ViewModelu aplikujeme druhý filter podľa zaškrtnutých kanálov
-    val contacts = if (activeFilters.isEmpty()) {
-        contactsFromViewModel
-    } else {
-        contactsFromViewModel.filter { contact -> contact.channel in activeFilters }
-    }
-
-    Column(modifier = modifier) {
-        SearchBar(
-            query = searchQuery,
-            onQueryChange = { viewModel.updateSearchQuery(it) },
-            onSearch = {},
-            active = false,
-            onActiveChange = {},
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 4.dp, bottom = 0.dp, start = 16.dp, end = 16.dp)
-                .offset(y = (-18).dp),
-            placeholder = { Text("Vyhľadať v kontaktoch...", color = Color.Gray) },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Black) },
-            trailingIcon = {
-                if (searchQuery.isNotEmpty()) {
-                    IconButton(onClick = { viewModel.updateSearchQuery("") }) {
-                        Icon(Icons.Default.Clear, contentDescription = "Vymazať text", tint = Color.Black)
-                    }
-                } else {
-                    IconButton(onClick = { viewModel.onFilterDialogOpen() }) {
-                        Icon(
-                            Icons.Filled.FilterList,
-                            contentDescription = "Filtrovať zoznam",
-                            tint = if (activeFilters.isEmpty()) Color.Black else MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-            },
-            colors = SearchBarDefaults.colors(
-                containerColor = Color.White,
-                dividerColor = Color.Transparent
             )
-        ) {}
+        }
 
-
-        // ✅ POUŽÍVAME FINÁLNY, PLNE PREFILTROVANÝ ZOZNAM `contacts`
-        if (contacts.isEmpty()) {
-            Box(
-                modifier = Modifier// .weight(1f) SME ODSTRÁNILI
-                    .fillMaxWidth()
-                    .padding(vertical = 48.dp), // Pridali sme padding, aby text nebol nalepený hore
-                contentAlignment = Alignment.Center
-            ) {
-                // Vylepšená správa pre používateľa
-                val message = when {
-                    searchQuery.isNotBlank() || activeFilters.isNotEmpty() -> "Pre zadané kritériá sa nenašli žiadne kontakty."
-                    else -> "Zatiaľ žiadne kontakty."
+        if (showEditFunctionDialog && functionToEdit != null) {
+            var newTitle by remember { mutableStateOf(functionToEdit!!.title) }
+            AlertDialog(
+                onDismissRequest = { showEditFunctionDialog = false },
+                title = { Text("Upraviť názov funkcie") },
+                text = {
+                    TextField(value = newTitle, onValueChange = { newTitle = it }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            viewModel.updateChannelFunction(functionToEdit!!.id, newTitle, functionToEdit!!.notes ?: "")
+                            showEditFunctionDialog = false
+                        },
+                        enabled = newTitle.isNotBlank()
+                    ) { Text("Uložiť") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showEditFunctionDialog = false }) { Text("Zrušiť") }
                 }
-                Text(
-                    text = message,
-                    modifier = Modifier.padding(16.dp),
-                    style = MaterialTheme.typography.bodyLarge,
-                    textAlign = TextAlign.Center
-                )
-            }
-        } else {
-            LazyColumn(
-                // ✅ Jednoduchý LazyColumn bez presúvania
-                // modifier = Modifier.weight(1f) SME ODSTRÁNILI
-                contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 80.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Používame finálny zoznam `contacts`
-                items(contacts, key = { it.id }) { contact ->
-                    ContactListItem(
-                        contact = contact,
-                        onItemClick = { navController.navigate("contact_detail/${contact.id}") }
-                    )
-                }
-            }
+            )
         }
     }
 }
