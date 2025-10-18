@@ -39,6 +39,10 @@ import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.detectReorderAfterLongPress
 import org.burnoutcrew.reorderable.rememberReorderableLazyListState
 import org.burnoutcrew.reorderable.reorderable
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,6 +66,7 @@ fun AddTutorialScreen(
 
     // ✅ KROK 1: Vytvoríme si coroutine scope
     val scope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
 
     if (showDeleteConfirmDialog) {
         DeleteConfirmDialog(
@@ -134,7 +139,9 @@ fun AddTutorialScreen(
         // --- Zvyšok súboru je úplne bez zmeny ---
         Column(modifier = Modifier
             .padding(innerPadding)
-            .fillMaxSize()) {
+            .fillMaxSize()
+            .imePadding() // <-- ✅ PRIDANÝ RIADOK
+        ) {
 
             Column(
                 modifier = Modifier
@@ -161,7 +168,14 @@ fun AddTutorialScreen(
                 ) {
                     val buttonColor = Color(0xFF4CAF50)
                     Button(
-                        onClick = { tutorialsViewModel.addTextBlock() },
+                        onClick = {
+                            // ✅ NOVÁ LOGIKA PRE PRIDANIE A SCROLLOVANIE
+                            scope.launch {
+                                val newIndex = tutorialsViewModel.addTextBlock()
+                                // Počkáme na vykreslenie, aby položka existovala, a potom scrollujeme
+                                listState.animateScrollToItem(newIndex)
+                            }
+                        },
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(containerColor = buttonColor)
                     ) {
@@ -190,9 +204,10 @@ fun AddTutorialScreen(
             })
             val focusManager = LocalFocusManager.current
             LazyColumn(
-                state = reorderableState.listState,
+                state = listState,
                 modifier = Modifier
-                    .fillMaxSize()
+                    .weight(1f) // <-- ✅ KĽÚČOVÁ ZMENA: Zaberie iba zvyšný dostupný priestor
+                    .fillMaxWidth()
                     .reorderable(reorderableState)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
@@ -200,7 +215,8 @@ fun AddTutorialScreen(
                     ) {
                         focusManager.clearFocus()
                     },
-                contentPadding = PaddingValues(16.dp),
+                // Pridáme 16.dp hore a dole, 16.dp vpravo a vľavo
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 96.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 itemsIndexed(contentBlocks, key = { _, block -> block.id }) { index, block ->
@@ -285,6 +301,15 @@ fun TextBlockEditor(
     modifier: Modifier = Modifier,
 ) {
     var localText by remember(block.id) { mutableStateOf(block.text) }
+    val focusRequester = remember { FocusRequester() }
+
+    // ✅ SPUSTÍME EFEKT, KTORÝ POŽIADA O FOCUS PRI ZOBRAZENÍ
+    LaunchedEffect(Unit) {
+        // Ak je text prázdny, predpokladáme, že je to nový blok
+        if (block.text.isEmpty()) {
+            focusRequester.requestFocus()
+        }
+    }
 
     Row(
         modifier = modifier
@@ -306,6 +331,7 @@ fun TextBlockEditor(
             onValueChange = { localText = it },
             modifier = Modifier
                 .weight(1f)
+                .focusRequester(focusRequester) // ✅ PREPOJENIE S TEXTFIELD
                 .onFocusChanged { focusState ->
                     if (!focusState.isFocused && localText != block.text) {
                         onTextChange(localText)

@@ -266,8 +266,11 @@ class TutorialsViewModel : ViewModel() {
         tutorialCategory = newCategory
     }
 
-    fun addTextBlock() {
-        _contentBlocks.update { it + TutorialContentBlock.TextBlock(text = "") }
+    fun addTextBlock(): Int {
+        val newBlock = TutorialContentBlock.TextBlock(text = "")
+        _contentBlocks.update { it + newBlock }
+        // Vrátime index poslednej (práve pridanej) položky
+        return _contentBlocks.value.lastIndex
     }
 
     fun onContentBlockChange(index: Int, newBlock: TutorialContentBlock) {
