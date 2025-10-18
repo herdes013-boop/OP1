@@ -162,7 +162,7 @@ fun AddEditTutorialScreen(
 
     // --- HLAVNÉ UI ---
     Scaffold(
-        modifier = modifier,
+        modifier = Modifier.fillMaxSize(),
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
