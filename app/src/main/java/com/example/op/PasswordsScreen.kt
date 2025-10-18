@@ -222,7 +222,7 @@ private fun <T> TabContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
             // Zmena: Použijeme vertikálny padding priamo tu, aby bol priestor nad prvou položkou
             contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp)
         ) {
