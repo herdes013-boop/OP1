@@ -113,38 +113,52 @@ fun TutorialDetailScreen(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 8.dp, vertical = 8.dp), // ✅ KROK 1: Pridáme odsadenie okolo karty
+        contentAlignment = Alignment.Center // Centrovanie pre ProgressIndicator
+    ) {
         if (isLoading) {
-            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            CircularProgressIndicator() // Už nepotrebuje align, lebo Box ho centruje
         } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+            // ✅ KROK 2: Vložíme Card, ktorá obalí celý obsah
+            Card(
+                modifier = Modifier.fillMaxSize(), // Karta vyplní priestor daný vonkajším Boxom
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
-                item {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = category,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontStyle = FontStyle.Italic,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
+                // ✅ KROK 3: Pôvodný LazyColumn presunieme dovnútra karty
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Sem patrí pôvodný obsah LazyColumn
+                    item {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = category,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontStyle = FontStyle.Italic,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
 
-                item {
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
-                }
+                    item {
+                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    }
 
-                items(contentBlocks, key = { it.id }) { block ->
-                    when (block) {
-                        is TutorialContentBlock.TextBlock -> TextBlockView(block = block)
-                        is TutorialContentBlock.ImageBlock -> ImageBlockView(block = block)
+                    items(contentBlocks, key = { it.id }) { block ->
+                        when (block) {
+                            is TutorialContentBlock.TextBlock -> TextBlockView(block = block)
+                            is TutorialContentBlock.ImageBlock -> ImageBlockView(block = block)
+                        }
                     }
                 }
             }
