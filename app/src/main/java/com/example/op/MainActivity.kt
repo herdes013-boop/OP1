@@ -407,20 +407,16 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
             }
         }
 
-        // --- ZAČIATOK ZMIEN ---
-
-        // 1. NOVÁ OBRAZOVKA PRE PRIDANIE HESLA
+        // --- HESLÁ (UŽ HOTOVÉ) ---
         composable(Routes.ADD_PASSWORD) {
             AddPasswordScreen(
                 modifier = Modifier.padding(paddingValues),
                 navController = nestedNavController,
                 viewModel = viewModel,
                 sharedViewModel = sharedViewModel,
-                onBack = { nestedNavController.popBackStack() } // Jednoduchý návrat späť
+                onBack = { nestedNavController.popBackStack() }
             )
         }
-
-        // 2. NOVÁ OBRAZOVKA PRE EDITÁCIU HESLA
         composable(
             route = Routes.EDIT_PASSWORD,
             arguments = listOf(navArgument("passwordId") { type = NavType.StringType })
@@ -434,43 +430,49 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
                     passwordId = passwordId,
                     sharedViewModel = sharedViewModel,
                     onBack = {
-                        // VRACIAME SA O DVA KROKY: Z Editácie -> cez Detail -> na Zoznam
-                        nestedNavController.popBackStack() // Zatvorí Detail
-                        nestedNavController.popBackStack() // Zatvorí Editáciu
+                        nestedNavController.popBackStack()
+                        nestedNavController.popBackStack()
                     }
                 )
             }
         }
 
-        // Zvyšok pre IP adresy zatiaľ nechávame tak, ako je
+        // --- ZAČIATOK ZMIEN PRE IP ADRESY ---
+
+        // 1. NOVÁ OBRAZOVKA PRE PRIDANIE IP ADRESY
         composable(Routes.ADD_IP_ADDRESS) {
-            AddEditIpAddressScreen(
+            AddIpAddressScreen(
                 modifier = Modifier.padding(paddingValues),
                 navController = nestedNavController,
                 viewModel = viewModel,
                 sharedViewModel = sharedViewModel,
-                onBack = { nestedNavController.popBackStack() }
+                onBack = { nestedNavController.popBackStack() } // Jednoduchý návrat
             )
         }
+
+        // 2. NOVÁ OBRAZOVKA PRE EDITÁCIU IP ADRESY
         composable(
             route = Routes.EDIT_IP_ADDRESS,
             arguments = listOf(navArgument("ipId") { type = NavType.StringType })
         ) { backStackEntry ->
             val ipId = backStackEntry.arguments?.getString("ipId")
-            AddEditIpAddressScreen(
-                modifier = Modifier.padding(paddingValues),
-                navController = nestedNavController,
-                viewModel = viewModel,
-                ipId = ipId,
-                sharedViewModel = sharedViewModel,
-                onBack = {
-                    nestedNavController.popBackStack()
-                    nestedNavController.popBackStack()
-                }
-            )
+            if (ipId != null) {
+                EditIpAddressScreen(
+                    modifier = Modifier.padding(paddingValues),
+                    navController = nestedNavController,
+                    viewModel = viewModel,
+                    ipId = ipId,
+                    sharedViewModel = sharedViewModel,
+                    onBack = {
+                        // Návrat o dva kroky: z Editácie cez Detail na Zoznam
+                        nestedNavController.popBackStack()
+                        nestedNavController.popBackStack()
+                    }
+                )
+            }
         }
 
-        // --- KONIEC ZMIEN ---
+        // --- KONIEC ZMIEN PRE IP ADRESY ---
     }
 }
 
