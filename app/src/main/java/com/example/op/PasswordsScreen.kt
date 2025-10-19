@@ -333,10 +333,15 @@ fun IpListItem(item: IpItem, onClick: () -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .heightIn(min = 72.dp) // ✅ KROK 1: Pridáme minimálnu výšku
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.Top // ✅ KROK 2: Zarovnáme na vrch
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                // ✅ KROK 3: Tento stĺpec vycentrujeme, aby bol text pekne v strede
+                verticalArrangement = Arrangement.Center
+            ) {
                 Text(
                     text = item.name,
                     style = MaterialTheme.typography.titleMedium,
