@@ -113,6 +113,17 @@ class ContactsViewModel : ViewModel() {
     private val _activeChannelFilters = MutableStateFlow<Set<String>>(emptySet())
     val activeChannelFilters = _activeChannelFilters.asStateFlow()
 
+    // V ContactsViewModel.kt, v sekcii "FILTRE A STAVY"
+
+    // ... existujúci kód pre activeChannelFilters ...
+
+    // ✅ PRIDAJTE TIETO RIADKY PRE FILTROVANIE PODĽA FUNKCIÍ
+    private val _activeFunctionFilters = MutableStateFlow<Set<String>>(emptySet())
+    val activeFunctionFilters = _activeFunctionFilters.asStateFlow()
+
+
+
+
     fun onFilterDialogDismiss() {
         isFilterDialogVisible = false
     }
@@ -127,8 +138,23 @@ class ContactsViewModel : ViewModel() {
         }
     }
 
+    // V ContactsViewModel.kt
+
+    // ... za onFilterChannelSelected(...)
+    fun onFilterFunctionSelected(functionId: String, isSelected: Boolean) {
+        _activeFunctionFilters.update { currentFilters ->
+            if (isSelected) {
+                currentFilters + functionId
+            } else {
+                currentFilters - functionId
+            }
+        }
+    }
+
+
     fun clearAllFilters() {
         _activeChannelFilters.value = emptySet()
+        _activeFunctionFilters.value = emptySet() // ✅ PRIDANÝ RIADOK
     }
 
     // =====================================================================
@@ -136,23 +162,43 @@ class ContactsViewModel : ViewModel() {
     // =====================================================================
     val displayedContacts: List<ContactItem> by derivedStateOf {
         val currentQuery = searchQuery.trim().lowercase()
+        val channelFilters = activeChannelFilters.value
+        val functionFilters = activeFunctionFilters.value // Načítame nové filtre
         val allFunctions = allContactFunctions // pre prístup vnútri lambdy
 
-        // Ak je vyhľadávanie prázdne, vrátime všetky kontakty
-        if (currentQuery.isBlank()) {
-            contacts
-        } else {
-            // Inak filtrujeme podľa textu
-            contacts.filter { contact ->
-                // Získame mená funkcií pre daný kontakt
-                val contactFunctionNames = contact.functionIds.mapNotNull { id ->
-                    allFunctions.find { it.id == id }?.name
-                }.joinToString(" ")
+        // Začneme so všetkými kontaktmi a postupne aplikujeme filtre
+        contacts
+            // 1. Filter podľa vyhľadávacieho textu (ak nejaký je)
+            .filter { contact ->
+                if (currentQuery.isBlank()) {
+                    true // Ak je vyhľadávanie prázdne, prejdú všetky kontakty
+                } else {
+                    val contactFunctionNames = contact.functionIds.mapNotNull { id ->
+                        allFunctions.find { it.id == id }?.name
+                    }.joinToString(" ")
 
-                contact.getFullName().lowercase().contains(currentQuery) ||
-                        contactFunctionNames.lowercase().contains(currentQuery) // Vyhľadávanie v menách funkcií
+                    contact.getFullName().lowercase().contains(currentQuery) ||
+                            contact.notes?.lowercase()?.contains(currentQuery) == true || // Pridané vyhľadávanie v poznámkach
+                            contactFunctionNames.lowercase().contains(currentQuery)
+                }
             }
-        }
+            // 2. Filter podľa kanálov (ak sú nejaké aktívne)
+            .filter { contact ->
+                if (channelFilters.isEmpty()) {
+                    true // Ak nie sú filtre kanálov, prejdú všetky
+                } else {
+                    contact.channel in channelFilters
+                }
+            }
+            // 3. Filter podľa funkcií (ak sú nejaké aktívne)
+            .filter { contact ->
+                if (functionFilters.isEmpty()) {
+                    true // Ak nie sú filtre funkcií, prejdú všetky
+                } else {
+                    // Kontakt musí mať aspoň jednu z funkcií, ktoré sú vo filtri
+                    contact.functionIds.any { it in functionFilters }
+                }
+            }
     }
 
     // --- SEKCIA PRE DÁTA KANÁLOV ZOSTÁVA ZATIAĽ NEZMENENÁ ---

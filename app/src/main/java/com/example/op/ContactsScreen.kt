@@ -182,14 +182,24 @@ fun ContactsScreen(
                 val allChannels = viewModel.channelOptions.filter { it != "Všetky" }
 
                 if (isFilterDialogVisible) {
+                    val activeChannelFilters by viewModel.activeChannelFilters.collectAsState()
+                    val activeFunctionFilters by viewModel.activeFunctionFilters.collectAsState() // Načítame stav
+                    val allChannels = viewModel.channelOptions.filter { it != "Všetky" }
+
                     FilterContactsDialog(
+                        // Kanály
                         allChannels = allChannels,
-                        activeFilters = activeFilters,
-                        onDismiss = { viewModel.onFilterDialogDismiss() },
-                        onChannelSelected = { channel, isSelected ->
-                            viewModel.onFilterChannelSelected(channel, isSelected)
-                        },
-                        onClearFilters = { viewModel.clearAllFilters() }
+                        activeChannelFilters = activeChannelFilters,
+                        onChannelSelected = viewModel::onFilterChannelSelected, // Skratka pre lambdu
+
+                        // Funkcie
+                        allFunctions = viewModel.allContactFunctions,
+                        activeFunctionFilters = activeFunctionFilters,
+                        onFunctionSelected = viewModel::onFilterFunctionSelected, // Skratka pre lambdu
+
+                        // Spoločné
+                        onDismiss = viewModel::onFilterDialogDismiss,
+                        onClearFilters = viewModel::clearAllFilters
                     )
                 }
 
@@ -731,51 +741,96 @@ private fun AddPersonToFunctionDialog(
 
 @Composable
 private fun FilterContactsDialog(
-    allChannels: List<String>, // Parameter tu musí byť, aby sme ho mohli použiť nižšie
-    activeFilters: Set<String>,
-    onDismiss: () -> Unit,
+    // Parametre pre kanály
+    allChannels: List<String>,
+    activeChannelFilters: Set<String>,
     onChannelSelected: (String, Boolean) -> Unit,
-    onClearFilters: () -> Unit,
+
+    // ✅ NOVÉ PARAMETRE PRE FUNKCIE
+    allFunctions: List<ContactFunction>,
+    activeFunctionFilters: Set<String>,
+    onFunctionSelected: (String, Boolean) -> Unit,
+
+    // Spoločné parametre
+    onDismiss: () -> Unit,
+    onClearFilters: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Filtrovať podľa kanála") },
+        title = { Text("Filtrovať kontakty") },
         text = {
+            // Použijeme LazyColumn, aby sa zmestilo veľa možností
             LazyColumn {
-                // Tu sa parameter `allChannels` používa
+                // --- Sekcia pre kanály ---
+                item {
+                    Text(
+                        "PODĽA KANÁLA",
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                }
                 items(allChannels) { channel ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                onChannelSelected(channel, channel !in activeFilters)
-                            }
-                            .padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Checkbox(
-                            checked = channel in activeFilters,
-                            onCheckedChange = { isChecked ->
-                                onChannelSelected(channel, isChecked)
-                            }
-                        )
-                        Spacer(Modifier.width(16.dp))
-                        Text(text = channel)
-                    }
+                    FilterDialogRow(
+                        text = channel,
+                        isChecked = channel in activeChannelFilters,
+                        onCheckedChange = { isChecked -> onChannelSelected(channel, isChecked) }
+                    )
+                }
+
+                // --- Oddeľovač ---
+                item {
+                    Divider(modifier = Modifier.padding(vertical = 16.dp))
+                }
+
+                // --- ✅ NOVÁ SEKCIA PRE FUNKCIE ---
+                item {
+                    Text(
+                        "PODĽA FUNKCIE",
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+                items(allFunctions, key = { it.id }) { function ->
+                    FilterDialogRow(
+                        text = function.name,
+                        isChecked = function.id in activeFunctionFilters,
+                        onCheckedChange = { isChecked -> onFunctionSelected(function.id, isChecked) }
+                    )
                 }
             }
         },
         confirmButton = {
-            // ✅ Tlačidlo na potvrdenie a zatvorenie
             Button(onClick = onDismiss) {
-                Text("Použiť filtre")
+                Text("Zobraziť")
             }
         },
         dismissButton = {
-            // ✅ Tlačidlo na vyčistenie filtrov (zostane v dialógu)
             TextButton(onClick = onClearFilters) {
-                Text("Zrušiť všetky filtre")
+                Text("Zrušiť filtre")
             }
         }
     )
+}
+
+// Pomocný komponent, aby sme neopakovali kód
+@Composable
+private fun FilterDialogRow(
+    text: String,
+    isChecked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!isChecked) }
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Checkbox(
+            checked = isChecked,
+            onCheckedChange = onCheckedChange
+        )
+        Spacer(Modifier.width(16.dp))
+        Text(text = text)
+    }
 }
