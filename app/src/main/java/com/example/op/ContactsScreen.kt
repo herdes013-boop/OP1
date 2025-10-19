@@ -1,92 +1,41 @@
 package com.example.op
 
-// ... (všetky importy zostávajú) ...
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.LooksOne
-import androidx.compose.material.icons.filled.LooksTwo
-import androidx.compose.material.icons.filled.Newspaper
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.RemoveCircleOutline
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.SportsSoccer
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.Divider
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SearchBar
-import androidx.compose.material3.SearchBarDefaults
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.text.font.FontStyle
 import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.detectReorderAfterLongPress
 import org.burnoutcrew.reorderable.rememberReorderableLazyListState
 import org.burnoutcrew.reorderable.reorderable
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.DragIndicator
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.Image
-import androidx.compose.ui.res.painterResource
 
 
-
-// --- Tieto funkcie zostávajú bez zmeny ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContactListItem(contact: ContactItem, onItemClick: () -> Unit) {
@@ -99,44 +48,35 @@ fun ContactListItem(contact: ContactItem, onItemClick: () -> Unit) {
         Row(
             modifier = Modifier
                 .heightIn(min = 72.dp)
-                .padding(horizontal = 16.dp, vertical = 12.dp) // Zjednotený padding
+                .padding(horizontal = 16.dp, vertical = 12.dp)
                 .fillMaxWidth(),
-            verticalAlignment = Alignment.Top // Centrovanie na stred je tu v poriadku
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Logika na výber správneho obrázku
             val painter = when (contact.channel) {
                 "Jednotka" -> painterResource(id = R.drawable.ic_logo_jednotka)
                 "Dvojka" -> painterResource(id = R.drawable.ic_logo_dvojka)
                 "24" -> painterResource(id = R.drawable.ic_logo_24)
                 "Sport" -> painterResource(id = R.drawable.ic_logo_sport)
-                else -> null // Ak kanál nie je priradený, `painter` bude null
+                else -> null
             }
 
-            // Podmienené zobrazenie - buď vaše logo, alebo defaultná ikona
             if (painter != null) {
-                // Ak máme vaše logo, použijeme `Image`
                 Image(
                     painter = painter,
                     contentDescription = contact.channel,
-                    modifier = Modifier
-                        .size(20.dp) // Logá vyzerajú lepšie o trochu väčšie
-                        .align(Alignment.CenterVertically)
+                    modifier = Modifier.size(20.dp) // Upravená veľkosť
                 )
             } else {
-                // Ak kontakt nemá kanál, použijeme pôvodnú `Icon`
                 Icon(
                     imageVector = Icons.Filled.Person,
                     contentDescription = "Kontakt",
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .size(20.dp) // Zjednotíme veľkosť s logom
-                        .align(Alignment.CenterVertically)
+                    modifier = Modifier.size(20.dp) // Zjednotená veľkosť
                 )
             }
 
             Spacer(Modifier.width(16.dp))
 
-            // Zvyšok kódu pre zobrazenie mena a funkcie zostáva rovnaký
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = contact.getFullName(),
@@ -155,12 +95,13 @@ fun ContactListItem(contact: ContactItem, onItemClick: () -> Unit) {
     }
 }
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContactsScreen(
     navController: NavController,
     viewModel: ContactsViewModel = viewModel(),
-    sharedViewModel: SharedViewModel,modifier: Modifier = Modifier,
+    sharedViewModel: SharedViewModel, modifier: Modifier = Modifier,
 ) {
     val selectedTabFilter by viewModel.selectedTabFilter.collectAsState()
     val categories = viewModel.channelOptions.toList()
@@ -196,9 +137,6 @@ fun ContactsScreen(
         }
     }
 
-    // =========================================================================
-    // ✅ KĽÚČOVÁ ZMENA: Aplikujeme rovnakú štruktúru ako v PasswordsScreen
-    // =========================================================================
     Box(
         modifier = modifier.fillMaxSize()
     ) {
@@ -220,9 +158,7 @@ fun ContactsScreen(
                 }
             }
 
-            // Obsah pod záložkami
             if (selectedTabFilter == ALL_CHANNELS_FILTER) {
-                // ✅ OBSAH AllContactsView VLOŽENÝ PRIAMO SEM
                 val searchQuery = viewModel.searchQuery
                 val contactsFromViewModel = viewModel.displayedContacts
                 val isFilterDialogVisible = viewModel.isFilterDialogVisible
@@ -247,7 +183,6 @@ fun ContactsScreen(
                     contactsFromViewModel.filter { contact -> contact.channel in activeFilters }
                 }
 
-                // Tento Column už nie je v samostatnej funkcii
                 Column {
                     SearchBar(
                         query = searchQuery,
@@ -311,23 +246,53 @@ fun ContactsScreen(
                 }
             } else {
                 val channelFunctions by viewModel.channelFunctions.collectAsState()
-                ChannelDetailView(
-                    viewModel = viewModel,
-                    functions = channelFunctions,
-                    isEditMode = isEditMode,
-                    onAddFunction = { nazov -> viewModel.addChannelFunction(nazov) },
-                    onMoveFunction = { from, to -> viewModel.moveChannelFunction(from, to) },
-                    onAddPersonClick = { function ->
-                        selectedFunctionForDialog = function
-                        showAddPersonDialog = true
-                    },
-                    onRemovePersonClick = { functionId, personId -> viewModel.removePersonFromFunction(functionId, personId) },
-                    onUpdatePersonNote = { functionId, personId, newNote -> viewModel.updatePersonNoteInFunction(functionId, personId, newNote) },
-                    onEditFunctionClick = { function ->
-                        functionToEdit = function
-                        showEditFunctionDialog = true
-                    }
-                )
+
+                val titleColor = when (selectedTabFilter) {
+                    "Jednotka" -> Color(0xFFEC008C) // Ružová
+                    "Dvojka" -> Color.Black
+                    "Sport" -> Color(0xFFF24E1E) // Červeno-oranžová
+                    "24" -> Color(0xFF2F2F8B)   // Modrá
+                    else -> MaterialTheme.colorScheme.onSurface
+                }
+
+                val titleText = when (selectedTabFilter) {
+                    "Jednotka" -> ":1"
+                    "Dvojka" -> ":2"
+                    "24" -> ":24"
+                    "Sport" -> ":Šport"
+                    else -> selectedTabFilter
+                }
+
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = titleText,
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = titleColor,
+                        modifier = Modifier.padding(vertical = 16.dp)
+                    )
+
+                    ChannelDetailView(
+                        viewModel = viewModel,
+                        functions = channelFunctions,
+                        isEditMode = isEditMode,
+                        onAddFunction = { nazov -> viewModel.addChannelFunction(nazov) },
+                        onMoveFunction = { from, to -> viewModel.moveChannelFunction(from, to) },
+                        onAddPersonClick = { function ->
+                            selectedFunctionForDialog = function
+                            showAddPersonDialog = true
+                        },
+                        onRemovePersonClick = { functionId, personId -> viewModel.removePersonFromFunction(functionId, personId) },
+                        onUpdatePersonNote = { functionId, personId, newNote -> viewModel.updatePersonNoteInFunction(functionId, personId, newNote) },
+                        onEditFunctionClick = { function ->
+                            functionToEdit = function
+                            showEditFunctionDialog = true
+                        }
+                    )
+                }
             }
         }
 
@@ -393,49 +358,38 @@ private fun ChannelDetailView(
     modifier: Modifier = Modifier,
     onAddFunction: (String) -> Unit,
     onMoveFunction: (Int, Int) -> Unit,
-    // ✅ TIETO RIADKY PRIDAJTE SPÄŤ
     onAddPersonClick: (ChannelFunction) -> Unit,
     onRemovePersonClick: (functionId: String, personId: String) -> Unit,
     onUpdatePersonNote: (functionId: String, personId: String, newNote: String) -> Unit,
     onEditFunctionClick: (ChannelFunction) -> Unit
-
-
 ) {
     val reorderState = rememberReorderableLazyListState(
         onMove = { from, to -> onMoveFunction(from.index, to.index) }
     )
 
-    // ✅ KROK 1: Vytvoríme jednu veľkú hlavnú kartu
     val cardModifier = if (isEditMode) {
-        // V edit móde sa karta roztiahne na celú obrazovku a bude sa dať presúvať
         Modifier
             .fillMaxSize()
             .reorderable(reorderState)
     } else {
-        // V normálnom režime sa výška prispôsobí obsahu a nedá sa presúvať
-        Modifier.padding(horizontal = 16.dp, vertical = 8.dp) // Pridáme trochu miesta okolo karty
+        Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
     }
 
-// 2. Použijeme ho na karte
     Card(
-        modifier = cardModifier, // ✅ POUŽIJEME NÁŠ NOVÝ PODMIENENÝ MODIFIKÁTOR
+        modifier = cardModifier,
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface) // Svetlé pozadie
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        // ✅ KROK 2: Vnútri karty je LazyColumn, ktorý sa dá presúvať
         LazyColumn(
             state = reorderState.listState,
-            // ✅ TOTO JE JEDINÉ SPRÁVNE MIESTO PRE TEN KÓD
-
             contentPadding = PaddingValues(12.dp)
         ) {
             if (functions.isEmpty() && !isEditMode) {
                 item {
-                    // Odstránili sme .fillParentMaxSize(), aby sa Box nerozťahoval
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth() // Iba na šírku
-                            .padding(vertical = 48.dp), // Dáme mu trochu miesta zhora a zdola
+                            .fillMaxWidth()
+                            .padding(vertical = 48.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -450,7 +404,7 @@ private fun ChannelDetailView(
 
             items(items = functions, key = { it.id }) { function ->
                 ReorderableItem(
-                    reorderableState = reorderState, // ✅ OPRAVA: Použijeme správny parameter
+                    reorderableState = reorderState,
                     key = function.id
                 ) {
                     FunctionSection(
@@ -458,7 +412,6 @@ private fun ChannelDetailView(
                         viewModel = viewModel,
                         isEditMode = isEditMode,
                         modifier = Modifier
-                            // ✅ OPRAVA: Použijeme opäť celý reorderState
                             .then(if (isEditMode) Modifier.detectReorderAfterLongPress(reorderState) else Modifier),
                         onAddPersonClick = { onAddPersonClick(function) },
                         onRemovePersonClick = { personId -> onRemovePersonClick(function.id, personId) },
@@ -466,12 +419,9 @@ private fun ChannelDetailView(
                         onEditFunctionClick = { onEditFunctionClick(function) }
                     )
                 }
-
-                // Deliaca čiara medzi položkami
                 Divider(modifier = Modifier.padding(vertical = 12.dp, horizontal = 8.dp))
             }
 
-            // Tlačidlo na pridanie novej funkcie (len v edit mode)
             if (isEditMode) {
                 item {
                     OutlinedButton(
@@ -490,11 +440,6 @@ private fun ChannelDetailView(
     }
 }
 
-
-/**
- * Komponent pre jednu funkciu (napr. "Kameramani").
- * V normálnom režime je bez okraja, v režime úprav má jemný okraj.
- */
 @Composable
 private fun FunctionSection(
     function: ChannelFunction,
@@ -506,7 +451,6 @@ private fun FunctionSection(
     onUpdatePersonNote: (personId: String, newNote: String) -> Unit,
     onEditFunctionClick: () -> Unit
 ) {
-    // Modifikátor, ktorý pridá orámovanie a odsadenie IBA v režime úprav
     val containerModifier = if (isEditMode) {
         Modifier
             .border(
@@ -519,10 +463,7 @@ private fun FunctionSection(
         Modifier
     }
 
-    // Hlavný stĺpec, ktorý dostáva modifikátor od ReorderableItem
-    // a zároveň v sebe spája vizuálny modifikátor
     Column(modifier = modifier.then(containerModifier)) {
-        // --- HLAVIČKA S NÁZVOM A AKCIAMI ---
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -539,7 +480,7 @@ private fun FunctionSection(
                 text = function.title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary, // <-- PRIDAJTE TENTO RIADOK
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f)
             )
             if (isEditMode) {
@@ -553,7 +494,6 @@ private fun FunctionSection(
             }
         }
 
-        // --- POZNÁMKY K FUNKCII ---
         if (isEditMode) {
             BasicTextField(
                 value = function.notes ?: "",
@@ -590,7 +530,6 @@ private fun FunctionSection(
             }
         }
 
-        // --- ZOZNAM PRIRADENÝCH ĽUDÍ ---
         if (function.assignedPeople.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
             function.assignedPeople.forEach { person ->
@@ -604,7 +543,6 @@ private fun FunctionSection(
             }
         }
 
-        // --- TLAČIDLO "PRIRADIŤ OSOBU" ---
         if (isEditMode) {
             TextButton(
                 onClick = onAddPersonClick,
@@ -618,9 +556,6 @@ private fun FunctionSection(
     }
 }
 
-/**
- * Riadok pre jednu priradenú osobu s vylepšeným UI.
- */
 @Composable
 private fun AssignedPersonRow(
     person: AssignedPerson,
@@ -629,7 +564,9 @@ private fun AssignedPersonRow(
     onNoteChange: (String) -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(start = if (isEditMode) 0.dp else 8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = if (isEditMode) 0.dp else 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -642,7 +579,6 @@ private fun AssignedPersonRow(
         Spacer(Modifier.width(12.dp))
 
         if (isEditMode) {
-            // V editačnom móde je tu poznámka ako TextField
             BasicTextField(
                 value = person.notes,
                 onValueChange = onNoteChange,
@@ -651,7 +587,7 @@ private fun AssignedPersonRow(
                     textAlign = TextAlign.End,
                     fontStyle = FontStyle.Italic
                 ),
-                modifier = Modifier.weight(0.8f), // Dáme poznámke trochu menej miesta
+                modifier = Modifier.weight(0.8f),
                 maxLines = 2,
                 decorationBox = { innerTextField ->
                     Box(contentAlignment = Alignment.CenterEnd) {
@@ -666,7 +602,6 @@ private fun AssignedPersonRow(
                 Icon(Icons.Default.Close, "Odstrániť osobu", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f))
             }
         } else {
-            // V normálnom móde je tu len text poznámky
             if (!person.notes.isBlank()) {
                 Text(
                     text = person.notes,
@@ -740,7 +675,6 @@ private fun AddPersonToFunctionDialog(
                                     .padding(vertical = 12.dp, horizontal = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // ✅ ZAČIATOK OPRAVY V DIALÓGU
                                 val painter = when (contact.channel) {
                                     "Jednotka" -> painterResource(id = R.drawable.ic_logo_jednotka)
                                     "Dvojka" -> painterResource(id = R.drawable.ic_logo_dvojka)
@@ -753,17 +687,16 @@ private fun AddPersonToFunctionDialog(
                                     Image(
                                         painter = painter,
                                         contentDescription = contact.channel,
-                                        modifier = Modifier.size(32.dp) // V dialógu stačí menšia
+                                        modifier = Modifier.size(28.dp)
                                     )
                                 } else {
                                     Icon(
                                         imageVector = Icons.Filled.Person,
                                         contentDescription = "Kontakt",
                                         tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(32.dp)
+                                        modifier = Modifier.size(28.dp)
                                     )
                                 }
-                                // ✅ KONIEC OPRAVY V DIALÓGU
 
                                 Spacer(Modifier.width(16.dp))
                                 Text(contact.getFullName(), style = MaterialTheme.typography.bodyLarge)
@@ -820,10 +753,9 @@ private fun FilterContactsDialog(
             }
         },
         dismissButton = {
-            // Tlačidlo na zrušenie všetkých filtrov
             TextButton(onClick = {
                 onClearFilters()
-                onDismiss() // a zatvoríme dialóg
+                onDismiss()
             }) {
                 Text("Zrušiť filtre")
             }
