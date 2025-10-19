@@ -355,7 +355,6 @@ fun MainScreen() {
 fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues, sharedViewModel: SharedViewModel) {
     val nestedNavController = rememberNavController()
 
-
     NavHost(
         navController = nestedNavController,
         startDestination = Routes.PASSWORDS_LIST,
@@ -372,14 +371,12 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
             )
         }
         composable(
-            route = Routes.PASSWORD_DETAIL, // Použijeme správnu cestu z Routes
+            route = Routes.PASSWORD_DETAIL,
             arguments = listOf(navArgument("passwordId") { type = NavType.StringType })
         ) { backStackEntry ->
             val passwordId = backStackEntry.arguments?.getString("passwordId")
             if (passwordId != null) {
-                // Voláme KONEČNE tú správnu obrazovku!
                 PasswordDetailScreen(
-                    // A odovzdáme jej padding zo Scaffold ako modifier
                     modifier = Modifier.padding(paddingValues),
                     passwordId = passwordId,
                     viewModel = viewModel,
@@ -392,13 +389,11 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
             }
         }
         composable(
-            // Použijeme cestu, ktorú už máte definovanú v Routes
             route = "ip_detail/{ipId}",
             arguments = listOf(navArgument("ipId") { type = NavType.StringType })
         ) { backStackEntry ->
             val ipId = backStackEntry.arguments?.getString("ipId")
             if (ipId != null) {
-                // Voláme našu novú obrazovku!
                 IpDetailScreen(
                     modifier = Modifier.padding(paddingValues),
                     ipId = ipId,
@@ -411,42 +406,49 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
                 )
             }
         }
+
+        // --- ZAČIATOK ZMIEN ---
+
+        // 1. NOVÁ OBRAZOVKA PRE PRIDANIE HESLA
         composable(Routes.ADD_PASSWORD) {
-            AddEditPasswordScreen(
+            AddPasswordScreen(
                 modifier = Modifier.padding(paddingValues),
                 navController = nestedNavController,
                 viewModel = viewModel,
                 sharedViewModel = sharedViewModel,
-                // ✅ KROK 3.1: Pridanie chýbajúceho parametra
-                onBack = { nestedNavController.popBackStack() }
+                onBack = { nestedNavController.popBackStack() } // Jednoduchý návrat späť
             )
         }
+
+        // 2. NOVÁ OBRAZOVKA PRE EDITÁCIU HESLA
         composable(
             route = Routes.EDIT_PASSWORD,
             arguments = listOf(navArgument("passwordId") { type = NavType.StringType })
         ) { backStackEntry ->
             val passwordId = backStackEntry.arguments?.getString("passwordId")
-            AddEditPasswordScreen(
-                modifier = Modifier.padding(paddingValues),
-                navController = nestedNavController,
-                viewModel = viewModel,
-                passwordId = passwordId,
-                sharedViewModel = sharedViewModel,
-                // ✅ KROK 3.1: Pridanie chýbajúceho parametra
-                onBack = {
-                    // VRACIAME SA O DVA KROKY: Z Editácie -> cez Detail -> na Zoznam
-                    nestedNavController.popBackStack() // Zatvorí Detail
-                    nestedNavController.popBackStack() // Zatvorí Editáciu
-                }
-            )
+            if (passwordId != null) {
+                EditPasswordScreen(
+                    modifier = Modifier.padding(paddingValues),
+                    navController = nestedNavController,
+                    viewModel = viewModel,
+                    passwordId = passwordId,
+                    sharedViewModel = sharedViewModel,
+                    onBack = {
+                        // VRACIAME SA O DVA KROKY: Z Editácie -> cez Detail -> na Zoznam
+                        nestedNavController.popBackStack() // Zatvorí Detail
+                        nestedNavController.popBackStack() // Zatvorí Editáciu
+                    }
+                )
+            }
         }
+
+        // Zvyšok pre IP adresy zatiaľ nechávame tak, ako je
         composable(Routes.ADD_IP_ADDRESS) {
             AddEditIpAddressScreen(
                 modifier = Modifier.padding(paddingValues),
                 navController = nestedNavController,
                 viewModel = viewModel,
                 sharedViewModel = sharedViewModel,
-                // ✅ KROK 3.1: Pridanie chýbajúceho parametra
                 onBack = { nestedNavController.popBackStack() }
             )
         }
@@ -461,14 +463,14 @@ fun PasswordsNavHost(viewModel: PasswordsViewModel, paddingValues: PaddingValues
                 viewModel = viewModel,
                 ipId = ipId,
                 sharedViewModel = sharedViewModel,
-                // ✅ KROK 3.1: Pridanie chýbajúceho parametra
                 onBack = {
-                    // VRACIAME SA O DVA KROKY: Z Editácie -> cez Detail -> na Zoznam
-                    nestedNavController.popBackStack() // Zatvorí Detail
-                    nestedNavController.popBackStack() // Zatvorí Editáciu
+                    nestedNavController.popBackStack()
+                    nestedNavController.popBackStack()
                 }
             )
         }
+
+        // --- KONIEC ZMIEN ---
     }
 }
 
