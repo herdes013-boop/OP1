@@ -109,7 +109,7 @@ fun ContactListItem(contact: ContactItem, onItemClick: () -> Unit) {
                 .heightIn(min = 72.dp) // ✅ TOTO JE KĽÚČOVÁ ZMENA
                 .padding(16.dp)
                 .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.Top
         ) {
             Icon(
                 imageVector = getChannelIcon(contact.channel),
