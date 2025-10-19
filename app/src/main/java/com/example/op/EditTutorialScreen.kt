@@ -11,10 +11,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -29,6 +27,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.requestFocus
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -44,49 +43,44 @@ import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.detectReorderAfterLongPress
 import org.burnoutcrew.reorderable.rememberReorderableLazyListState
 import org.burnoutcrew.reorderable.reorderable
-import java.util.UUID
+import androidx.compose.foundation.shape.CircleShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddEditTutorialScreen(
+fun EditTutorialScreen(
     navController: NavController,
     tutorialsViewModel: TutorialsViewModel,
     sharedViewModel: SharedViewModel,
+    tutorialId: String, // Pre editáciu je ID povinné
     modifier: Modifier = Modifier,
-    tutorialId: String? = null, // <- Kľúčový parameter, ktorý rozhoduje, či editujeme
 ) {
-    val isEditing = tutorialId != null
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val context = LocalContext.current
 
-    // --- STAVY PRE LOKÁLNE DÁTA ---
+    // --- STAVY ---
     var localTitle by remember { mutableStateOf("") }
-    var localCategory by remember { mutableStateOf(tutorialsViewModel.categories.drop(1).first()) }
+    var localCategory by remember { mutableStateOf("") }
     var localContentBlocks by remember { mutableStateOf<List<TutorialContentBlock>>(emptyList()) }
     var originalTutorial by remember { mutableStateOf<Tutorial?>(null) }
     var isDataLoaded by remember { mutableStateOf(false) }
-
-    // --- DIALÓGY ---
     var showUnsavedChangesDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
 
-    // --- NAČÍTANIE DÁT PRE EDITÁCIU ALEBO RESET PRE PRIDANIE ---
+    // --- NAČÍTANIE DÁT ---
     LaunchedEffect(tutorialId) {
-        if (isEditing) {
-            val tutorial = tutorialsViewModel.getTutorialById(tutorialId!!)
-            if (tutorial != null) {
-                localTitle = tutorial.title
-                localCategory = tutorial.category
-                localContentBlocks = tutorial.content
-                originalTutorial = tutorial.copy() // Kópia pre porovnanie
-            }
+        val tutorial = tutorialsViewModel.getTutorialById(tutorialId)
+        if (tutorial != null) {
+            localTitle = tutorial.title
+            localCategory = tutorial.category
+            localContentBlocks = tutorial.content
+            originalTutorial = tutorial.copy()
+            isDataLoaded = true
         } else {
-            // Pripravíme prázdny originál pre porovnanie pri pridávaní
-            originalTutorial = Tutorial(id = "new", title = "", category = localCategory, content = emptyList())
+            // Ak sa návod nenájde, vrátime sa späť
+            navController.popBackStack()
         }
-        isDataLoaded = true
     }
 
     // --- DETEKCIA ZMIEN ---
@@ -102,13 +96,15 @@ fun AddEditTutorialScreen(
     fun saveAndGoBack() {
         scope.launch {
             val tutorialToSave = Tutorial(
-                id = tutorialId ?: UUID.randomUUID().toString(),
+                id = tutorialId,
                 title = localTitle,
                 category = localCategory,
                 content = localContentBlocks
             )
             tutorialsViewModel.saveTutorial(tutorialToSave)
-            navController.popBackStack()
+            // ✅ SPRÁVNY NÁVRAT O 2 KROKY:
+            // Vráti sa na obrazovku PRED TutorialDetail a zároveň TutorialDetail odstráni z histórie.
+            navController.popBackStack(Routes.TUTORIAL_DETAIL, true)
         }
     }
 
@@ -116,7 +112,8 @@ fun AddEditTutorialScreen(
         if (hasChanges) {
             showUnsavedChangesDialog = true
         } else {
-            navController.popBackStack()
+            // ✅ SPRÁVNY NÁVRAT O 2 KROKY aj tu:
+            navController.popBackStack(Routes.TUTORIAL_DETAIL, true)
         }
     }
 
@@ -138,24 +135,28 @@ fun AddEditTutorialScreen(
     LaunchedEffect(Unit) {
         sharedViewModel.setTopBarState(TopBarState(isVisible = false))
     }
-    BackHandler(onBack = { handleBackNavigation() })
+    BackHandler(onBack = ::handleBackNavigation)
 
-    // --- DIALÓGY (UI) ---
+    // --- DIALÓGY ---
     if (showUnsavedChangesDialog) {
         UnsavedChangesDialog(
-            onSave = { showUnsavedChangesDialog = false; saveAndGoBack() },
-            onDiscard = { showUnsavedChangesDialog = false; navController.popBackStack() },
+            onSave = { showUnsavedChangesDialog = false; saveAndGoBack() }, // Toto je už v poriadku po kroku 1
+            onDiscard = {
+                showUnsavedChangesDialog = false
+                // ✅ SPRÁVNY NÁVRAT O 2 KROKY aj tu:
+                navController.popBackStack(Routes.TUTORIAL_DETAIL, true)
+            },
             onCancel = { showUnsavedChangesDialog = false }
         )
     }
-
     if (showDeleteDialog) {
         DeleteConfirmDialog(
             onDismiss = { showDeleteDialog = false },
             onConfirm = {
                 showDeleteDialog = false
-                tutorialId?.let { tutorialsViewModel.deleteTutorial(it) }
-                navController.popBackStack()
+                tutorialsViewModel.deleteTutorial(tutorialId)
+                // Navigácia o 2 kroky späť (z Editácie cez Detail na Zoznam)
+                navController.popBackStack(Routes.TUTORIAL_DETAIL, true)
             }
         )
     }
@@ -166,7 +167,7 @@ fun AddEditTutorialScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
-                title = { Text(if (isEditing) "Upraviť návod" else "Nový návod") },
+                title = { Text("Upraviť návod") },
                 navigationIcon = {
                     IconButton(onClick = ::handleBackNavigation) {
                         Icon(Icons.Filled.ArrowBack, "Naspäť")
@@ -180,20 +181,18 @@ fun AddEditTutorialScreen(
                             modifier = Modifier.padding(end = 8.dp)
                         ) { Text("ULOŽIŤ") }
                     }
-                    if (isEditing) {
-                        IconButton(onClick = { showMenu = true }) {
-                            Icon(Icons.Default.MoreVert, "Viac")
-                        }
-                        DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                            DropdownMenuItem(
-                                text = { Text("Zmazať", color = MaterialTheme.colorScheme.error) },
-                                onClick = {
-                                    showMenu = false
-                                    showDeleteDialog = true
-                                },
-                                leadingIcon = { Icon(Icons.Default.Delete, "Zmazať", tint = MaterialTheme.colorScheme.error) }
-                            )
-                        }
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(Icons.Default.MoreVert, "Viac")
+                    }
+                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Zmazať", color = MaterialTheme.colorScheme.error) },
+                            onClick = {
+                                showMenu = false
+                                showDeleteDialog = true
+                            },
+                            leadingIcon = { Icon(Icons.Default.Delete, "Zmazať", tint = MaterialTheme.colorScheme.error) }
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -218,7 +217,7 @@ fun AddEditTutorialScreen(
                     .fillMaxSize()
                     .imePadding()
             ) {
-                // HORNÁ ČASŤ (NÁZOV, KATEGÓRIA, TLAČIDLÁ)
+                // HORNÁ ČASŤ
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -246,7 +245,7 @@ fun AddEditTutorialScreen(
                             onClick = {
                                 scope.launch {
                                     localContentBlocks = localContentBlocks + TutorialContentBlock.TextBlock(text = "")
-                                    listState.animateScrollToItem(localContentBlocks.lastIndex)
+                                    if (localContentBlocks.isNotEmpty()) listState.animateScrollToItem(localContentBlocks.lastIndex)
                                 }
                             },
                             modifier = Modifier.weight(1f),
@@ -318,12 +317,6 @@ fun AddEditTutorialScreen(
         }
     }
 }
-
-
-// --- POMOCNÉ KOMPONENTY ---
-// Vložte sem kód pre CategoryDropDown, TextBlockEditor, ImageBlockEditor, DeleteConfirmDialog
-// ktorý ste mali v pôvodnom súbore. Pre istotu ho prikladám nižšie.
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoryDropDown(
@@ -490,13 +483,11 @@ fun ImageBlockEditor(
         }
     }
 }
-
 @Composable
 fun DeleteConfirmDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Zmazať návod") },
-        text = { Text("Naozaj chcete natrvalo zmazať tento návod?") },
+        title = { Text("Zmazať návod") },text = { Text("Naozaj chcete natrvalo zmazať tento návod?") },
         confirmButton = {
             Button(
                 onClick = onConfirm,
