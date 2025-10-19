@@ -361,7 +361,7 @@ private fun ChannelDetailView(
     onAddPersonClick: (ChannelFunction) -> Unit,
     onRemovePersonClick: (functionId: String, personId: String) -> Unit,
     onUpdatePersonNote: (functionId: String, personId: String, newNote: String) -> Unit,
-    onEditFunctionClick: (ChannelFunction) -> Unit
+    onEditFunctionClick: (ChannelFunction) -> Unit,
 ) {
     val reorderState = rememberReorderableLazyListState(
         onMove = { from, to -> onMoveFunction(from.index, to.index) }
@@ -449,7 +449,7 @@ private fun FunctionSection(
     onAddPersonClick: () -> Unit,
     onRemovePersonClick: (personId: String) -> Unit,
     onUpdatePersonNote: (personId: String, newNote: String) -> Unit,
-    onEditFunctionClick: () -> Unit
+    onEditFunctionClick: () -> Unit,
 ) {
     val containerModifier = if (isEditMode) {
         Modifier
@@ -714,7 +714,7 @@ private fun AddPersonToFunctionDialog(
 
 @Composable
 private fun FilterContactsDialog(
-    allChannels: List<String>,
+    allChannels: List<String>, // Parameter tu musí byť, aby sme ho mohli použiť nižšie
     activeFilters: Set<String>,
     onDismiss: () -> Unit,
     onChannelSelected: (String, Boolean) -> Unit,
@@ -725,6 +725,7 @@ private fun FilterContactsDialog(
         title = { Text("Filtrovať podľa kanála") },
         text = {
             LazyColumn {
+                // Tu sa parameter `allChannels` používa
                 items(allChannels) { channel ->
                     Row(
                         modifier = Modifier
@@ -748,16 +749,15 @@ private fun FilterContactsDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Zavrieť")
+            // ✅ Tlačidlo na potvrdenie a zatvorenie
+            Button(onClick = onDismiss) {
+                Text("Použiť filtre")
             }
         },
         dismissButton = {
-            TextButton(onClick = {
-                onClearFilters()
-                onDismiss()
-            }) {
-                Text("Zrušiť filtre")
+            // ✅ Tlačidlo na vyčistenie filtrov (zostane v dialógu)
+            TextButton(onClick = onClearFilters) {
+                Text("Zrušiť všetky filtre")
             }
         }
     )
