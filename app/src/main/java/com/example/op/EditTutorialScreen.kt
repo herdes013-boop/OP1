@@ -93,6 +93,22 @@ fun EditTutorialScreen(
         }
     }
 
+    fun justSave() {
+        focusManager.clearFocus() // Toto je dôležité, aby sa uložil text z posledného poľa
+        scope.launch {
+            val tutorialToSave = Tutorial(
+                id = tutorialId,
+                title = localTitle,
+                category = localCategory,
+                content = localContentBlocks
+            )
+            tutorialsViewModel.saveTutorial(tutorialToSave)
+
+            // Po uložení musíme resetovať "originál", aby sa zmeny znova nedetekovali
+            originalTutorial = tutorialToSave.copy()
+        }
+    }
+
     // --- POMOCNÉ FUNKCIE ---
     fun saveAndGoBack() {
         focusManager.clearFocus()
@@ -178,7 +194,7 @@ fun EditTutorialScreen(
                 actions = {
                     if (hasChanges && localTitle.isNotBlank()) {
                         Button(
-                            onClick = ::saveAndGoBack,
+                            onClick = ::justSave, // ✅ VOLÁ NOVÚ FUNKCIU
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
                             modifier = Modifier.padding(end = 8.dp)
                         ) { Text("ULOŽIŤ") }
