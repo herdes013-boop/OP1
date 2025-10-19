@@ -81,45 +81,62 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
 
 
 
 // --- Tieto funkcie zostávajú bez zmeny ---
-fun getChannelIcon(channel: String?): ImageVector {
-    return when (channel) {
-        "Jednotka" -> Icons.Filled.LooksOne
-        "Dvojka" -> Icons.Filled.LooksTwo
-        "24" -> Icons.Filled.Newspaper
-        "Sport" -> Icons.Filled.SportsSoccer
-        else -> Icons.Filled.Person
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContactListItem(contact: ContactItem, onItemClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(), // Toto je už správne
+        modifier = Modifier.fillMaxWidth(),
         onClick = onItemClick,
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Row(
             modifier = Modifier
-                .heightIn(min = 72.dp) // ✅ TOTO JE KĽÚČOVÁ ZMENA
-                .padding(16.dp)
+                .heightIn(min = 72.dp)
+                .padding(horizontal = 16.dp, vertical = 12.dp) // Zjednotený padding
                 .fillMaxWidth(),
-            verticalAlignment = Alignment.Top
+            verticalAlignment = Alignment.CenterVertically // Centrovanie na stred je tu v poriadku
         ) {
-            Icon(
-                imageVector = getChannelIcon(contact.channel),
-                contentDescription = contact.channel ?: "Kontakt",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .size(28.dp)
-                    .align(Alignment.CenterVertically)
-            )
+            // Logika na výber správneho obrázku
+            val painter = when (contact.channel) {
+                "Jednotka" -> painterResource(id = R.drawable.ic_logo_jednotka)
+                "Dvojka" -> painterResource(id = R.drawable.ic_logo_dvojka)
+                "24" -> painterResource(id = R.drawable.ic_logo_24)
+                "Sport" -> painterResource(id = R.drawable.ic_logo_sport)
+                else -> null // Ak kanál nie je priradený, `painter` bude null
+            }
+
+            // Podmienené zobrazenie - buď vaše logo, alebo defaultná ikona
+            if (painter != null) {
+                // Ak máme vaše logo, použijeme `Image`
+                Image(
+                    painter = painter,
+                    contentDescription = contact.channel,
+                    modifier = Modifier
+                        .size(40.dp) // Logá vyzerajú lepšie o trochu väčšie
+                        .align(Alignment.CenterVertically)
+                )
+            } else {
+                // Ak kontakt nemá kanál, použijeme pôvodnú `Icon`
+                Icon(
+                    imageVector = Icons.Filled.Person,
+                    contentDescription = "Kontakt",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .size(40.dp) // Zjednotíme veľkosť s logom
+                        .align(Alignment.CenterVertically)
+                )
+            }
+
             Spacer(Modifier.width(16.dp))
+
+            // Zvyšok kódu pre zobrazenie mena a funkcie zostáva rovnaký
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = contact.getFullName(),
@@ -137,7 +154,6 @@ fun ContactListItem(contact: ContactItem, onItemClick: () -> Unit) {
         }
     }
 }
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -665,7 +681,7 @@ private fun AssignedPersonRow(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class) // Uistite sa, že máte tento OptIn
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddPersonToFunctionDialog(
     allContacts: List<ContactItem>,
@@ -673,30 +689,19 @@ private fun AddPersonToFunctionDialog(
     onDismiss: () -> Unit,
     onPersonSelected: (ContactItem) -> Unit,
 ) {
-    // ✅ KROK 1: Pridáme lokálny stav pre vyhľadávací text
     var searchQuery by remember { mutableStateOf("") }
-
-    // Zobrazíme iba tie kontakty, ktoré ešte nie sú v danej funkcii priradené
-    val availableContacts = allContacts.filter { contact ->
-        contact.id.toString() !in assignedPeopleIds
-    }
-
-    // ✅ KROK 2: Filtrujeme dostupné kontakty na základe vyhľadávania
+    val availableContacts = allContacts.filter { contact -> contact.id.toString() !in assignedPeopleIds }
     val filteredContacts = if (searchQuery.isBlank()) {
         availableContacts
     } else {
-        availableContacts.filter {
-            it.getFullName().contains(searchQuery, ignoreCase = true)
-        }
+        availableContacts.filter { it.getFullName().contains(searchQuery, ignoreCase = true) }
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Pridať osobu") },
         text = {
-            // ✅ KROK 3: Vložíme Column, aby sme mohli mať TextField aj zoznam pod sebou
             Column {
-                // Vyhľadávacie pole
                 TextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
@@ -714,14 +719,12 @@ private fun AddPersonToFunctionDialog(
                     },
                     singleLine = true,
                     colors = TextFieldDefaults.colors(
-                        // Použijeme štandardné farby
                         focusedContainerColor = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
                         disabledContainerColor = Color.Transparent,
                     )
                 )
 
-                // Zoznam kontaktov
                 if (filteredContacts.isEmpty()) {
                     Text(
                         if (searchQuery.isNotBlank()) "Nenašiel sa žiadny zodpovedajúci kontakt."
@@ -729,7 +732,6 @@ private fun AddPersonToFunctionDialog(
                     )
                 } else {
                     LazyColumn {
-                        // Použijeme už prefiltrovaný zoznam
                         items(filteredContacts, key = { it.id }) { contact ->
                             Row(
                                 modifier = Modifier
@@ -738,12 +740,31 @@ private fun AddPersonToFunctionDialog(
                                     .padding(vertical = 12.dp, horizontal = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = getChannelIcon(contact.channel),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
+                                // ✅ ZAČIATOK OPRAVY V DIALÓGU
+                                val painter = when (contact.channel) {
+                                    "Jednotka" -> painterResource(id = R.drawable.ic_logo_jednotka)
+                                    "Dvojka" -> painterResource(id = R.drawable.ic_logo_dvojka)
+                                    "24" -> painterResource(id = R.drawable.ic_logo_24)
+                                    "Sport" -> painterResource(id = R.drawable.ic_logo_sport)
+                                    else -> null
+                                }
+
+                                if (painter != null) {
+                                    Image(
+                                        painter = painter,
+                                        contentDescription = contact.channel,
+                                        modifier = Modifier.size(32.dp) // V dialógu stačí menšia
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Filled.Person,
+                                        contentDescription = "Kontakt",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                }
+                                // ✅ KONIEC OPRAVY V DIALÓGU
+
                                 Spacer(Modifier.width(16.dp))
                                 Text(contact.getFullName(), style = MaterialTheme.typography.bodyLarge)
                             }
@@ -753,9 +774,7 @@ private fun AddPersonToFunctionDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Zrušiť")
-            }
+            TextButton(onClick = onDismiss) { Text("Zrušiť") }
         }
     )
 }
