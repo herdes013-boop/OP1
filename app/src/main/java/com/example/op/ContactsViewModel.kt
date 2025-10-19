@@ -1,5 +1,6 @@
 package com.example.op
 
+import androidx.compose.animation.core.copy
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -44,6 +45,15 @@ class ContactsViewModel : ViewModel() {
         allContactFunctions.removeIf { it.id == functionId }
         // TODO: Do budúcna by sme tu mali riešiť aj odstránenie ID funkcie zo všetkých kontaktov, ktoré ju mali priradenú.
         // Pre teraz to zjednodušíme.
+    }
+    fun updateContactFunction(functionId: String, newName: String) {
+        allContactFunctions.replaceAll {
+            if (it.id == functionId) {
+                it.copy(name = newName)
+            } else {
+                it
+            }
+        }
     }
 
     // =====================================================================
@@ -350,4 +360,5 @@ class ContactsViewModel : ViewModel() {
             updateSelectedTabFilter(ALL_CHANNELS_FILTER)
         }
     }
+
 }

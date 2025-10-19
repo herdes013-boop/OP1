@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit // ✅ Nový import
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
@@ -26,15 +27,19 @@ fun FunctionsScreen(
     contactsViewModel: ContactsViewModel = viewModel(),
     sharedViewModel: SharedViewModel,
 ) {
-    // Získame zoznam funkcií priamo z ViewModelu
     val functions = contactsViewModel.allContactFunctions
+
+    // --- Nové stavy pre dialógy ---
     var showAddDialog by remember { mutableStateOf(false) }
+    var showEditDialog by remember { mutableStateOf(false) } // ✅ Stav pre editovací dialóg
+    var functionToEdit by remember { mutableStateOf<ContactFunction?>(null) } // ✅ Stav pre funkciu, ktorú upravujeme
 
     // Nastavenie Top Baru
     LaunchedEffect(Unit) {
         sharedViewModel.setTopBarState(TopBarState(isVisible = false))
     }
 
+    // --- Zobrazenie dialógov ---
     if (showAddDialog) {
         AddFunctionDialog(
             onDismiss = { showAddDialog = false },
@@ -44,6 +49,19 @@ fun FunctionsScreen(
             }
         )
     }
+
+    // ✅ Zobrazenie nového editovacieho dialógu
+    if (showEditDialog && functionToEdit != null) {
+        EditFunctionDialog(
+            function = functionToEdit!!,
+            onDismiss = { showEditDialog = false },
+            onConfirm = { newName ->
+                contactsViewModel.updateContactFunction(functionToEdit!!.id, newName)
+                showEditDialog = false
+            }
+        )
+    }
+
 
     Scaffold(
         topBar = {
@@ -85,8 +103,17 @@ fun FunctionsScreen(
                     ListItem(
                         headlineContent = { Text(function.name) },
                         trailingContent = {
-                            IconButton(onClick = { contactsViewModel.removeContactFunction(function.id) }) {
-                                Icon(Icons.Default.Delete, "Zmazať funkciu", tint = MaterialTheme.colorScheme.error)
+                            // ✅ Pridali sme Row pre viac ikoniek
+                            Row {
+                                IconButton(onClick = {
+                                    functionToEdit = function
+                                    showEditDialog = true
+                                }) {
+                                    Icon(Icons.Default.Edit, "Upraviť funkciu", tint = MaterialTheme.colorScheme.secondary)
+                                }
+                                IconButton(onClick = { contactsViewModel.removeContactFunction(function.id) }) {
+                                    Icon(Icons.Default.Delete, "Zmazať funkciu", tint = MaterialTheme.colorScheme.error)
+                                }
                             }
                         }
                     )
@@ -122,6 +149,44 @@ private fun AddFunctionDialog(
                 enabled = text.isNotBlank()
             ) {
                 Text("Pridať")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Zrušiť")
+            }
+        }
+    )
+}
+
+// ✅ NOVÝ KOMPONENT PRE EDITOVACÍ DIALÓG
+@Composable
+private fun EditFunctionDialog(
+    function: ContactFunction,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+    // Predvyplníme text aktuálnym názvom funkcie
+    var text by remember { mutableStateOf(function.name) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Upraviť názov funkcie") },
+        text = {
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                label = { Text("Názov funkcie") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(text.trim()) },
+                enabled = text.isNotBlank() && text != function.name // Uložiť len ak je text iný a nie je prázdny
+            ) {
+                Text("Uložiť")
             }
         },
         dismissButton = {
