@@ -48,6 +48,7 @@ fun AddTutorialScreen(
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
 
     // --- STAVY ---
     var localTitle by remember { mutableStateOf("") }
@@ -60,6 +61,7 @@ fun AddTutorialScreen(
 
     // --- POMOCNÉ FUNKCIE ---
     fun saveAndGoBack() {
+        focusManager.clearFocus()
         scope.launch {
             val tutorialToSave = Tutorial(
                 id = UUID.randomUUID().toString(),
