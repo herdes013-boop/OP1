@@ -183,6 +183,17 @@ fun MainScreen() {
                 )
 
                 NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.Calculate, contentDescription = null) }, // Iba príklad ikony
+                    label = { Text("Poznámky") }, // Váš názov
+                    selected = false,
+                    onClick = {
+                        // Zatiaľ nerobí nič, len zatvorí menu
+                        scope.launch { drawerState.close() }
+                    },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
+
+                NavigationDrawerItem(
                     icon = { Icon(Icons.Default.Settings, contentDescription = null) },
                     label = { Text("Nastavenia") },
                     selected = false,
