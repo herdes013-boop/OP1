@@ -3,54 +3,75 @@
 package com.example.op
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.google.accompanist.flowlayout.FlowRow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddContactScreen(
-    // ✅ Prijímame modifier a onBack, presne ako pri editácii
     modifier: Modifier = Modifier,
     navController: NavController,
     viewModel: ContactsViewModel = viewModel(),
     sharedViewModel: SharedViewModel,
     onBack: () -> Unit
 ) {
-    // ✅ Používame lokálny stav, nie ViewModel
+    // ✅ KROK 1: ÚPRAVA LOKÁLNEHO STAVU
+    // Dátová trieda ContactItem má teraz iné parametre
     var localContact by remember {
-        mutableStateOf(ContactItem(id = 0, firstName = "", lastName = ""))
+        mutableStateOf(
+            ContactItem(
+                id = 0,
+                firstName = "",
+                lastName = "",
+                functionIds = emptyList(), // Používame nový zoznam IDčok
+                phone = null,
+                email = null,
+                channel = viewModel.channelOptions.firstOrNull() ?: "",
+                notes = null
+            )
+        )
     }
     var showUnsavedChangesDialog by remember { mutableStateOf(false) }
+    var showFunctionSelectionDialog by remember { mutableStateOf(false) } // Stav pre dialóg s funkciami
 
-    // ✅ Zisťujeme zmeny porovnaním s prázdnym objektom
+    // ✅ KROK 2: ÚPRAVA DETEKCIE ZMIEN
+    // Kontrolujeme nové pole `functionIds` namiesto starého `function`
     val hasUnsavedChanges by remember(localContact) {
         derivedStateOf {
             localContact.firstName.isNotBlank() ||
                     localContact.lastName.isNotBlank() ||
-                    localContact.function?.isNotBlank() == true ||
+                    localContact.functionIds.isNotEmpty() || // Zmenené
                     localContact.phone?.isNotBlank() == true ||
                     localContact.email?.isNotBlank() == true ||
                     localContact.notes?.isNotBlank() == true
         }
     }
 
-    // ✅ Funkcie na uloženie a návrat
+    // Funkcie na uloženie a návrat zostávajú rovnaké
     fun saveContactAndGoBack() {
-        viewModel.addContact(localContact) // Uložíme celý lokálny objekt naraz
+        viewModel.addContact(localContact)
         onBack()
     }
 
@@ -62,7 +83,7 @@ fun AddContactScreen(
         }
     }
 
-    // ✅ Správa horného panela cez SharedViewModel
+    // Správa horného panela zostáva rovnaká
     LaunchedEffect(hasUnsavedChanges) {
         sharedViewModel.setTopBarState(TopBarState(
             title = "Nový kontakt",
@@ -72,7 +93,8 @@ fun AddContactScreen(
                 }
             },
             actions = {
-                if (hasUnsavedChanges) {
+                // Tlačidlo ULOŽIŤ sa zobrazí, len ak je meno vyplnené
+                if (hasUnsavedChanges && localContact.firstName.isNotBlank()) {
                     Button(
                         onClick = ::saveContactAndGoBack,
                         modifier = Modifier.padding(horizontal = 8.dp),
@@ -87,10 +109,8 @@ fun AddContactScreen(
         ))
     }
 
-    // ✅ Spracovanie systémového tlačidla "späť"
     BackHandler(onBack = ::handleBackNavigation)
 
-    // Formulár už nie je v Scaffolde, ale v Boxe, ktorý dostane padding
     Box(
         modifier = modifier.fillMaxSize()
     ) {
@@ -101,12 +121,13 @@ fun AddContactScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // ✅ Formulár je prepojený na `localContact`, nie na ViewModel
+            // Povinné polia
             OutlinedTextField(
                 value = localContact.firstName,
                 onValueChange = { localContact = localContact.copy(firstName = it) },
-                label = { Text("Meno") },
-                modifier = Modifier.fillMaxWidth()
+                label = { Text("Meno *") }, // Pridaná hviezdička
+                modifier = Modifier.fillMaxWidth(),
+                isError = localContact.firstName.isBlank() && hasUnsavedChanges
             )
             OutlinedTextField(
                 value = localContact.lastName,
@@ -114,6 +135,15 @@ fun AddContactScreen(
                 label = { Text("Priezvisko") },
                 modifier = Modifier.fillMaxWidth()
             )
+
+            // ✅ KROK 3: NOVÝ KOMPONENT NA VÝBER FUNKCIÍ
+            FunctionSelector(
+                allFunctions = viewModel.allContactFunctions,
+                selectedFunctionIds = localContact.functionIds,
+                onOpenDialog = { showFunctionSelectionDialog = true }
+            )
+
+            // Ostatné polia
             OutlinedTextField(
                 value = localContact.phone ?: "",
                 onValueChange = { localContact = localContact.copy(phone = it) },
@@ -131,29 +161,20 @@ fun AddContactScreen(
                 modifier = Modifier.fillMaxWidth()
             )
             OutlinedTextField(
-                value = localContact.function ?: "",
-                onValueChange = { localContact = localContact.copy(function = it) },
-                label = { Text("Funkcia/Pozícia") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-            OutlinedTextField(
                 value = localContact.notes ?: "",
                 onValueChange = { localContact = localContact.copy(notes = it) },
                 label = { Text("Poznámky") },
                 minLines = 3,
                 modifier = Modifier.fillMaxWidth()
             )
-            val selectedChannelValue: String = localContact.channel ?: viewModel.channelOptions.first()
             ChannelDropdown(
-                selectedChannel = selectedChannelValue,
+                selectedChannel = localContact.channel,
                 onChannelSelected = { localContact = localContact.copy(channel = it) },
                 channelOptions = viewModel.channelOptions
             )
         }
     }
 
-    // ✅ Používame náš univerzálny dialóg
     if (showUnsavedChangesDialog) {
         UnsavedChangesDialog(
             onSave = {
@@ -169,4 +190,125 @@ fun AddContactScreen(
             }
         )
     }
+
+    // ✅ KROK 4: ZOBRAZENIE DIALÓGU NA VÝBER FUNKCIÍ
+    if (showFunctionSelectionDialog) {
+        FunctionSelectionDialog(
+            allFunctions = viewModel.allContactFunctions,
+            selectedIds = localContact.functionIds,
+            onDismiss = { showFunctionSelectionDialog = false },
+            onConfirm = { newSelectedIds ->
+                localContact = localContact.copy(functionIds = newSelectedIds)
+                showFunctionSelectionDialog = false
+            }
+        )
+    }
 }
+
+// ✅ KROK 5: NOVÝ KOMPONENT PRE ZOBRAZENIE A VÝBER FUNKCIÍ
+
+
+// ✅ KROK 6: NOVÝ DIALÓG NA VÝBER FUNKCIÍ
+
+// Vložte TOTO na koniec súboru AddContactScreen.kt
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FunctionSelector(
+    allFunctions: List<ContactFunction>,
+    selectedFunctionIds: List<String>,
+    onOpenDialog: () -> Unit
+) {
+    val selectedFunctions = allFunctions.filter { it.id in selectedFunctionIds }
+
+    OutlinedBox(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onOpenDialog),
+        label = "Funkcie"
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(modifier = Modifier.weight(1f)) {
+                if (selectedFunctions.isEmpty()) {
+                    Text("Vybrať funkcie...", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    FlowRow(
+                        mainAxisSpacing = 8.dp,
+                        crossAxisSpacing = 8.dp
+                    ) {
+                        selectedFunctions.forEach { function ->
+                            SuggestionChip(
+                                onClick = { /* Štítok nie je klikateľný */ },
+                                label = { Text(function.name) }
+                            )
+                        }
+                    }
+                }
+            }
+            Icon(
+                imageVector = Icons.Default.ArrowDropDown,
+                contentDescription = "Vybrať funkcie",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun FunctionSelectionDialog(
+    allFunctions: List<ContactFunction>,
+    selectedIds: List<String>,
+    onDismiss: () -> Unit,
+    onConfirm: (List<String>) -> Unit
+) {
+    var tempSelectedIds by remember { mutableStateOf(selectedIds.toSet()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Vyberte funkcie") },
+        text = {
+            LazyColumn {
+                items(allFunctions, key = { it.id }) { function ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                tempSelectedIds = if (function.id in tempSelectedIds) {
+                                    tempSelectedIds - function.id
+                                } else {
+                                    tempSelectedIds + function.id
+                                }
+                            }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = function.id in tempSelectedIds,
+                            onCheckedChange = null
+                        )
+                        Spacer(Modifier.width(16.dp))
+                        Text(function.name)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onConfirm(tempSelectedIds.toList()) }) {
+                Text("Potvrdiť")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Zrušiť")
+            }
+        }
+    )
+}
+
+
+

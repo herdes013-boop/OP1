@@ -2,6 +2,7 @@ package com.example.op
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -13,13 +14,12 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.ui.graphics.Color
+import com.google.accompanist.flowlayout.FlowRow // ✅ KROK 1: POTREBNÝ IMPORT
 
-
+@OptIn(ExperimentalLayoutApi::class) // ✅ KROK 2: OPT-IN PRE FlowRow
 @Composable
 fun ContactDetailScreen(
     modifier: Modifier = Modifier,
@@ -33,15 +33,11 @@ fun ContactDetailScreen(
     var showMenu by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    // Načítanie detailu, zostáva rovnaké
+    // Načítanie a nastavenie TopBar zostáva rovnaké
     LaunchedEffect(contactId) {
         viewModel.loadContactDetail(contactId)
     }
 
-    // ================================================================
-    // ✅ KROK 1: UPRAVENÝ EFEKT NA NASTAVENIE HORNEJ LIŠTY
-    // Používame `contact` ako kľúč, aby sa lišta aktualizovala.
-    // ================================================================
     LaunchedEffect(contact) {
         contact?.let {
             sharedViewModel.setTopBarState(
@@ -83,33 +79,49 @@ fun ContactDetailScreen(
         }
     }
 
-    // ================================================================
-    // ✅ KROK 2: ODSTRÁNENIE STARÉHO "UPRATOVACIEHO" EFEKTU
-    // Pôvodný DisposableEffect tu už nepotrebujeme, pretože upratovanie
-    // bude riadiť hlavná obrazovka (MainActivity).
-    // Odstráňte celý blok DisposableEffect(Unit) { ... }
-    // ================================================================
-
-    // Zvyšok súboru (Column, DetailItem, AlertDialog) zostáva úplne bez zmeny...
     contact?.let { c ->
-        // Hlavný kontajner, ktorý umožňuje skrolovanie
+        // Získame plné objekty funkcií z ViewModelu
+        val contactFunctions = viewModel.allContactFunctions.filter { it.id in c.functionIds }
+
         Column(
             modifier = modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
-            // ✅ Použijeme našu novú, centrálnu DetailCard
             DetailCard {
-                // Použijeme vylepšenú funkciu DetailRow s medzerami
                 DetailRow(label = "Meno a Priezvisko", value = c.getFullName())
 
-                c.function?.let {
+                // ✅ KROK 3: ZOBRAZENIE ZOZNAMU FUNKCIÍ
+                if (contactFunctions.isNotEmpty()) {
                     Spacer(Modifier.height(16.dp))
-                    DetailRow(label = "Funkcia", value = it)
+                    Column {
+                        Text(
+                            text = "FUNKCIE",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(Modifier.height(8.dp)) // Väčšia medzera pred štítkami
+                        FlowRow(
+                            mainAxisSpacing = 8.dp,
+                            crossAxisSpacing = 8.dp
+                        ) {
+                            contactFunctions.forEach { function ->
+                                // Zatiaľ použijeme jednoduchý SuggestionChip,
+                                // neskôr ho môžeme nahradiť farebným komponentom FunctionTag
+                                SuggestionChip(
+                                    onClick = {},
+                                    label = { Text(function.name) }
+                                )
+                            }
+                        }
+                    }
                 }
+
+                // Zvyšné polia
                 c.phone?.let {
                     Spacer(Modifier.height(16.dp))
-                    DetailRow(label = "Telefón", value = it)
+                    DetailRow(label = "Telefón", value = it, isValueSelectable = true)
                 }
                 c.email?.let {
                     Spacer(Modifier.height(16.dp))
@@ -128,6 +140,7 @@ fun ContactDetailScreen(
     }
 
     if (showDeleteDialog) {
+        // Dialog na zmazanie zostáva bez zmeny
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             title = { Text("Odstrániť kontakt?") },
@@ -147,7 +160,7 @@ fun ContactDetailScreen(
     }
 }
 
-// ✅ Vylepšená pomocná komponenta (nahradí starú DetailItem)
+// DetailRow zostáva bez zmeny
 @Composable
 private fun DetailRow(
     label: String,

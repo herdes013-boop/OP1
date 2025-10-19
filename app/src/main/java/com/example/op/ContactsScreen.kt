@@ -38,7 +38,10 @@ import org.burnoutcrew.reorderable.reorderable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ContactListItem(contact: ContactItem, onItemClick: () -> Unit) {
+fun ContactListItem(
+    contact: ContactItem,    viewModel: ContactsViewModel = viewModel(), // ✅ PRIDANÝ VIEWMODEL
+    onItemClick: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         onClick = onItemClick,
@@ -64,14 +67,14 @@ fun ContactListItem(contact: ContactItem, onItemClick: () -> Unit) {
                 Image(
                     painter = painter,
                     contentDescription = contact.channel,
-                    modifier = Modifier.size(20.dp) // Upravená veľkosť
+                    modifier = Modifier.size(20.dp)
                 )
             } else {
                 Icon(
                     imageVector = Icons.Filled.Person,
                     contentDescription = "Kontakt",
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp) // Zjednotená veľkosť
+                    modifier = Modifier.size(20.dp)
                 )
             }
 
@@ -83,12 +86,25 @@ fun ContactListItem(contact: ContactItem, onItemClick: () -> Unit) {
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
-                contact.function?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
+
+                // ✅ KROK 1: ZÍSKANIE PRVEJ FUNKCIE
+                // Zoberieme prvé ID funkcie z kontaktu, ak nejaké má.
+                val firstFunctionId = contact.functionIds.firstOrNull()
+
+                if (firstFunctionId != null) {
+                    // Nájdeme názov funkcie podľa jej ID vo ViewModele.
+                    val functionName = viewModel.allContactFunctions
+                        .find { it.id == firstFunctionId }?.name
+
+                    if (functionName != null) {
+                        Text(
+                            text = functionName, // Zobrazíme nájdený názov
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.secondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
         }
@@ -238,6 +254,7 @@ fun ContactsScreen(
                             items(contacts, key = { it.id }) { contact ->
                                 ContactListItem(
                                     contact = contact,
+                                    viewModel = viewModel, // ✅ Odovzdáme ViewModel
                                     onItemClick = { navController.navigate("contact_detail/${contact.id}") }
                                 )
                             }

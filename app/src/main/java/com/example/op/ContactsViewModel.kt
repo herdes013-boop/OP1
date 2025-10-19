@@ -12,43 +12,62 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-
-
-
-// =====================================================================
-
-// --------------------------------------------------
-// VIEW MODEL PRE KONTAKTY
-// --------------------------------------------------
+import java.util.UUID // Potrebný import
 
 class ContactsViewModel : ViewModel() {
-
-    // Predvolená hodnota pre kanál, ak sa kanál odstráni
-
 
     private val DEFAULT_CHANNEL = "24"
     private val ALL_CHANNELS_FILTER = "Všetky"
 
-    // 1. DÁTA: Zoznam kontaktov
+    // =====================================================================
+    // ✅ KROK 1: Centrálny zoznam funkcií
+    // =====================================================================
+    val allContactFunctions = mutableStateListOf<ContactFunction>(
+        ContactFunction(id = "f1", name = "Redaktor"),
+        ContactFunction(id = "f2", name = "Kamera"),
+        ContactFunction(id = "f3", name = "IT Podpora"),
+        ContactFunction(id = "f4", name = "Hlásateľ"),
+        ContactFunction(id = "f5", name = "Produkcia"),
+        ContactFunction(id = "f6", name = "Strihač") // Pridaná funkcia
+    )
+
+    fun addContactFunction(name: String) {
+        val trimmedName = name.trim()
+        // Pridáme funkciu len ak nie je prázdna a ešte neexistuje
+        if (trimmedName.isNotBlank() && allContactFunctions.none { it.name.equals(trimmedName, ignoreCase = true) }) {
+            allContactFunctions.add(ContactFunction(name = trimmedName))
+        }
+    }
+
+    fun removeContactFunction(functionId: String) {
+        // Odstránime funkciu zo zoznamu
+        allContactFunctions.removeIf { it.id == functionId }
+        // TODO: Do budúcna by sme tu mali riešiť aj odstránenie ID funkcie zo všetkých kontaktov, ktoré ju mali priradenú.
+        // Pre teraz to zjednodušíme.
+    }
+
+    // =====================================================================
+    // ✅ KROK 2: Aktualizácia dočasných dát pre kontakty
+    // =====================================================================
     val contacts = mutableStateListOf<ContactItem>(
         ContactItem(
-            id = 1, firstName = "Ján", lastName = "Novák", function = "Redaktor",
+            id = 1, firstName = "Ján", lastName = "Novák", functionIds = listOf("f1", "f6"), // Ján je Redaktor a Strihač
             phone = "+421900111222", email = "jan@novak.sk", channel = "Jednotka", notes = null
         ),
         ContactItem(
-            id = 2, firstName = "Anna", lastName = "Malá", function = "Kamera",
+            id = 2, firstName = "Anna", lastName = "Malá", functionIds = listOf("f2"), // Anna je Kamera
             phone = "+421900333444", email = "anna@mala.sk", channel = "Dvojka", notes = "Pracuje len na nočných zmenách."
         ),
         ContactItem(
-            id = 3, firstName = "Peter", lastName = "Kováč", function = "IT Podpora",
+            id = 3, firstName = "Peter", lastName = "Kováč", functionIds = listOf("f3"), // Peter je IT Podpora
             phone = "+421900555666", email = "peter@kovac.sk", channel = DEFAULT_CHANNEL, notes = null
         ),
         ContactItem(
-            id = 4, firstName = "Marek", lastName = "Varga", function = "Hlásateľ",
+            id = 4, firstName = "Marek", lastName = "Varga", functionIds = listOf("f4"), // Marek je Hlásateľ
             phone = "+421900777888", email = "marek@varga.sk", channel = "Jednotka", notes = null
         ),
         ContactItem(
-            id = 5, firstName = "Zuzana", lastName = "Nová", function = "Produkcia",
+            id = 5, firstName = "Zuzana", lastName = "Nová", functionIds = listOf("f5"), // Zuzana je Produkcia
             phone = "+421900999000", email = "zuzana@nova.sk", channel = "Sport", notes = "Kontaktovať len cez email."
         )
     )
@@ -94,26 +113,20 @@ class ContactsViewModel : ViewModel() {
 
     fun onFilterChannelSelected(channel: String, isSelected: Boolean) {
         _activeChannelFilters.update { currentFilters ->
-            if (isSelected) {
-                currentFilters + channel
-            } else {
-                currentFilters - channel
-            }
+            if (isSelected) currentFilters + channel else currentFilters - channel
         }
     }
 
     fun clearAllFilters() {
         _activeChannelFilters.value = emptySet()
     }
-// =============================================================
-// ✅ KONIEC NOVÉHO KÓDU
-// =============================================================
 
-
-
-
+    // =====================================================================
+    // ✅ KROK 3: Úprava filtrovania a zobrazenia
+    // =====================================================================
     val displayedContacts: List<ContactItem> by derivedStateOf {
         val currentQuery = searchQuery.trim().lowercase()
+        val allFunctions = allContactFunctions // pre prístup vnútri lambdy
 
         // Ak je vyhľadávanie prázdne, vrátime všetky kontakty
         if (currentQuery.isBlank()) {
@@ -121,281 +134,157 @@ class ContactsViewModel : ViewModel() {
         } else {
             // Inak filtrujeme podľa textu
             contacts.filter { contact ->
+                // Získame mená funkcií pre daný kontakt
+                val contactFunctionNames = contact.functionIds.mapNotNull { id ->
+                    allFunctions.find { it.id == id }?.name
+                }.joinToString(" ")
+
                 contact.getFullName().lowercase().contains(currentQuery) ||
-                        contact.function.orEmpty().lowercase().contains(currentQuery)
+                        contactFunctionNames.lowercase().contains(currentQuery) // Vyhľadávanie v menách funkcií
             }
         }
     }
 
-    // =====================================================================
-    //          ✅ ZAČIATOK SEKCIE PRE DÁTA KANÁLOV ✅
-    // =====================================================================
-
+    // --- SEKCIA PRE DÁTA KANÁLOV ZOSTÁVA ZATIAĽ NEZMENENÁ ---
+    // (k nej sa vrátime neskôr, momentálne sa jej nedotýkame)
     private var allChannelData: MutableMap<String, List<ChannelFunction>> = mutableMapOf()
     private val _channelFunctions = MutableStateFlow<List<ChannelFunction>>(emptyList())
     val channelFunctions = _channelFunctions.asStateFlow()
-
     var isEditMode by mutableStateOf(false)
         private set
     init {
-        // Načítame počiatočné dáta pre všetky kanály iba raz
         allChannelData = createSampleChannelData(contacts).toMutableMap()
-        // Načítame dáta pre predvolene zvolenú kartu
         loadChannelFunctions(selectedTabFilter.value)
     }
-
-
-
-
-    fun toggleEditMode() {
-        isEditMode = !isEditMode
-    }
-
-    /**
-     * Pridá novú funkciu do zoznamu.
-     * Ako názov použije dodaný text.
-     */
+    fun toggleEditMode() { isEditMode = !isEditMode }
     fun addChannelFunction(title: String) {
-        // Vytvoríme novú funkciu s unikátnym ID a zadaným názvom
-        val newFunction = ChannelFunction(
-            id = "func_${System.currentTimeMillis()}",
-            title = title,
-            notes = null, // ✅ DOPLNENÉ
-            assignedPeople = emptyList()
-        )
-        // K existujúcemu zoznamu funkcií pridáme túto novú
+        val newFunction = ChannelFunction(id = "func_${System.currentTimeMillis()}", title = title, notes = null, assignedPeople = emptyList())
         _channelFunctions.value = _channelFunctions.value + newFunction
         allChannelData[selectedTabFilter.value] = _channelFunctions.value
     }
-
-    /**
-     * Zmaže funkciu zo zoznamu podľa jej ID.
-     */
     fun removeChannelFunction(functionId: String) {
-        // Vytvoríme nový zoznam, v ktorom budú všetky funkcie OKREM tej, ktorú chceme zmazať
         _channelFunctions.value = _channelFunctions.value.filterNot { it.id == functionId }
         allChannelData[selectedTabFilter.value] = _channelFunctions.value
     }
     fun moveChannelFunction(from: Int, to: Int) {
-        // Kontrola, či sú indexy platné pre aktuálny zoznam
         val currentFunctions = _channelFunctions.value
-        if (from < 0 || to < 0 || from >= currentFunctions.size || to >= currentFunctions.size) {
-            return
-        }
-
-        _channelFunctions.update {
-            it.toMutableList().apply {
-                val item = removeAt(from)
-                add(to, item)
-            }
-        }
-        // ✅ TENTO RIADOK PRIDAJTE NA KONIEC KAŽDEJ MODIFIKUJÚCEJ FUNKCIE
+        if (from < 0 || to < 0 || from >= currentFunctions.size || to >= currentFunctions.size) return
+        _channelFunctions.update { it.toMutableList().apply { add(to, removeAt(from)) } }
         allChannelData[selectedTabFilter.value] = _channelFunctions.value
     }
-
-    /**
-     * Aktualizuje existujúcu funkciu v zozname.
-     * @param functionId ID funkcie, ktorú treba aktualizovať.
-     * @param newTitle Nový názov funkcie.
-     * @param newNotes Nová poznámka k funkcii.
-     */
     fun updateChannelFunction(functionId: String, newTitle: String, newNotes: String?) {
         _channelFunctions.update { currentFunctions ->
-            // Vytvoríme nový zoznam (mapovaním cez starý)
             currentFunctions.map { function ->
-                // Ak nájdeme správnu funkciu podľa ID, vrátime jej aktualizovanú verziu
-                if (function.id == functionId) {
-                    function.copy(title = newTitle, notes = newNotes)
-                } else {
-                    // Inak vrátime pôvodnú funkciu bez zmeny
-                    function
-                }
+                if (function.id == functionId) function.copy(title = newTitle, notes = newNotes) else function
             }
         }
-        // ✅ TENTO RIADOK PRIDAJTE NA KONIEC KAŽDEJ MODIFIKUJÚCEJ FUNKCIE
         allChannelData[selectedTabFilter.value] = _channelFunctions.value
     }
-
-    /**
-     * Priradí existujúci kontakt ku konkrétnej funkcii.
-     * @param functionId ID funkcie, do ktorej pridávame osobu.
-     * @param contact Pridávaný kontakt (typu ContactItem).
-     */
     fun assignPersonToFunction(functionId: String, contact: ContactItem) {
         _channelFunctions.update { currentFunctions ->
             currentFunctions.map { function ->
-                // Nájdi správnu funkciu
                 if (function.id == functionId) {
-                    // Skontroluj, či už osoba nie je priradená, aby sme nemali duplicity
                     val alreadyAssigned = function.assignedPeople.any { it.contactId == contact.id.toString() }
-
                     if (alreadyAssigned) {
-                        // Ak už je priradená, vráť funkciu bez zmeny
                         function
                     } else {
-                        // Vytvor novú priradenú osobu z ContactItem
-                        val newPerson = AssignedPerson(
-                            contactId = contact.id.toString(),
-                            name = contact.getFullName(),
-                            phone = contact.phone,
-                            notes = "" // Poznámka je na začiatku prázdna
-                        )
-                        // Vráť kópiu funkcie s novou osobou v zozname
+                        val newPerson = AssignedPerson(contactId = contact.id.toString(), name = contact.getFullName(), phone = contact.phone, notes = "")
                         function.copy(assignedPeople = function.assignedPeople + newPerson)
                     }
                 } else {
-                    // Toto nie je funkcia, ktorú hľadáme, vráť ju bez zmeny
                     function
                 }
             }
         }
-        // ✅ TENTO RIADOK PRIDAJTE NA KONIEC KAŽDEJ MODIFIKUJÚCEJ FUNKCIE
         allChannelData[selectedTabFilter.value] = _channelFunctions.value
     }
-
-    /**
-     * Odstráni priradenú osobu z funkcie.
-     * @param functionId ID funkcie, z ktorej odstraňujeme osobu.
-     * @param personId ID priradenej osoby (AssignedPerson.id), ktorú treba odstrániť.
-     */
     fun removePersonFromFunction(functionId: String, personId: String) {
         _channelFunctions.update { currentFunctions ->
             currentFunctions.map { function ->
-                // Nájdi správnu funkciu
                 if (function.id == functionId) {
-                    // Vytvor nový zoznam ľudí, kde bude chýbať ten, ktorého chceme zmazať
                     val updatedPeople = function.assignedPeople.filterNot { it.id == personId }
-                    // Vráť kópiu funkcie s aktualizovaným zoznamom
                     function.copy(assignedPeople = updatedPeople)
                 } else {
-                    // Inú funkciu vráť bez zmeny
                     function
                 }
             }
         }
-        // ✅ TENTO RIADOK PRIDAJTE NA KONIEC KAŽDEJ MODIFIKUJÚCEJ FUNKCIE
         allChannelData[selectedTabFilter.value] = _channelFunctions.value
     }
-
-    /**
-     * Aktualizuje poznámku konkrétnej priradenej osoby v rámci funkcie.
-     * @param functionId ID funkcie, kde sa osoba nachádza.
-     * @param personId ID priradenej osoby (AssignedPerson.id).
-     * @param newNote Nový text poznámky.
-     */
     fun updatePersonNoteInFunction(functionId: String, personId: String, newNote: String) {
         _channelFunctions.update { currentFunctions ->
             currentFunctions.map { function ->
-                // Nájdi správnu funkciu
                 if (function.id == functionId) {
-                    // Vnútri funkcie nájdi a aktualizuj správnu osobu
                     val updatedPeople = function.assignedPeople.map { person ->
-                        if (person.id == personId) {
-                            // Vráť kópiu osoby s novou poznámkou
-                            person.copy(notes = newNote)
-                        } else {
-                            person // Ostatné osoby vráť bez zmeny
-                        }
+                        if (person.id == personId) person.copy(notes = newNote) else person
                     }
-                    // Vráť kópiu funkcie s aktualizovaným zoznamom ľudí
                     function.copy(assignedPeople = updatedPeople)
                 } else {
-                    function // Ostatné funkcie vráť bez zmeny
+                    function
                 }
             }
         }
-        // ✅ TENTO RIADOK PRIDAJTE NA KONIEC KAŽDEJ MODIFIKUJÚCEJ FUNKCIE
         allChannelData[selectedTabFilter.value] = _channelFunctions.value
     }
-
-    // Načítanie dát pre zvolený kanál
     private fun loadChannelFunctions(channelName: String) {
-        // Už nič nevytvárame, len vyberáme z mapy, ktorú držíme v pamäti
         _channelFunctions.value = allChannelData[channelName] ?: emptyList()
     }
-
-    // Funkcia na vytvorenie dočasných dát. Používa reálne kontakty zo zoznamu.
     private fun createSampleChannelData(allContacts: List<ContactItem>): Map<String, List<ChannelFunction>> {
         val contact1 = allContacts.getOrNull(0)
         val contact2 = allContacts.getOrNull(1)
         val contact3 = allContacts.getOrNull(2)
-
         if (contact1 == null || contact2 == null || contact3 == null) return emptyMap()
-
         return mapOf(
             "Jednotka" to listOf(
-                ChannelFunction(
-                    title = "Kameramani",
-                    notes = "Všetci kameramani musia byť dostupní 2 hodiny pred začiatkom vysielania.", // ✅ Pridaná poznámka
-                    assignedPeople = listOf(
-                        AssignedPerson(contactId = contact1.id.toString(), name = contact1.getFullName(), phone = contact1.phone, notes = "Hlavná kamera"),
-                        AssignedPerson(contactId = contact2.id.toString(), name = contact2.getFullName(), phone = contact2.phone, notes = "Ručná kamera")
-                    )
-                ),
-                ChannelFunction(
-                    title = "Zvukári",
-                    notes = "Skontrolovať mikrofóny pred každým vstupom.", // ✅ Pridaná poznámka
-                    assignedPeople = listOf(
-                        AssignedPerson(contactId = contact3.id.toString(), name = contact3.getFullName(), phone = contact3.phone, notes = "")
-                    )
-                ),
-                ChannelFunction(title = "Strihači", notes = null, assignedPeople = emptyList()) // Bez poznámky
+                ChannelFunction(title = "Kameramani", notes = "Všetci kameramani musia byť dostupní 2 hodiny pred začiatkom vysielania.", assignedPeople = listOf(AssignedPerson(contactId = contact1.id.toString(), name = contact1.getFullName(), phone = contact1.phone, notes = "Hlavná kamera"), AssignedPerson(contactId = contact2.id.toString(), name = contact2.getFullName(), phone = contact2.phone, notes = "Ručná kamera"))),
+                ChannelFunction(title = "Zvukári", notes = "Skontrolovať mikrofóny pred každým vstupom.", assignedPeople = listOf(AssignedPerson(contactId = contact3.id.toString(), name = contact3.getFullName(), phone = contact3.phone, notes = ""))),
+                ChannelFunction(title = "Strihači", notes = null, assignedPeople = emptyList())
             ),
             "24" to listOf(
-                ChannelFunction(
-                    title = "Redaktori",
-                    notes = "Zodpovední za overovanie faktov.", // ✅ Pridaná poznámka
-                    assignedPeople = listOf(
-                        AssignedPerson(contactId = contact2.id.toString(), name = contact2.getFullName(), phone = contact2.phone, notes = "Ranná zmena")
-                    )
-                ),
+                ChannelFunction(title = "Redaktori", notes = "Zodpovední za overovanie faktov.", assignedPeople = listOf(AssignedPerson(contactId = contact2.id.toString(), name = contact2.getFullName(), phone = contact2.phone, notes = "Ranná zmena"))),
                 ChannelFunction(title = "Vydavatelia", notes = null, assignedPeople = emptyList())
             )
         )
     }
 
     // =====================================================================
-    //          ✅ KONIEC SEKCIE PRE DÁTA KANÁLOV ✅
+    // ✅ KROK 4: Úprava formulára (form)
     // =====================================================================
-
-
-    // 3. AKCIE PRE FORMULÁR
     var formId by mutableStateOf(0)
     var formFirstName by mutableStateOf("")
     var formLastName by mutableStateOf("")
     var formChannel by mutableStateOf(DEFAULT_CHANNEL)
-    var formFunction by mutableStateOf("")
+    var formFunctionIds by mutableStateOf<List<String>>(emptyList()) // ZMENENÉ: z formFunction na formFunctionIds
     var formPhone by mutableStateOf("")
     var formEmail by mutableStateOf("")
     var formNotes by mutableStateOf("")
 
-    // 4. FUNKCIE NA AKTUALIZÁCIU STAVU
     fun updateFirstName(newValue: String) { formFirstName = newValue }
     fun updateLastName(newValue: String) { formLastName = newValue }
-    fun updateFunction(newValue: String) { formFunction = newValue }
+    fun updateFunctionIds(newIds: List<String>) { formFunctionIds = newIds } // ZMENENÉ: nová funkcia
     fun updatePhone(newValue: String) { formPhone = newValue }
     fun updateEmail(newValue: String) { formEmail = newValue }
     fun updateNotes(newValue: String) { formNotes = newValue }
     fun updateChannel(newValue: String) { formChannel = newValue }
 
-    // 5. OBSLUHA ULOŽENIA KONTAKTOV
     fun resetForm() {
         formId = 0
         formFirstName = ""
         formLastName = ""
         formChannel = availableChannels.firstOrNull() ?: DEFAULT_CHANNEL
-        formFunction = ""
+        formFunctionIds = emptyList() // ZMENENÉ
         formPhone = ""
         formEmail = ""
         formNotes = ""
     }
 
+    // Starú funkciu saveNewContact zatiaľ môžeme nechať, ale nebudeme ju používať
     fun saveNewContact() {
         val newContactItem = ContactItem(
             id = contacts.maxOfOrNull { it.id }?.plus(1) ?: 1,
             firstName = formFirstName.trim(),
             lastName = formLastName.trim(),
-            function = formFunction.trim().ifBlank { null },
+            functionIds = formFunctionIds, // ZMENENÉ
             phone = formPhone.trim().ifBlank { null },
             email = formEmail.trim().ifBlank { null },
             channel = formChannel,
@@ -405,18 +294,11 @@ class ContactsViewModel : ViewModel() {
         resetForm()
     }
 
-    // ✅ PRIDAJTE TÚTO NOVÚ FUNKCIU
-    /**
-     * Pridá nový kontakt prijatý ako celý objekt z obrazovky.
-     */
     fun addContact(contact: ContactItem) {
-        val newContact = contact.copy(
-            id = (contacts.maxOfOrNull { it.id } ?: 0) + 1
-        )
-        contacts.add(newContact) // Použijeme metódu .add() pre SnapshotStateList
+        val newContact = contact.copy(id = (contacts.maxOfOrNull { it.id } ?: 0) + 1)
+        contacts.add(newContact)
     }
 
-    // Metódy pre EditContactScreen
     fun getContactById(id: Int): ContactItem? {
         return contacts.find { it.id == id }
     }
@@ -435,13 +317,8 @@ class ContactsViewModel : ViewModel() {
         }
     }
 
-    // Funkcie pre aktualizáciu filtrov z ContactsScreen
     fun updateSelectedTabFilter(newFilter: String) {
-        // ✅ KROK 1: Resetuj režim úprav VŽDY, keď sa mení záložka.
-        // Ak bol režim úprav aktívny, vypne sa. Ak nebol, nič sa nestane.
         isEditMode = false
-
-        // Zvyšok funkcie zostáva rovnaký
         _selectedTabFilter.value = newFilter
         loadChannelFunctions(newFilter)
     }
@@ -450,17 +327,10 @@ class ContactsViewModel : ViewModel() {
         searchQuery = newQuery
     }
 
-    // ✅ TÚTO FUNKCIU PRIDAJTE
-    /**
-     * Resetuje filter záložiek na predvolenú hodnotu ("Všetky").
-     * Volá sa pri opustení sekcie Kontaktov.
-     */
     fun resetTabToDefault() {
-        // Jednoducho zavoláme existujúcu funkciu so správnou hodnotou
         updateSelectedTabFilter(ALL_CHANNELS_FILTER)
     }
 
-    // Metódy pre správu kanálov
     fun addChannel(channel: String) {
         val trimmedChannel = channel.trim()
         if (trimmedChannel.isNotBlank() && !availableChannels.contains(trimmedChannel)) {
@@ -477,7 +347,7 @@ class ContactsViewModel : ViewModel() {
             contacts[index] = contact.copy(channel = DEFAULT_CHANNEL)
         }
         if (selectedTabFilter.value == channel) {
-            updateSelectedTabFilter(ALL_CHANNELS_FILTER) // Použijeme našu upravenú funkciu
+            updateSelectedTabFilter(ALL_CHANNELS_FILTER)
         }
     }
 }

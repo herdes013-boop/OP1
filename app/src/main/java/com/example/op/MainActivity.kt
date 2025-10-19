@@ -78,6 +78,8 @@ object Routes {
     fun editContact(contactId: Int) = "edit_contact/$contactId"
     const val MANAGE_CHANNELS = "manage_channels"
 
+    const val MANAGE_FUNCTIONS = "manage_functions"
+
     const val TUTORIALS_LIST = "tutorials_list"
     const val TUTORIAL_DETAIL = "tutorial_detail/{tutorialId}"
     fun tutorialDetail(tutorialId: String) = "tutorial_detail/$tutorialId"
@@ -321,6 +323,14 @@ fun MainScreen() {
                         navController = navController,
                         sharedViewModel = sharedViewModel,
                         modifier = Modifier.padding(paddingValues)
+                    )
+                }
+
+                composable(Routes.MANAGE_FUNCTIONS) {
+                    FunctionsScreen(
+                        navController = navController,
+                        contactsViewModel = contactsViewModel,
+                        sharedViewModel = sharedViewModel
                     )
                 }
                 composable(Routes.ABOUT_SCREEN) {
@@ -695,10 +705,10 @@ fun SettingsScreen(
     ) {
         item {
             SettingsItem(
-                title = "Spravovať kategórie",
-                subtitle = "Pridajte alebo upravte kategórie návodov",
-                icon = Icons.Default.Category,
-                onClick = { /* TODO: Navigácia na správu kategórií */ }
+                title = "Spravovať funkcie kontaktov", // ✅ ZMENENÝ NÁZOV
+                subtitle = "Pridajte alebo upravte roly pre kontakty", // ✅ ZMENENÝ POPIS
+                icon = Icons.Default.Work, // ✅ ZMENENÁ IKONA
+                onClick = { navController.navigate(Routes.MANAGE_FUNCTIONS) } // ✅ PRIDANÁ NAVIGÁCIA
             )
         }
         item {
