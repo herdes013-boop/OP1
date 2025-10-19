@@ -119,7 +119,7 @@ fun ContactListItem(contact: ContactItem, onItemClick: () -> Unit) {
                     painter = painter,
                     contentDescription = contact.channel,
                     modifier = Modifier
-                        .size(40.dp) // Logá vyzerajú lepšie o trochu väčšie
+                        .size(20.dp) // Logá vyzerajú lepšie o trochu väčšie
                         .align(Alignment.CenterVertically)
                 )
             } else {
@@ -129,7 +129,7 @@ fun ContactListItem(contact: ContactItem, onItemClick: () -> Unit) {
                     contentDescription = "Kontakt",
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
-                        .size(40.dp) // Zjednotíme veľkosť s logom
+                        .size(20.dp) // Zjednotíme veľkosť s logom
                         .align(Alignment.CenterVertically)
                 )
             }
