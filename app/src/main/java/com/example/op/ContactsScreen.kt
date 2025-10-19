@@ -101,7 +101,7 @@ fun ContactListItem(contact: ContactItem, onItemClick: () -> Unit) {
                 .heightIn(min = 72.dp)
                 .padding(horizontal = 16.dp, vertical = 12.dp) // Zjednotený padding
                 .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically // Centrovanie na stred je tu v poriadku
+            verticalAlignment = Alignment.Top // Centrovanie na stred je tu v poriadku
         ) {
             // Logika na výber správneho obrázku
             val painter = when (contact.channel) {
