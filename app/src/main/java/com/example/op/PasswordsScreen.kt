@@ -271,53 +271,49 @@ fun PasswordListItem(item: PasswordItem, onClick: () -> Unit) {
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        // ✅ KROK 1: Hlavnému Row priradíme minimálnu výšku.
-        // Tým zaručíme, že položky s jedným riadkom budú rovnako vysoké
-        // ako tie s dvoma a nebudú sa "scvrkávať".
-        Row(
+        // ✅ KROK 1: Použijeme Box ako hlavný kontajner.
+        // Box nám umožňuje jednoducho umiestňovať prvky na seba a na rôzne okraje.
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = 72.dp) // Zaručí minimálnu výšku karty
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.Top // ✅ TOTO JE SPRÁVNE RIEŠENIE
+                .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-            // --- ČASŤ VĽAVO (NÁZOV + USER) ---
-            // Tento stĺpec zaberie všetok voľný priestor.
-            Column(modifier = Modifier.weight(1f)) {
+            // --- PRVOK č. 1: NÁZOV (vľavo hore) ---
+            Text(
+                // Zarovnáme tento prvok do ľavého horného rohu Boxu.
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    // Obmedzíme šírku, aby neprekryl username/heslo.
+                    // 60% je dobrý kompromis, ale môžeš to zmeniť.
+                    .fillMaxWidth(0.6f),
+                text = item.name,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            // --- PRVOK č. 2: USERNAME (vpravo hore) ---
+            // Zobrazí sa, len ak nie je prázdny.
+            if (!item.username.isNullOrBlank()) {
                 Text(
-                    text = item.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2,
+                    // Zarovnáme ho do pravého horného rohu Boxu.
+                    modifier = Modifier.align(Alignment.TopEnd),
+                    text = item.username,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.secondary,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                // Ak existuje username, zobrazíme ho pod názvom
-                if (!item.username.isNullOrBlank()) {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = item.username,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.secondary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
             }
 
-            // Medzera medzi ľavou a pravou časťou
-            Spacer(modifier = Modifier.width(16.dp))
-
-            // --- ČASŤ VPRAVO (IBA HESLO) ---
-            // ✅ KROK 2: Heslo vložíme do Box-u, aby sme ho mohli dokonale zarovnať.
-            Box(
-                // Tento Box nám umožní udržať heslo na svojom mieste,
-                // aj keď sa ľavá časť zmenšuje.
-                contentAlignment = Alignment.CenterEnd
-            ) {
-                ColoredPasswordText(
-                    password = item.password
-                )
-            }
+            // --- PRVOK č. 3: HESLO (vpravo dole) ---
+            ColoredPasswordText(
+                // Zarovnáme ho do pravého dolného rohu Boxu.
+                modifier = Modifier.align(Alignment.BottomEnd),
+                password = item.password
+            )
         }
     }
 }
