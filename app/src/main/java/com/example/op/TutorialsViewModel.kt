@@ -3,7 +3,9 @@ package com.example.op
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -40,7 +42,14 @@ class TutorialsViewModel : ViewModel() {
     private val _filteredTutorials = MutableStateFlow<List<Tutorial>>(emptyList())
     val filteredTutorials: StateFlow<List<Tutorial>> = _filteredTutorials.asStateFlow()
 
-    val categories = listOf("Všetky", "Prihlásenie", "Hardvér", "Softvér", "Iné")
+    val managedCategories =
+        mutableStateListOf("Prihlásenie", "Hardvér", "Softvér", "Iné")
+
+    // Toto je odvodený zoznam, ktorý budeme používať v celej aplikácii.
+    // UI tak nemusíme meniť na všetkých miestach.
+    val categories: List<String> by derivedStateOf {
+        listOf("Všetky") + managedCategories
+    }
     var selectedCategory by mutableStateOf(categories.first())
         private set
 
@@ -351,4 +360,60 @@ class TutorialsViewModel : ViewModel() {
         originalTutorial = Tutorial(id = "new", title = "", categories = emptyList(), content = emptyList())
         hasChanges = false
     }
+    fun addCategory(name: String) {
+        val trimmedName = name.trim()
+        if (trimmedName.isNotBlank() && managedCategories.none { it.equals(trimmedName, ignoreCase = true) }) {
+            managedCategories.add(trimmedName)
+        }
+    }
+
+    /**
+     * Odstráni existujúcu kategóriu.
+     */
+    fun removeCategory(name: String) {
+        // Odstránime kategóriu zo zoznamu spravovaných kategórií
+        managedCategories.remove(name)
+
+        // Prejdeme všetky tutoriály a odstránime z nich túto kategóriu
+        _tutorials.update { currentTutorials ->
+            currentTutorials.map { tutorial ->
+                if (tutorial.categories.contains(name)) {
+                    tutorial.copy(categories = tutorial.categories - name)
+                } else {
+                    tutorial
+                }
+            }
+        }
+    }
+
+    /**
+     * Aktualizuje názov existujúcej kategórie.
+     */
+    fun updateCategory(oldName: String, newName: String) {
+        val trimmedNewName = newName.trim()
+        // Overíme, či je nový názov platný a či už neexistuje
+        if (trimmedNewName.isBlank() || managedCategories.any { it.equals(trimmedNewName, ignoreCase = true) }) {
+            return // Neplatná operácia, neurobíme nič
+        }
+
+        // Nájdeme index starej kategórie a nahradíme ju
+        val index = managedCategories.indexOf(oldName)
+        if (index != -1) {
+            managedCategories[index] = trimmedNewName
+        }
+
+        // Prejdeme všetky tutoriály a aktualizujeme v nich názov kategórie
+        _tutorials.update { currentTutorials ->
+            currentTutorials.map { tutorial ->
+                if (tutorial.categories.contains(oldName)) {
+                    // Odstránime starý názov a pridáme nový
+                    val updatedCategories = tutorial.categories - oldName + trimmedNewName
+                    tutorial.copy(categories = updatedCategories)
+                } else {
+                    tutorial
+                }
+            }
+        }
+    }
+
 }

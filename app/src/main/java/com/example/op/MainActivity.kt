@@ -80,6 +80,8 @@ object Routes {
 
     const val MANAGE_FUNCTIONS = "manage_functions"
 
+    const val MANAGE_TUTORIAL_CATEGORIES = "manage_tutorial_categories" // ✅ TENTO RIADOK PRIDAJTE
+
     const val TUTORIALS_LIST = "tutorials_list"
     const val TUTORIAL_DETAIL = "tutorial_detail/{tutorialId}"
     fun tutorialDetail(tutorialId: String) = "tutorial_detail/$tutorialId"
@@ -330,6 +332,14 @@ fun MainScreen() {
                     FunctionsScreen(
                         navController = navController,
                         contactsViewModel = contactsViewModel,
+                        sharedViewModel = sharedViewModel
+                    )
+                }
+                // ✅ TENTO BLOK SEM PRIDAJTE
+                composable(Routes.MANAGE_TUTORIAL_CATEGORIES) {
+                    CategoriesManagementScreen(
+                        navController = navController,
+                        tutorialsViewModel = tutorialsViewModel,
                         sharedViewModel = sharedViewModel
                     )
                 }
@@ -709,6 +719,15 @@ fun SettingsScreen(
                 subtitle = "Pridajte alebo upravte roly pre kontakty", // ✅ ZMENENÝ POPIS
                 icon = Icons.Default.Work, // ✅ ZMENENÁ IKONA
                 onClick = { navController.navigate(Routes.MANAGE_FUNCTIONS) } // ✅ PRIDANÁ NAVIGÁCIA
+            )
+        }
+        // ✅ TENTO BLOK SEM PRIDAJTE
+        item {
+            SettingsItem(
+                title = "Spravovať kategórie návodov",
+                subtitle = "Pridajte alebo upravte kategórie pre návody",
+                icon = Icons.Default.Category, // Použijeme inú ikonu
+                onClick = { navController.navigate(Routes.MANAGE_TUTORIAL_CATEGORIES) }
             )
         }
         item {
