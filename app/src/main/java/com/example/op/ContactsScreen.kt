@@ -34,6 +34,9 @@ import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.detectReorderAfterLongPress
 import org.burnoutcrew.reorderable.rememberReorderableLazyListState
 import org.burnoutcrew.reorderable.reorderable
+import androidx.compose.material3.InputChip
+import com.google.accompanist.flowlayout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -178,6 +181,8 @@ fun ContactsScreen(
                 val searchQuery = viewModel.searchQuery
                 val contactsFromViewModel = viewModel.displayedContacts
                 val isFilterDialogVisible = viewModel.isFilterDialogVisible
+                val activeChannelFilters by viewModel.activeChannelFilters.collectAsState()
+                val activeFunctionFilters by viewModel.activeFunctionFilters.collectAsState()
                 val activeFilters by viewModel.activeChannelFilters.collectAsState()
                 val allChannels = viewModel.channelOptions.filter { it != "Všetky" }
 
@@ -232,7 +237,7 @@ fun ContactsScreen(
                                     Icon(
                                         Icons.Filled.FilterList,
                                         "Filtrovať zoznam",
-                                        tint = if (activeFilters.isEmpty()) Color.Black else MaterialTheme.colorScheme.primary
+                                        tint = if (activeChannelFilters.isEmpty() && activeFunctionFilters.isEmpty()) Color.Black else MaterialTheme.colorScheme.primary
                                     )
                                 }
                             }
@@ -243,7 +248,21 @@ fun ContactsScreen(
                         )
                     ) {}
 
-                    if (contacts.isEmpty()) {
+
+                    ActiveContactFiltersRow(
+                        activeChannelFilters = activeChannelFilters,
+                        activeFunctionFilters = activeFunctionFilters,
+                        allFunctions = viewModel.allContactFunctions,
+                        onRemoveChannel = viewModel::removeChannelFilter,
+                        onRemoveFunction = viewModel::removeFunctionFilter,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 8.dp)
+                            .offset(y = (-18).dp)
+                    )
+
+
+                    if (contactsFromViewModel.isEmpty()) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -251,7 +270,7 @@ fun ContactsScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             val message = when {
-                                searchQuery.isNotBlank() || activeFilters.isNotEmpty() -> "Pre zadané kritériá sa nenašli žiadne kontakty."
+                                searchQuery.isNotBlank() || activeChannelFilters.isNotEmpty() || activeFunctionFilters.isNotEmpty() -> "Pre zadané kritériá sa nenašli žiadne kontakty."
                                 else -> "Zatiaľ žiadne kontakty."
                             }
                             Text(message, Modifier.padding(16.dp), style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
@@ -261,10 +280,10 @@ fun ContactsScreen(
                             contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 80.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            items(contacts, key = { it.id }) { contact ->
+                            items(contactsFromViewModel, key = { it.id }) { contact -> // ZMENA: použijeme priamo contactsFromViewModel
                                 ContactListItem(
                                     contact = contact,
-                                    viewModel = viewModel, // ✅ Odovzdáme ViewModel
+                                    viewModel = viewModel,
                                     onItemClick = { navController.navigate("contact_detail/${contact.id}") }
                                 )
                             }
@@ -811,6 +830,60 @@ private fun FilterContactsDialog(
         }
     )
 }
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun ActiveContactFiltersRow(
+    activeChannelFilters: Set<String>,
+    activeFunctionFilters: Set<String>,
+    allFunctions: List<ContactFunction>,
+    onRemoveChannel: (String) -> Unit,
+    onRemoveFunction: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // Zobrazíme, len ak je aspoň jeden filter aktívny
+    if (activeChannelFilters.isNotEmpty() || activeFunctionFilters.isNotEmpty()) {
+        Column(modifier = modifier) {
+            Text(
+                "Aktívne filtre:",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+            FlowRow(
+                mainAxisSpacing = 8.dp,
+                crossAxisSpacing = 4.dp
+            ) {
+                // Zobrazenie filtrov pre kanály
+                activeChannelFilters.forEach { channel ->
+                    InputChip(
+                        selected = true,
+                        onClick = { onRemoveChannel(channel) },
+                        label = { Text(channel) },
+                        trailingIcon = {
+                            Icon(Icons.Default.Clear, "Odstrániť filter", Modifier.size(18.dp))
+                        }
+                    )
+                }
+
+                // Zobrazenie filtrov pre funkcie
+                activeFunctionFilters.forEach { functionId ->
+                    val function = allFunctions.find { it.id == functionId }
+                    if (function != null) {
+                        InputChip(
+                            selected = true,
+                            onClick = { onRemoveFunction(functionId) },
+                            label = { Text(function.name) },
+                            trailingIcon = {
+                                Icon(Icons.Default.Clear, "Odstrániť filter", Modifier.size(18.dp))
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 // Pomocný komponent, aby sme neopakovali kód
 @Composable

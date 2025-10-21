@@ -151,10 +151,31 @@ class ContactsViewModel : ViewModel() {
         }
     }
 
-
     fun clearAllFilters() {
         _activeChannelFilters.value = emptySet()
-        _activeFunctionFilters.value = emptySet() // ✅ PRIDANÝ RIADOK
+        _activeFunctionFilters.value = emptySet()
+    }
+
+// --- VLOŽTE TIETO DVE FUNKCIE SEM ---
+
+    /**
+     * Odstráni jeden konkrétny filter kanála.
+     * Volá sa po kliknutí na krížik na čipe filtra.
+     */
+    fun removeChannelFilter(channel: String) {
+        _activeChannelFilters.update { currentFilters ->
+            currentFilters - channel
+        }
+    }
+
+    /**
+     * Odstráni jeden konkrétny filter funkcie.
+     * Volá sa po kliknutí na krížik na čipe filtra.
+     */
+    fun removeFunctionFilter(functionId: String) {
+        _activeFunctionFilters.update { currentFilters ->
+            currentFilters - functionId
+        }
     }
 
     // =====================================================================
