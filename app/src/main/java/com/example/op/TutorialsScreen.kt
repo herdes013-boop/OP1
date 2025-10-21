@@ -55,6 +55,7 @@ import androidx.compose.ui.res.painterResource
 import coil.compose.AsyncImage
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.material.icons.filled.Article
+import androidx.compose.material3.InputChip
 import androidx.compose.material3.SuggestionChip
 import com.google.accompanist.flowlayout.FlowRow
 
@@ -136,7 +137,18 @@ fun TutorialsScreen(
                     containerColor = Color.White,
                     dividerColor = Color.Transparent
                 )
-            ) {}
+            )
+            {}
+
+            ActiveFiltersRow(
+                activeFilters = activeFilters,
+                onRemoveFilter = viewModel::removeFilterCategory,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    // Použijeme podobné odsadenie, aby to bolo zarovnané
+                    .padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 8.dp)
+                    .offset(y = (-18).dp)
+            )
 
             // =================================================================
             // ✅ KROK 2: ZOBRAZENIE ZOZNAMU ALEBO SPRÁVY
@@ -307,4 +319,43 @@ private fun FilterTutorialsDialog(
             }
         }
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ActiveFiltersRow(
+    activeFilters: Set<String>,
+    onRemoveFilter: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    // Zobrazíme tento riadok, iba ak je aspoň jeden filter aktívny.
+    if (activeFilters.isNotEmpty()) {
+        Column(modifier = modifier) {
+            Text(
+                "Aktívne filtre:",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+            FlowRow(
+                mainAxisSpacing = 8.dp,
+                crossAxisSpacing = 4.dp
+            ) {
+                activeFilters.forEach { filter ->
+                    InputChip(
+                        selected = true, // Vždy je "vybraný", keďže je v zozname aktívnych
+                        onClick = { onRemoveFilter(filter) }, // Kliknutie na celý čip ho odstráni
+                        label = { Text(filter) },
+                        trailingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Clear,
+                                contentDescription = "Odstrániť filter $filter",
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    )
+                }
+            }
+        }
+    }
 }

@@ -231,6 +231,16 @@ class TutorialsViewModel : ViewModel() {
         _activeCategoryFilters.value = emptySet()
     }
 
+    /**
+     * Odstráni jeden konkrétny filter kategórie.
+     * Volá sa po kliknutí na krížik na čipe filtra.
+     */
+    fun removeFilterCategory(category: String) {
+        _activeCategoryFilters.update { currentFilters ->
+            currentFilters - category
+        }
+    }
+
 
     // --- OSTATNÉ FUNKCIE (s drobnou úpravou) ---
 
