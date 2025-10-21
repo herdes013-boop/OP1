@@ -5,11 +5,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -53,6 +55,9 @@ import androidx.compose.ui.res.painterResource
 import coil.compose.AsyncImage
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.material.icons.filled.Article
+import androidx.compose.material3.SuggestionChip
+import com.google.accompanist.flowlayout.FlowRow
+
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -235,15 +240,22 @@ fun TutorialCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-                val categoryToShow = tutorial.categories.firstOrNull() ?: "Bez kategórie"
+                // ZMENA: Zobrazíme všetky kategórie pomocou FlowRow a SuggestionChip
+                if (tutorial.categories.isNotEmpty()) {
+                    Spacer(Modifier.height(4.dp))
+                    FlowRow(
+                        mainAxisSpacing = 6.dp,        crossAxisSpacing = 2.dp
+                    ) {
+                        tutorial.categories.forEach { categoryName ->
+                            // Použijeme SuggestionChip pre vizuálne odlíšenie kategórií
+                            SuggestionChip(
+                                onClick = { /* Čipy na karte nie sú klikateľné */ },
+                                label = { Text(categoryName, style = MaterialTheme.typography.labelSmall) }
+                            )
+                        }
+                    }
+                }
 
-                Text(
-                    text = categoryToShow, // <-- POUŽÍVAME NOVÚ HODNOTU
-                    style = MaterialTheme.typography.bodySmall,
-                    fontStyle = FontStyle.Italic,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
             }
         }
     }
