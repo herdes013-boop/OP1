@@ -27,7 +27,7 @@ import java.util.UUID
 data class Tutorial(
     val id: String = UUID.randomUUID().toString(),
     var title: String,
-    var category: String,
+    var categories: List<String>, // <-- ZMENENÝ RIADOK
     var content: List<TutorialContentBlock>,
 )
 
@@ -58,7 +58,8 @@ class TutorialsViewModel : ViewModel() {
     // --- STAVY PRE OBRAZOVKU PRIDANIA/ÚPRAVY ---
     var tutorialTitle by mutableStateOf("")
         private set
-    var tutorialCategory by mutableStateOf(categories.drop(1).first())
+    // NOVÉ: Uchovávame zoznam vybraných kategórií, nie len jednu
+    var tutorialCategories by mutableStateOf<List<String>>(emptyList())
         private set
 
     private val _contentBlocks = MutableStateFlow<List<TutorialContentBlock>>(emptyList())
@@ -82,11 +83,11 @@ class TutorialsViewModel : ViewModel() {
             combine(
                 _contentBlocks,
                 snapshotFlow { tutorialTitle },
-                snapshotFlow { tutorialCategory }
-            ) { blocks, title, category ->
+                snapshotFlow { tutorialCategories } // SLEDUJEME NOVÝ STAV
+            ) { blocks, title, categoriesList -> // PREMENOVANÉ
                 val currentTutorial = originalTutorial?.copy(
                     title = title,
-                    category = category,
+                    categories = categoriesList, // POUŽÍVAME NOVÝ PARAMETER
                     content = blocks
                 )
                 hasChanges = currentTutorial != originalTutorial
@@ -105,7 +106,8 @@ class TutorialsViewModel : ViewModel() {
                 val tutorialsByCategory = if (category == "Všetky") {
                     tutorials
                 } else {
-                    tutorials.filter { it.category == category }
+                    // ZMENA: Kontrolujeme, či zoznam kategórií tutoriálu obsahuje vybranú kategóriu
+                    tutorials.filter { it.categories.contains(category) }
                 }
 
                 // NOVÉ: Filter z dialógu (Checkboxy) - aplikuje sa na výsledok z TabRow
@@ -113,7 +115,8 @@ class TutorialsViewModel : ViewModel() {
                     tutorialsByCategory
                 } else {
                     // Ak je záložka "Všetky", filtrujeme z nej. Ak je iná, filtrujeme z nej.
-                    tutorialsByCategory.filter { it.category in activeFilters }
+                    // ZMENA: Kontrolujeme, či existuje PRIENIK medzi kategóriami tutoriálu a aktívnymi filtrami
+                    tutorialsByCategory.filter { tutorial -> tutorial.categories.any { it in activeFilters } }
                 }
 
                 // Finálny filter podľa vyhľadávania (bez zmeny)
@@ -136,7 +139,8 @@ class TutorialsViewModel : ViewModel() {
         val initialData = listOf(
             Tutorial(
                 title = "Ako sa prihlásiť do systému",
-                category = "Prihlásenie",
+                // ZMENA: "category" na "categories" a hodnota je zoznam
+                categories = listOf("Prihlásenie", "Softvér"),
                 content = listOf(
                     TutorialContentBlock.TextBlock(text = "Pre prihlásenie do systému použite vaše pridelené meno a heslo."),
                     TutorialContentBlock.ImageBlock(imageRes = R.drawable.ic_launcher_background),
@@ -145,7 +149,8 @@ class TutorialsViewModel : ViewModel() {
             ),
             Tutorial(
                 title = "Čistenie hardvéru počítača",
-                category = "Hardvér",
+                // ZMENA: "category" na "categories" a hodnota je zoznam
+                categories = listOf("Hardvér"),
                 content = listOf(
                     TutorialContentBlock.TextBlock(text = "Pravidelne čistite ventilátory a chladiče od prachu, aby ste predišli prehrievaniu komponentov.")
                 )
@@ -257,8 +262,8 @@ class TutorialsViewModel : ViewModel() {
         tutorialTitle = newTitle
     }
 
-    fun onCategoryChange(newCategory: String) {
-        tutorialCategory = newCategory
+    fun onCategorySelectionChange(newCategories: List<String>) {
+        tutorialCategories = newCategories
     }
 
     fun addTextBlock(): Int {
@@ -305,7 +310,7 @@ class TutorialsViewModel : ViewModel() {
                     originalTutorial = tutorial.copy()
                     editingTutorialId = tutorial.id
                     tutorialTitle = tutorial.title
-                    tutorialCategory = tutorial.category
+                    tutorialCategories = tutorial.categories
                     _contentBlocks.value = tutorial.content
                 }
             } finally {
@@ -329,10 +334,11 @@ class TutorialsViewModel : ViewModel() {
     fun resetForm() {
         editingTutorialId = null
         tutorialTitle = ""
-        tutorialCategory = categories.drop(1).first()
+        tutorialCategories = emptyList() // ZMENA: Resetujeme na prázdny zoznam
         _contentBlocks.value = emptyList()
 
-        originalTutorial = Tutorial(id = "new", title = "", category = tutorialCategory, content = emptyList())
+        // ZMENA: Vytvárame "original" s prázdnym zoznamom kategórií
+        originalTutorial = Tutorial(id = "new", title = "", categories = emptyList(), content = emptyList())
         hasChanges = false
     }
 }

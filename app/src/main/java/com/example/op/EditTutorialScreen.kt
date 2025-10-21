@@ -61,7 +61,8 @@ fun EditTutorialScreen(
 
     // --- STAVY ---
     var localTitle by remember { mutableStateOf("") }
-    var localCategory by remember { mutableStateOf("") }
+    var localCategories by remember { mutableStateOf<List<String>>(emptyList()) }
+    var showCategorySelectionDialog by remember { mutableStateOf(false) }
     var localContentBlocks by remember { mutableStateOf<List<TutorialContentBlock>>(emptyList()) }
     var originalTutorial by remember { mutableStateOf<Tutorial?>(null) }
     var isDataLoaded by remember { mutableStateOf(false) }
@@ -74,23 +75,21 @@ fun EditTutorialScreen(
         val tutorial = tutorialsViewModel.getTutorialById(tutorialId)
         if (tutorial != null) {
             localTitle = tutorial.title
-            localCategory = tutorial.category
+            localCategories = tutorial.categories // <-- POUŽÍVAME NOVÝ STAV A PARAMETER
             localContentBlocks = tutorial.content
             originalTutorial = tutorial.copy()
             isDataLoaded = true
         } else {
-            // Ak sa návod nenájde, vrátime sa späť
-            navController.popBackStack()
+            // ...
         }
     }
 
     // --- DETEKCIA ZMIEN ---
-    val hasChanges by remember(localTitle, localCategory, localContentBlocks, originalTutorial) {
+    val hasChanges by remember(localTitle, localCategories, localContentBlocks, originalTutorial) {
         derivedStateOf {
             originalTutorial?.let {
-                it.title != localTitle || it.category != localCategory || it.content != localContentBlocks
-            } ?: false
-        }
+                it.title != localTitle || it.categories != localCategories || it.content != localContentBlocks
+            } ?: false}
     }
 
     fun justSave() {
@@ -99,7 +98,7 @@ fun EditTutorialScreen(
             val tutorialToSave = Tutorial(
                 id = tutorialId,
                 title = localTitle,
-                category = localCategory,
+                categories = localCategories,
                 content = localContentBlocks
             )
             tutorialsViewModel.saveTutorial(tutorialToSave)
@@ -116,7 +115,7 @@ fun EditTutorialScreen(
             val tutorialToSave = Tutorial(
                 id = tutorialId,
                 title = localTitle,
-                category = localCategory,
+                categories = localCategories,
                 content = localContentBlocks
             )
             tutorialsViewModel.saveTutorial(tutorialToSave)
@@ -165,6 +164,18 @@ fun EditTutorialScreen(
                 navController.popBackStack(Routes.TUTORIAL_DETAIL, true)
             },
             onCancel = { showUnsavedChangesDialog = false }
+        )
+    }
+
+    if (showCategorySelectionDialog) {
+        CategorySelectionDialog(
+            allCategories = tutorialsViewModel.categories.filter { it != "Všetky" },
+            selectedCategories = localCategories,
+            onDismiss = { showCategorySelectionDialog = false },
+            onConfirm = { newSelectedCategories ->
+                localCategories = newSelectedCategories
+                showCategorySelectionDialog = false
+            }
         )
     }
     if (showDeleteDialog) {
@@ -249,10 +260,10 @@ fun EditTutorialScreen(
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
-                    CategoryDropDown(
-                        categories = tutorialsViewModel.categories.filter { it != "Všetky" },
-                        selectedCategory = localCategory,
-                        onCategorySelected = { localCategory = it }
+                    CategorySelector(
+                        allCategories = tutorialsViewModel.categories.filter { it != "Všetky" },
+                        selectedCategories = localCategories,
+                        onOpenDialog = { showCategorySelectionDialog = true }
                     )
                     Row(
                         modifier = Modifier.fillMaxWidth(),

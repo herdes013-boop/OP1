@@ -52,7 +52,8 @@ fun AddTutorialScreen(
 
     // --- STAVY ---
     var localTitle by remember { mutableStateOf("") }
-    var localCategory by remember { mutableStateOf(tutorialsViewModel.categories.drop(1).first()) }
+    var localCategories by remember { mutableStateOf<List<String>>(emptyList()) }
+    var showCategorySelectionDialog by remember { mutableStateOf(false) }
     var localContentBlocks by remember { mutableStateOf<List<TutorialContentBlock>>(emptyList()) }
     var showUnsavedChangesDialog by remember { mutableStateOf(false) }
 
@@ -66,7 +67,7 @@ fun AddTutorialScreen(
             val tutorialToSave = Tutorial(
                 id = UUID.randomUUID().toString(),
                 title = localTitle,
-                category = localCategory,
+                categories = localCategories, // <-- POUŽÍVAME NOVÝ STAV A PARAMETER
                 content = localContentBlocks
             )
             tutorialsViewModel.saveTutorial(tutorialToSave)
@@ -108,6 +109,18 @@ fun AddTutorialScreen(
             onSave = { showUnsavedChangesDialog = false; saveAndGoBack() },
             onDiscard = { showUnsavedChangesDialog = false; navController.popBackStack() },
             onCancel = { showUnsavedChangesDialog = false }
+        )
+    }
+
+    if (showCategorySelectionDialog) {
+        CategorySelectionDialog(
+            allCategories = tutorialsViewModel.categories.filter { it != "Všetky" },
+            selectedCategories = localCategories,
+            onDismiss = { showCategorySelectionDialog = false },
+            onConfirm = { newSelectedCategories ->
+                localCategories = newSelectedCategories
+                showCategorySelectionDialog = false
+            }
         )
     }
 
@@ -161,10 +174,10 @@ fun AddTutorialScreen(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
-                CategoryDropDown(
-                    categories = tutorialsViewModel.categories.filter { it != "Všetky" },
-                    selectedCategory = localCategory,
-                    onCategorySelected = { localCategory = it }
+                CategorySelector(
+                    allCategories = tutorialsViewModel.categories.filter { it != "Všetky" },
+                    selectedCategories = localCategories,
+                    onOpenDialog = { showCategorySelectionDialog = true }
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),

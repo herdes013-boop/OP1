@@ -235,8 +235,10 @@ fun TutorialCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
+                val categoryToShow = tutorial.categories.firstOrNull() ?: "Bez kategórie"
+
                 Text(
-                    text = tutorial.category,
+                    text = categoryToShow, // <-- POUŽÍVAME NOVÚ HODNOTU
                     style = MaterialTheme.typography.bodySmall,
                     fontStyle = FontStyle.Italic,
                     color = MaterialTheme.colorScheme.primary,

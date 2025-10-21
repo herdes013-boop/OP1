@@ -14,7 +14,6 @@ import java.util.UUID
 data class TutorialItem(
     val id: String = UUID.randomUUID().toString(),
     val title: String,
-    val category: String,
-    // ZMENA: Starý `content` a `imageRes` sme nahradili zoznamom blokov
+    val categories: List<String>, // <-- TOTO JE ZMENA
     val contentBlocks: List<TutorialContentBlock>
 )

@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.google.accompanist.flowlayout.FlowRow
 
 @Composable
 fun TutorialDetailScreen(
@@ -44,7 +45,7 @@ fun TutorialDetailScreen(
 
     val isLoading by tutorialsViewModel.isLoading.collectAsState()
     val title by tutorialsViewModel::tutorialTitle
-    val category by tutorialsViewModel::tutorialCategory
+    val categories by tutorialsViewModel::tutorialCategories
     val contentBlocks by tutorialsViewModel.contentBlocks.collectAsState()
 
     var showMenu by remember { mutableStateOf(false) }
@@ -142,12 +143,18 @@ fun TutorialDetailScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = category,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontStyle = FontStyle.Italic,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        if (categories.isNotEmpty()) {Spacer(modifier =Modifier.height(8.dp))
+                            FlowRow(
+                                mainAxisSpacing = 8.dp,
+                                crossAxisSpacing = 4.dp
+                            ) {
+                                categories.forEach { categoryName ->
+                                    SuggestionChip(onClick = { /* Čip nie je klikateľný */ },
+                                        label = { Text(categoryName) }
+                                    )
+                                }
+                            }
+                        }
                     }
 
                     item {
