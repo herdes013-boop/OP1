@@ -51,6 +51,9 @@ import androidx.navigation.NavController
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import coil.compose.AsyncImage
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.material.icons.filled.Article
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -204,7 +207,7 @@ fun TutorialCard(
         ) {
             Box(
                 modifier = Modifier
-                    .size(80.dp)
+                    .size(40.dp)
                     .background(
                         MaterialTheme.colorScheme.surface,
                         shape = MaterialTheme.shapes.medium
@@ -216,8 +219,9 @@ fun TutorialCard(
                     contentDescription = "Náhľad návodu",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
-                    placeholder = painterResource(id = R.drawable.ic_image_not_supported),
-                    error = painterResource(id = R.drawable.ic_image_not_supported)
+                    // ✅ Použijeme rememberVectorPainter na konverziu ikony na Painter
+                    placeholder = rememberVectorPainter(image = Icons.Filled.Article),
+                    error = rememberVectorPainter(image = Icons.Filled.Article)
                 )
             }
 
