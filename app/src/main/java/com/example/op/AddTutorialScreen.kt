@@ -261,7 +261,7 @@ fun AddTutorialScreen(
             })
             val focusManager = LocalFocusManager.current
             LazyColumn(
-                state = listState,
+                state = reorderableState.listState, // <<<---- ZMENA TU! POUŽITE listState z reorderableState
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
@@ -276,10 +276,13 @@ fun AddTutorialScreen(
             ) {
                 itemsIndexed(localContentBlocks, key = { _, block -> block.id }) { index, block ->
                     ReorderableItem(reorderableState, key = block.id) { isDragging ->
+                        // OPRAVA CHYBY 1: pridaná medzera za 'else'
                         val elevation by animateDpAsState(if (isDragging) 8.dp else 0.dp, label = "")
+
+                        // Zadefinujeme si JEDEN modifier, ktorý má VŠETKO v sebe
                         val reorderModifier = Modifier
-                            .detectReorderAfterLongPress(reorderableState)
                             .shadow(elevation, RoundedCornerShape(8.dp))
+                            .detectReorderAfterLongPress(reorderableState)
 
                         when (block) {
                             is TutorialContentBlock.TextBlock -> TextBlockEditor(
@@ -290,6 +293,7 @@ fun AddTutorialScreen(
                                 onRemove = {
                                     localContentBlocks = localContentBlocks.toMutableList().apply { removeAt(index) }
                                 },
+                                // OPRAVA CHYBY 2: Používame len 'modifier'
                                 modifier = reorderModifier
                             )
                             is TutorialContentBlock.ImageBlock -> ImageBlockEditor(
@@ -297,6 +301,7 @@ fun AddTutorialScreen(
                                 onRemove = {
                                     localContentBlocks = localContentBlocks.toMutableList().apply { removeAt(index) }
                                 },
+                                // OPRAVA CHYBY 2: Používame len 'modifier'
                                 modifier = reorderModifier
                             )
                         }
