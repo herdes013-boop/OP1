@@ -96,6 +96,25 @@ fun AddTutorialScreen(
             }
         }
     )
+    var tempPhotoUri by remember { mutableStateOf<Uri?>(null) }
+
+// 2. Spúšťač pre fotoaparát
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture(),
+        onResult = { success: Boolean ->
+            if (success) {
+                tempPhotoUri?.let { uri ->
+                    scope.launch {
+                        // Použijeme existujúcu funkciu na uloženie URI do interného úložiska
+                        val stableUri = tutorialsViewModel.saveImageToInternalStorageAndGetUri(context, uri)
+                        if (stableUri != null) {
+                            localContentBlocks = localContentBlocks + TutorialContentBlock.ImageBlock(uriString = stableUri.toString())
+                        }
+                    }
+                }
+            }
+        }
+    )
 
     // --- TOP BAR A BACK HANDLER ---
     LaunchedEffect(Unit) {
@@ -181,9 +200,10 @@ fun AddTutorialScreen(
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp) // Zmenšená medzera
                 ) {
                     val buttonColor = Color(0xFF4CAF50)
+                    // Tlačidlo Text
                     Button(
                         onClick = {
                             scope.launch {
@@ -192,16 +212,43 @@ fun AddTutorialScreen(
                             }
                         },
                         modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = buttonColor)
+                        colors = ButtonDefaults.buttonColors(containerColor = buttonColor),
+                        contentPadding = PaddingValues(horizontal = 8.dp) // Menší padding
                     ) {
-                        Icon(Icons.Default.PostAdd, contentDescription = null); Spacer(Modifier.width(8.dp)); Text("Text")
+                        Icon(Icons.Default.PostAdd, contentDescription = null)
+                        Spacer(Modifier.width(4.dp))
+                        Text("Text")
                     }
+                    // Tlačidlo Obrázok
                     Button(
                         onClick = { imagePickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                         modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = buttonColor)
+                        colors = ButtonDefaults.buttonColors(containerColor = buttonColor),
+                        contentPadding = PaddingValues(horizontal = 8.dp) // Menší padding
                     ) {
-                        Icon(Icons.Default.AddPhotoAlternate, contentDescription = null); Spacer(Modifier.width(8.dp)); Text("Obrázok")
+                        Icon(Icons.Default.AddPhotoAlternate, contentDescription = null)
+                        Spacer(Modifier.width(4.dp))
+                        Text("Obrázok")
+                    }
+                    // NOVÉ TLAČIDLO FOTOAPARÁT
+                    Button(
+                        onClick = {
+                            // ===== UPRAVTE TÚTO ČASŤ =====
+                            scope.launch {
+                                // Vytvoríme dočasný súbor, kam fotoaparát uloží obrázok
+                                val newUri = tutorialsViewModel.createTempImageFile(context)
+                                tempPhotoUri = newUri // Uložíme si URI
+                                cameraLauncher.launch(newUri) // Spustíme fotoaparát s týmto URI
+                            }
+                            // =============================
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = buttonColor),
+                        contentPadding = PaddingValues(horizontal = 8.dp) // Menší padding
+                    ) {
+                        Icon(Icons.Default.PhotoCamera, contentDescription = null) // Nová ikona
+                        Spacer(Modifier.width(4.dp))
+                        Text("Foto")
                     }
                 }
             }

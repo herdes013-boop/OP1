@@ -24,6 +24,10 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.util.UUID
+import androidx.core.content.FileProvider
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 // Dátová trieda pre celý návod
 data class Tutorial(
@@ -414,6 +418,24 @@ class TutorialsViewModel : ViewModel() {
                 }
             }
         }
+    }
+    fun createTempImageFile(context: Context): Uri {
+        val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val storageDir: File? = context.getExternalFilesDir("temp_images")
+        if (storageDir != null && !storageDir.exists()) {
+            storageDir.mkdirs()
+        }
+        val file = File.createTempFile(
+            "JPEG_${timeStamp}_",
+            ".jpg",
+            storageDir
+        )
+        // Dôležité: Získanie URI cez FileProvider
+        return FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.provider", // Musí sa zhodovať s autoritou v manifeste
+            file
+        )
     }
 
 }
