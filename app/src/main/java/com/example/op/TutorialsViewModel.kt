@@ -156,7 +156,7 @@ class TutorialsViewModel : ViewModel() {
                 categories = listOf("Prihlásenie", "Softvér"),
                 content = listOf(
                     TutorialContentBlock.TextBlock(text = "Pre prihlásenie do systému použite vaše pridelené meno a heslo."),
-                    TutorialContentBlock.ImageBlock(imageRes = R.drawable.ic_launcher_background),
+                    TutorialContentBlock.ImageBlock(uriString = null),
                     TutorialContentBlock.TextBlock(text = "V prípade zabudnutého hesla kontaktujte administrátora.")
                 )
             ),
