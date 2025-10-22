@@ -35,8 +35,9 @@ import org.burnoutcrew.reorderable.detectReorderAfterLongPress
 import org.burnoutcrew.reorderable.rememberReorderableLazyListState
 import org.burnoutcrew.reorderable.reorderable
 import androidx.compose.material3.InputChip
-import com.google.accompanist.flowlayout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+
+
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -830,7 +831,7 @@ private fun FilterContactsDialog(
         }
     )
 }
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class) // Anotácia môže zostať
 @Composable
 private fun ActiveContactFiltersRow(
     activeChannelFilters: Set<String>,
@@ -850,8 +851,8 @@ private fun ActiveContactFiltersRow(
                 modifier = Modifier.padding(bottom = 4.dp)
             )
             FlowRow(
-                mainAxisSpacing = 8.dp,
-                crossAxisSpacing = 4.dp
+                modifier = modifier // Použijeme modifier, ktorý už funkcia dostáva
+                    .fillMaxWidth() // Ak chcete, aby zabral celú šírku
             ) {
                 // Zobrazenie filtrov pre kanály
                 activeChannelFilters.forEach { channel ->
