@@ -1,0 +1,7 @@
+com.example.op.test.app-core-1.5.0-0 C:\Users\rneme\.gradle\caches\8.13\transforms\1f7856e25bde07bf2e5281dcaa741acd\transformed\core-1.5.0\res
+com.example.op.test.app-annotation-experimental-1.3.0-1 C:\Users\rneme\.gradle\caches\8.13\transforms\95e31b3523d0888f47579ba6c21ed11d\transformed\annotation-experimental-1.3.0\res
+com.example.op.test.app-androidTest-2 C:\Users\rneme\AndroidStudioProjects\OP\app\build\generated\res\resValues\androidTest\debug
+com.example.op.test.app-updated_navigation_xml-3 C:\Users\rneme\AndroidStudioProjects\OP\app\build\generated\updated_navigation_xml\debugAndroidTest
+com.example.op.test.app-mergeDebugAndroidTestResources-4 C:\Users\rneme\AndroidStudioProjects\OP\app\build\intermediates\incremental\debugAndroidTest\mergeDebugAndroidTestResources\merged.dir
+com.example.op.test.app-mergeDebugAndroidTestResources-5 C:\Users\rneme\AndroidStudioProjects\OP\app\build\intermediates\incremental\debugAndroidTest\mergeDebugAndroidTestResources\stripped.dir
+com.example.op.test.app-debugAndroidTest-6 C:\Users\rneme\AndroidStudioProjects\OP\app\build\intermediates\merged_res\debugAndroidTest\mergeDebugAndroidTestResources
